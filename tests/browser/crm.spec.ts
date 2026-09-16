@@ -64,7 +64,7 @@ test('hosted login, all navigation sections and mobile layout work', async ({ pa
   page.on('pageerror', (error) => errors.push(error.message));
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Gestão', exact: true })).toBeVisible();
-  await page.getByLabel('E-mail', { exact: true }).fill('admin@example.com');
+  await page.getByLabel('CPF ou e-mail', { exact: true }).fill('012.345.678-90');
   await page.getByLabel('Senha', { exact: true }).fill('test-only-password');
   await page.locator('.tf-gate form button[type="submit"]').click();
   await expect(page.locator('.tf-sidebar, .tf-side').first()).toBeVisible();
@@ -150,4 +150,14 @@ test('PostgreSQL batches roll back and document bytes survive reconnection',asyn
     await db.close();db=new PostgresDatabase();
     expect(new TextDecoder().decode((await new PostgresFiles(db).get('test/persistent.txt'))?.body)).toBe('Bytes persistidos no PostgreSQL');
   }finally{await db.close();}
+});
+
+test('CPF and email aliases share the same login attempt limit',async({request})=>{
+  const identifiers=['01234567890','012.345.678-90','admin@example.com'];
+  for(let i=0;i<10;i++){
+    const response=await request.post('/api/auth/login',{headers:{origin},data:{login:identifiers[i%identifiers.length],password:'wrong-test-password'}});
+    expect(response.status()).toBe(401);
+  }
+  const blocked=await request.post('/api/auth/login',{headers:{origin},data:{login:'01234567890',password:'test-only-password'}});
+  expect(blocked.status()).toBe(429);
 });

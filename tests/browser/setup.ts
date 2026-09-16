@@ -9,7 +9,7 @@ export default async function setup() {
   try {
     await migratePostgres(db);
     await db.batch([
-      db.prepare("INSERT INTO users (id,email,name,role,active,created_at,updated_at) VALUES ('local-test-owner','admin@example.com','Teste local','admin',1,1,1)"),
+      db.prepare("INSERT INTO users (id,email,name,role,active,created_at,updated_at,cpf) VALUES ('local-test-owner','admin@example.com','Teste local','admin',1,1,1,'01234567890')"),
       db.prepare("INSERT INTO auth_credentials (user_id,password_hash,updated_at) VALUES ('local-test-owner',?,1)").bind(await hashPassword('test-only-password')),
       db.prepare("INSERT INTO app_settings (key,value) VALUES ('owner_id','local-test-owner'),('owner_email','admin@example.com')"),
       db.prepare("INSERT INTO clients (id,owner_id,name,normalized_name,cpf,created_at,updated_at) VALUES (100,'local-test-owner','Cliente histórico de teste','cliente historico','11111111111',1,1)"),

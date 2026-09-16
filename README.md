@@ -7,7 +7,7 @@ CRM em Next.js 16, React 19 e TypeScript, com a interface original do Gestão TF
 1. Importe `tfassessoriaefinancas-hub/gestortf`, branch `main`, com o preset **Next.js** e Node.js **24.x**.
 2. Cadastre a conexão privada do Neon na variável **`DATABASE_URL`**. Ela não deve ter prefixo `NEXT_PUBLIC_`. Se usar Preview, configure a variável nesse ambiente também; utilize outro banco se quiser testar alterações sem afetar a produção.
 3. Publique novamente depois de salvar a variável. Build: `npm run build`; saída e instalação seguem os padrões do Next.js.
-4. Entre com o e-mail e a senha inicial guardados no arquivo privado `data/neon-access.json` do computador em que a migração foi executada. Altere a senha em **Configurações**. Para acessos antigos da equipe, defina uma senha em **Usuários e acessos**.
+4. Entre com o CPF ou e-mail e a senha guardados no arquivo privado `data/neon-access.json` do computador em que a migração foi executada. Altere a senha em **Configurações**. Para acessos antigos da equipe, defina uma senha em **Usuários e acessos**.
 
 O banco deste projeto já foi migrado. O deploy não importa dados novamente nem precisa de arquivos locais. Credenciais, backups e dados pessoais não fazem parte do repositório. O acesso usa senhas com scrypt, sessões revogáveis no PostgreSQL e cookies HTTP-only. O modo opcional de desenvolvimento local é desativado automaticamente na Vercel.
 
