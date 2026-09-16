@@ -1,0 +1,75 @@
+/* Final print layer: keep the partner report on one portrait A4 sheet. */
+@media print {
+  @page { size: A4 portrait; margin: 4mm; }
+
+  html,
+  body {
+    width: 100% !important;
+    height: auto !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    background: #fff !important;
+  }
+
+  .tf-partner-report-overlay {
+    position: static !important;
+    display: block !important;
+    width: 100% !important;
+    height: auto !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    background: #fff !important;
+    backdrop-filter: none !important;
+  }
+
+  .tf-partner-report {
+    --partner-print-zoom: .48;
+    display: block !important;
+    width: 208.333% !important;
+    max-width: none !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: #fff !important;
+    color: #171917 !important;
+    box-shadow: none !important;
+    zoom: var(--partner-print-zoom) !important;
+    page-break-after: avoid !important;
+    break-after: avoid-page !important;
+  }
+
+  .tf-partner-report:has(tbody tr:nth-child(8)) { --partner-print-zoom: .4; width: 250% !important; }
+  .tf-partner-report:has(tbody tr:nth-child(16)) { --partner-print-zoom: .33; width: 303.03% !important; }
+  .tf-partner-report:has(tbody tr:nth-child(26)) { --partner-print-zoom: .27; width: 370.37% !important; }
+  .tf-partner-report > header { grid-template-columns: 1fr auto !important; padding-bottom: 7px !important; }
+  .tf-partner-report > header h2 { margin: 2px 0 !important; font-size: 25px !important; }
+  .tf-partner-report > header > button,
+  .tf-partner-report > footer { display: none !important; }
+  .tf-partner-report-cards { grid-template-columns: repeat(4, 1fr) !important; gap: 5px !important; margin: 7px 0 !important; }
+  .tf-partner-report-cards article { padding: 7px !important; background: #f6f3ec !important; }
+  .tf-partner-report-cards b { margin-top: 2px !important; font-size: 15px !important; }
+  .tf-partner-trend-comparison { padding: 7px !important; background: #f7f5f0 !important; }
+  .tf-partner-trend-comparison > header h3 { margin: 1px 0 !important; font-size: 14px !important; }
+  .tf-partner-trend-cards { grid-template-columns: 1fr 1fr .62fr !important; gap: 5px !important; margin: 5px 0 !important; }
+  .tf-partner-trend-cards article,
+  .tf-partner-trend-cards aside { min-height: 0 !important; gap: 3px 8px !important; padding: 6px !important; }
+  .tf-partner-trend-cards article > strong,
+  .tf-partner-trend-cards aside strong { font-size: 15px !important; }
+  .tf-partner-report .tf-partner-trend-chart { min-height: 0 !important; height: 132px !important; padding: 2px !important; background: #fff !important; }
+  .tf-partner-report .tf-partner-trend-chart > svg { width: 100% !important; height: 108px !important; }
+  .tf-partner-trend-legend { margin: 0 !important; gap: 12px !important; }
+  .tf-partner-report-analysis { margin: 5px 0 !important; padding: 6px 8px !important; background: #f6f3ec !important; }
+  .tf-partner-report-analysis p { margin: 2px 0 0 !important; font-size: 8px !important; line-height: 1.25 !important; }
+  .tf-partner-report-table { margin: 0 !important; overflow: visible !important; break-inside: auto !important; page-break-inside: auto !important; }
+  .tf-partner-report-table table { width: 100% !important; min-width: 0 !important; table-layout: fixed !important; font-size: 7px !important; line-height: 1.08 !important; }
+  .tf-partner-report-table th,
+  .tf-partner-report-table td { padding: 3px 2px !important; white-space: normal !important; overflow-wrap: anywhere !important; }
+  .tf-partner-report > header,
+  .tf-partner-report-cards,
+  .tf-partner-trend-comparison,
+  .tf-partner-report-analysis { break-inside: avoid-page !important; page-break-inside: avoid !important; }
+  .tf-partner-report * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+}

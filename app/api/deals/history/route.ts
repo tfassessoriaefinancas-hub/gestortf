@@ -1,0 +1,3 @@
+import { env } from '@/lib/runtime';
+import { getTfOwner } from '../../../chatgpt-auth';
+export async function GET(request:Request){const user=await getTfOwner();if(!user)return Response.json({error:'Não autorizado'},{status:401});const dealId=Number(new URL(request.url).searchParams.get('dealId'));if(!dealId)return Response.json({error:'Atendimento inválido'},{status:400});const rows=await env.DB.prepare('SELECT id,event_type as eventType,description,source,created_at as createdAt FROM deal_history WHERE deal_id=? ORDER BY created_at DESC').bind(dealId).all();return Response.json({history:rows.results});}

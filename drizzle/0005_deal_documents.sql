@@ -1,0 +1,2 @@
+CREATE TABLE IF NOT EXISTS deal_documents (id INTEGER PRIMARY KEY AUTOINCREMENT, owner_id TEXT NOT NULL, deal_id INTEGER NOT NULL REFERENCES deals(id), file_key TEXT NOT NULL, file_name TEXT NOT NULL, mime_type TEXT NOT NULL, size_bytes INTEGER NOT NULL, document_type TEXT NOT NULL DEFAULT 'identidade', created_at INTEGER NOT NULL);
+CREATE INDEX IF NOT EXISTS idx_deal_documents_owner_deal ON deal_documents(owner_id, deal_id);

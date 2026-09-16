@@ -1,0 +1,19 @@
+{
+  "name": "Gestão TF",
+  "short_name": "Gestão TF",
+  "description": "Gestão de clientes e negócios da TF Assessoria & Finanças.",
+  "start_url": "/?app=v78",
+  "id": "/?app=gestao-tf",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone"],
+  "orientation": "portrait-primary",
+  "background_color": "#0d0e0c",
+  "theme_color": "#0d0e0c",
+  "lang": "pt-BR",
+  "categories": ["business", "finance", "productivity"],
+  "icons": [
+    {"src":"/tf-app-icon.png?v=55","sizes":"192x192","type":"image/png","purpose":"any"},
+    {"src":"/tf-app-icon.png?v=55","sizes":"512x512","type":"image/png","purpose":"any maskable"}
+  ]
+}
