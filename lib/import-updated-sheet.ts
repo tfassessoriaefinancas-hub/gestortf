@@ -1,5 +1,5 @@
 import { env } from '@/lib/runtime';
-import { TF_OWNER_EMAIL } from '../app/chatgpt-auth';
+import { ownerIdentity } from './auth-session';
 import { hasGgCode } from './production-source';
 
 type Row = {name:string;document:string;phone:string;birthDate:string|null;operationDate:string;paidAt:string;product:string;operationType:string;agreement:string;bank:string;value:number;installment:number;term:number|null;dueDay:string;productionIndicator:string;promoter:string;producer:string;commissionAmount:number;adhesionFee:number;adhesionPaid:boolean;revenueDueDate:string|null;bonus:number;sourceRow:number;raw:Record<string,unknown>};
@@ -20,7 +20,7 @@ export async function importUpdatedSheet(input:unknown){
     if(row.adhesionFee>0&&!row.adhesionPaid&&!row.revenueDueDate)throw new Error('Informe o vencimento da adesão pendente.');
   }
   if(rows.filter(row=>hasGgCode(row.producer)).length!==7)throw new Error('Esperados sete contratos com código GG.');
-  const owner=TF_OWNER_EMAIL,now=Date.now();
+  const owner=(await ownerIdentity()).id,now=Date.now();
   const partner=await env.DB.prepare("SELECT id FROM partners WHERE owner_id=? AND name='GG Veículos' AND deleted_at IS NULL").bind(owner).first<{id:number}>();
   if(!partner)throw new Error('Parceiro GG Veículos não encontrado.');
   const statements=[];

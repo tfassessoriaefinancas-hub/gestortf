@@ -18,5 +18,5 @@ export default async function Home() {
         </section>
       </main>
     );
-  return <Dashboard user={{ name: access.displayName, email: access.email, role: access.role, memberId: access.memberId, partnerId:access.partnerId, permissions: access.permissions }} />;
+  return <Dashboard user={{ name: access.displayName, email: access.email, role: access.role, memberId: access.memberId, partnerId:access.partnerId, permissions: access.permissions, serverAuthenticated: access.serverAuthenticated }} />;
 }

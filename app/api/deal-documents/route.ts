@@ -21,7 +21,7 @@ export async function POST(request:Request){
  const user=await getChatGPTUser();if(!user)return json({error:'Não autorizado'},401);
  const form=await request.formData(),dealId=Number(form.get('dealId')),file=form.get('file');
  if(!dealId||!(file instanceof File))return json({error:'Documento inválido.'},400);
- if(file.size>15*1024*1024)return json({error:'O arquivo deve ter no máximo 15 MB.'},400);
+ if(file.size>4*1024*1024)return json({error:'O arquivo deve ter no máximo 4 MB.'},400);
  const deal=await env.DB.prepare('SELECT id,client_id,operation_id FROM deals WHERE id=? AND owner_id=?').bind(dealId,user.userId).first<any>();
  if(!deal)return json({error:'Atendimento não encontrado.'},404);
  const now=Date.now(),type=String(form.get('documentType')||'identidade'),key=`deals/${user.userId}/${dealId}/${now}-${safe(file.name)}`;

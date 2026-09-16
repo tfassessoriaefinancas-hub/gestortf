@@ -1,5 +1,6 @@
+import { ownerIdentity } from '@/lib/auth-session';
 import { env } from '@/lib/runtime';
-import { getTfAccess, hasTfPermission, TF_OWNER_EMAIL } from '../../chatgpt-auth';
+import { getTfAccess, hasTfPermission } from '../../chatgpt-auth';
 import { getAugustSeptemberRecords } from '../../../lib/aug-sep-2026';
 import { productionSources, hasGgCode } from '../../../lib/production-source';
 import { importUpdatedSheet } from '../../../lib/import-updated-sheet';
@@ -14,9 +15,9 @@ const addMonths=(iso:string,months:number)=>{const [year,month,day]=iso.split('-
 export async function PUT(){
   const user=await getTfAccess();
   if(!user||user.role!=='admin')return json({error:'Não autorizado'},401);
-  const records=getAugustSeptemberRecords();
+  const records=await getAugustSeptemberRecords();
   if(!records.length)return json({error:'Nenhuma base de importação local configurada.'},404);
-  const ownerId=user.ownerKey||TF_OWNER_EMAIL,now=Date.now();
+  const ownerId=user.ownerKey,now=Date.now();
   let gg=await env.DB.prepare("SELECT id FROM partners WHERE owner_id IN (?,?) AND lower(name)=lower('GG Veículos') AND deleted_at IS NULL LIMIT 1").bind(user.ownerKeys[0],user.ownerKeys[1]).first<{id:number}>();
   if(!gg)gg=await env.DB.prepare("INSERT INTO partners (owner_id,name,active,created_at,updated_at) VALUES (?,'GG Veículos',1,?,?) RETURNING id").bind(ownerId,now,now).first<{id:number}>();
   let clients=0,operations=0,restored=0,updated=0;
@@ -52,7 +53,7 @@ export async function POST(request:Request){
   const body=await request.json() as {updatedSheet?:unknown;records?:Array<Record<string,unknown>>;institutions?:Array<Record<string,unknown>>;partnerRecords?:Array<Record<string,unknown>>;partnerBonus?:Record<string,unknown>},records=Array.isArray(body.records)?body.records:[],institutionRows=Array.isArray(body.institutions)?body.institutions:[],partnerRecords=Array.isArray(body.partnerRecords)?body.partnerRecords:[];
   if(body.updatedSheet){try{return json(await importUpdatedSheet(body.updatedSheet));}catch(error){console.error('Importação atualizada:',error);return json({error:error instanceof Error?error.message:'Não foi possível importar.'},400);}}
   if((!records.length&&!institutionRows.length&&!partnerRecords.length&&!body.partnerBonus)||records.length>100||institutionRows.length>200||partnerRecords.length>100)return json({error:'Lote inválido.'},400);
-  const ownerId=TF_OWNER_EMAIL,now=Date.now();
+  const ownerId=(await ownerIdentity()).id,now=Date.now();
   let partner=await env.DB.prepare("SELECT id FROM partners WHERE owner_id=? AND lower(name)=lower('GG Veículos') AND deleted_at IS NULL LIMIT 1").bind(ownerId).first<{id:number}>();
   if(!partner)partner=await env.DB.prepare("INSERT INTO partners (owner_id,name,active,created_at,updated_at) VALUES (?,'GG Veículos',1,?,?) RETURNING id").bind(ownerId,now,now).first<{id:number}>();
   if(partnerRecords.length&&partner){
@@ -109,6 +110,14 @@ export async function PATCH(request:Request){
   const user=await getTfAccess();if(!user||(!hasTfPermission(user,'clientes')&&!hasTfPermission(user,'producao')))return json({error:'Não autorizado'},401);
   const body=await request.json() as {entity?:string;id?:number;details?:Record<string,unknown>},id=Number(body.id),d=body.details||{},now=Date.now();
   if(!id)return json({error:'Registro inválido.'},400);
+  if(user.role==='employee'){
+    const field=user.partnerId?'partner_id':'assigned_user_id',scope=user.partnerId||user.memberId;
+    const entityFilter=body.entity==='client'?'o.client_id=?':body.entity==='operation'?'o.id=?':body.entity==='commission'?'o.id=(SELECT operation_id FROM commissions WHERE id=?)':null;
+    if(!entityFilter)return json({error:'Tipo de registro inválido.'},400);
+    const allowed=await env.DB.prepare(`SELECT o.id FROM operations o WHERE ${entityFilter} AND o.owner_id IN (?,?) AND o.${field}=? AND o.deleted_at IS NULL LIMIT 1`).bind(id,user.ownerKeys[0],user.ownerKeys[1],scope).first();
+    if(!allowed)return json({error:'Registro não encontrado.'},404);
+  }
+
   if(body.entity==='client'){
     const owned=await env.DB.prepare('SELECT id FROM clients WHERE id=? AND owner_id IN (?,?) AND deleted_at IS NULL').bind(id,user.ownerKeys[0],user.ownerKeys[1]).first();if(!owned)return json({error:'Cliente não encontrado.'},404);
     const name=String(d.name||'').trim(),document=digits(d.document),cpf=document.length===11?document:null,benefit=document.length===11?null:document||null;if(!name)return json({error:'Informe o nome.'},400);

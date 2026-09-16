@@ -1,72 +1,69 @@
-# Gestão TF — Next.js local
+# Gestão TF — Next.js + Neon
 
-Cópia do código original de [Gestão TF](https://nexo-crm-gestao.thiagon-oliveira.chatgpt.site), versão 175, commit `b59498a2c9a7355acf23eac3a7c58c3aa69cd25f`.
+CRM em Next.js 16, React 19 e TypeScript, com a interface original do Gestão TF. **PostgreSQL é a única fonte de dados em execução**, tanto localmente quanto na Vercel. Clientes, operações, comissões, permissões, sessões e anexos são lidos e gravados no banco indicado por `DATABASE_URL`.
 
-As telas, temas, imagens, atendimento Kanban, clientes, produção, parceiros, comissões, notas, relatórios e APIs foram preservados. A execução usa Next.js 16 com App Router, React 19 e TypeScript. O runtime da hospedagem foi substituído por SQLite e arquivos locais. As fontes estão incluídas no projeto; a compilação não precisa acessar o Google Fonts. O repositório público contém o código e inicia com um banco vazio, sem dados de clientes.
+## Vercel
 
-## Executar
+1. Importe `tfassessoriaefinancas-hub/gestortf`, branch `main`, com o preset **Next.js** e Node.js **24.x**.
+2. Cadastre a conexão privada do Neon na variável **`DATABASE_URL`**. Ela não deve ter prefixo `NEXT_PUBLIC_`. Se usar Preview, configure a variável nesse ambiente também; utilize outro banco se quiser testar alterações sem afetar a produção.
+3. Publique novamente depois de salvar a variável. Build: `npm run build`; saída e instalação seguem os padrões do Next.js.
+4. Entre com o e-mail e a senha inicial guardados no arquivo privado `data/neon-access.json` do computador em que a migração foi executada. Altere a senha em **Configurações**. Para acessos antigos da equipe, defina uma senha em **Usuários e acessos**.
+
+O banco deste projeto já foi migrado. O deploy não importa dados novamente nem precisa de arquivos locais. Credenciais, backups e dados pessoais não fazem parte do repositório. O acesso usa senhas com scrypt, sessões revogáveis no PostgreSQL e cookies HTTP-only. O modo opcional de desenvolvimento local é desativado automaticamente na Vercel.
+
+As APIs paginam o histórico em blocos de até 1.000 registros, carregados pelo painel. Anexos de até **4 MB** ficam em `stored_files`, no próprio PostgreSQL, para persistir entre deploys. Esse tamanho deixa margem para o [limite de requisições da Vercel](https://vercel.com/docs/errors/function_payload_too_large).
+
+## Executar localmente
 
 Requer Node.js 24 e npm.
 
 ```bash
-git clone git@github.com:tfassessoriaefinancas-hub/gestortf.git
-cd gestortf
 npm ci
 cp .env.example .env.local
-npm run db:migrate
+# Preencha DATABASE_URL com a conexão privada.
 npm run dev
 ```
 
-Abra **http://localhost:3000**. No primeiro acesso pelo navegador, a tela original solicita cadastrar CPF e senha para o bloqueio local.
-
-Para executar a compilação de produção:
+Abra **http://localhost:3000** e use a mesma conta. Para produção local:
 
 ```bash
 npm run build
 npm start
 ```
 
-Os comandos usam Webpack, validado neste Mac, e escutam apenas em `127.0.0.1`.
+As fontes estão incluídas no projeto. A compilação usa Webpack e não precisa baixar fontes externas.
 
-## Dados
+## Migração e preservação
 
-- `data/crm.sqlite`: banco local persistente; as 13 migrações são aplicadas automaticamente.
-- `data/files/`: novos documentos anexados, entregues pelas APIs.
-- `data/source-snapshot.json`: snapshot privado opcional para restauração, mantendo IDs e relacionamentos.
-- `data/historical/tf-clients.json` e `data/historical/tf-operations.json`: bases históricas privadas opcionais. O painel aplica as mesmas regras originais de combinação e deduplicação.
-- `data/imports/aug-sep-2026.json`: base privada opcional para a importação administrativa legada.
+A migração inicial preservou as 27 tabelas originais e consolidou as bases históricas no PostgreSQL: **3.561 clientes, 8.174 operações e 67 registros de comissão**, incluindo registros antigos e excluídos. CPFs históricos correspondentes foram vinculados aos cadastros existentes. Os **17 lançamentos históricos de agosto/setembro já substituídos pela base atualizada** permanecem guardados, com exclusão dos relatórios para manter a regra original.
 
-As bases históricas são entregues por rotas autenticadas de administrador; quando não existem, o painel recebe listas vazias. Dados pessoais não ficam em `public/` nem no código TypeScript. Novos cadastros e anexos ficam no computador em que o sistema roda. Alterações locais não são sincronizadas com o site original.
+`source_records` guarda **11.899 registros de origem** para conferência, incluindo os valores originais antes da normalização. O painel usa as tabelas canônicas: editar um registro histórico atualiza o banco, sem reconstruí-lo a partir de JSONs. `migration_runs` registra o checksum da importação. Uma segunda execução com o mesmo plano não duplica registros; planos diferentes ou destinos já preenchidos são recusados.
 
-O banco, o snapshot, as bases históricas, os anexos e `.env.local` ficam fora do Git. Para backup, pare o servidor e copie a pasta `data/` completa e `.env.local`. A cópia local original conserva todos os dados importados; eles não são enviados ao GitHub.
-
-Para restaurar o snapshot em **um banco vazio**, configure outro `LOCAL_DATA_DIR` e execute:
+Os arquivos `data/crm.sqlite`, `data/historical/`, `data/source-snapshot.json`, `data/neon-migration-plan.json` e `data/backups/` são cópias privadas para migração e recuperação; não são consultados pelo sistema em execução.
 
 ```bash
-npm run db:import -- data/source-snapshot.json
+# Aplicar novas alterações de esquema, sem reimportar os dados:
+npm run db:migrate
+
+# Apenas para a migração inicial de uma base local existente:
+npm run db:prepare:neon
+npm run db:import:neon
+
+# Conferir cada campo migrado e as fontes antes de começar novas edições:
+npm run db:verify:neon
 ```
 
-A importação é transacional e recusa tabelas que já contenham registros. Ao restaurar a cópia, preserve também `LOCAL_USER_ID` do `.env.local` original.
-
-## Acesso e integrações
-
-Esta instalação foi preparada para uso local de um administrador. `LOCAL_AUTH_ENABLED=true` fornece a identidade somente para hosts de loopback. Os antigos cabeçalhos de identidade da hospedagem não são aceitos como autenticação. A tela de CPF e senha é o bloqueio de navegador herdado do site, não autenticação de servidor para publicação na internet.
-
-As telas de usuários e permissões foram preservadas, mas autenticação com várias contas e Sign in with ChatGPT dependem de configurar um provedor de autenticação antes de hospedar esta versão.
-
-As rotas de WhatsApp e extração de documentos por IA continuam no código. Nenhuma credencial foi copiada ou ativada; essas funções dependem das variáveis opcionais indicadas em `.env.example`. O CRM, cadastros, relatórios e anexos funcionam sem elas. O token de importação administrativa também é opcional.
+Novas migrações PostgreSQL ficam em `db/postgres/*.sql`. Migrações aplicadas são verificadas por checksum e não devem ser editadas. Os scripts SQLite, o esquema `db/schema.ts` e `drizzle.sqlite.config.ts` foram mantidos exclusivamente para consultar backups anteriores.
 
 ## Verificação
 
 ```bash
 npm test
-npm run typecheck
 npm run build
+npm run typecheck
 npm run test:e2e
 ```
 
-Os testes de navegador usam um banco temporário separado na porta 3100. Usam o Chrome instalado no macOS quando disponível; em outro ambiente, instale o Chromium com `npx playwright install chromium` ou configure `PLAYWRIGHT_CHROMIUM_EXECUTABLE`.
+Os testes de navegador criam e removem um esquema PostgreSQL próprio com prefixo `tf_test_`. Eles cobrem login, permissões, encerramento de sessões, atendimento, comissões, anexos, edição histórica, navegação e tela móvel, sem alterar o esquema `public`. Use uma conexão com permissão para criar esse esquema. O Playwright usa Chrome instalado; alternativamente, defina `PLAYWRIGHT_CHROMIUM_EXECUTABLE`.
 
-Os testes verificam persistência, migrações, rollback, anexos, acesso local, cadastro e movimentação de atendimento, finalização com comissão, navegação, temas e layout móvel. Capturas ficam em `test-results/`.
-
-A publicação no GitHub começa com um histórico novo, sem os dados privados presentes no histórico da origem. O histórico original permanece somente na branch local `source-original`. Nenhuma alteração foi publicada no site original.
+WhatsApp e extração por IA continuam opcionais e dependem das credenciais correspondentes em `.env.example`.

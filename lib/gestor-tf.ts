@@ -210,7 +210,7 @@ async function updatePayload(ctx:Context,dealId:number,command:GestorCommand){
 
 async function addNote(ctx:Context,dealId:number,note:string){
   const deal=await getDeal(ctx.ownerId,dealId);if(!deal)return 'Atendimento não encontrado.';const clean=note.trim();
-  if(deal.operation_id)await env.DB.prepare("UPDATE operations SET notes=CASE WHEN notes IS NULL OR notes='' THEN ? ELSE notes || char(10) || ? END,updated_at=? WHERE id=? AND owner_id=?").bind(clean,clean,Date.now(),deal.operation_id,ctx.ownerId).run();
+  if(deal.operation_id)await env.DB.prepare("UPDATE operations SET notes=CASE WHEN notes IS NULL OR notes='' THEN ? ELSE notes || chr(10) || ? END,updated_at=? WHERE id=? AND owner_id=?").bind(clean,clean,Date.now(),deal.operation_id,ctx.ownerId).run();
   await addHistory(ctx,dealId,deal.operation_id,'observacao',clean,null,{note:clean});
   await addAudit(ctx,'OBSERVACAO_ADICIONADA',{clientId:deal.client_id,operationId:deal.operation_id,dealId},null,{note:clean});
   const p=payloadOf(deal);return `✅ Observação adicionada ao atendimento de ${deal.name||p.name}.`;

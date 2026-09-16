@@ -17,7 +17,7 @@ export async function POST(request:Request){
   const user=await getChatGPTUser(); if(!user)return json({error:'Não autorizado'},401);
   const form=await request.formData(), clientId=Number(form.get('clientId')), file=form.get('file');
   if(!clientId||!(file instanceof File))return json({error:'Selecione um arquivo e um cliente.'},400);
-  if(file.size>15*1024*1024)return json({error:'O arquivo deve ter no máximo 15 MB.'},400);
+  if(file.size>4*1024*1024)return json({error:'O arquivo deve ter no máximo 4 MB.'},400);
   const client=await env.DB.prepare('SELECT id FROM clients WHERE id=? AND owner_id=? AND deleted_at IS NULL').bind(clientId,user.userId).first();
   if(!client)return json({error:'Cliente não encontrado.'},404);
   const type=String(form.get('documentType')||'outro'), key=`clients/${user.userId}/${clientId}/${Date.now()}-${safe(file.name)}`;

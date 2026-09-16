@@ -1,12 +1,14 @@
 import { env } from '@/lib/runtime';
+import { getTfAccess, hasTfPermission } from '../../chatgpt-auth';
 
 const json=(data:unknown,status=200)=>Response.json(data,{status,headers:{'cache-control':'no-store, no-cache, must-revalidate','pragma':'no-cache'}});
 
 type PartnerRow={id:number;owner_id:string;name:string};
 
 export async function POST(request:Request){
-  const body=await request.json().catch(()=>({})) as {password?:string};
-  if(String(body.password||'')!=='GG')return json({error:'Senha incorreta.'},401);
+  const user=await getTfAccess();
+  if(!user)return json({error:'Entre no sistema para acessar o relatório.'},401);
+  if(!hasTfPermission(user,'relatorios')&&!hasTfPermission(user,'parceiros'))return json({error:'Acesso não autorizado.'},403);
 
   let partner=await env.DB.prepare("SELECT id,owner_id,name FROM partners WHERE active=1 AND deleted_at IS NULL AND (lower(name) LIKE '%gg veículos%' OR lower(name) LIKE '%germano%' OR lower(name) LIKE '%gg%') ORDER BY CASE WHEN lower(name) LIKE '%gg veículos%' THEN 0 WHEN lower(name) LIKE '%germano%' THEN 1 ELSE 2 END LIMIT 1").first<PartnerRow>();
   if(!partner){
@@ -14,6 +16,7 @@ export async function POST(request:Request){
     partner=source||null;
   }
   if(!partner)return json({error:'Parceiro GG Veículos não encontrado.'},404);
+  if(!user.ownerKeys.includes(partner.owner_id)||(user.role!=='admin'&&user.partnerId!==partner.id))return json({error:'Acesso não autorizado.'},403);
 
   const rows=await env.DB.prepare(`SELECT o.id,c.name AS client_name,c.cpf,o.bank,o.original_product,o.operation_date,o.value_cents,
     COALESCE((SELECT SUM(value_cents) FROM commissions cm WHERE cm.operation_id=o.id AND cm.owner_id=o.owner_id AND cm.deleted_at IS NULL AND cm.rate_bps IS NOT NULL),0) AS gross_cents,
@@ -25,7 +28,7 @@ export async function POST(request:Request){
     COALESCE(a.tf_share_bps,5000) AS tf_share_bps,o.notes
     FROM operations o JOIN clients c ON c.id=o.client_id
     LEFT JOIN partner_operation_adjustments a ON a.operation_id=o.id AND a.partner_id=?
-    WHERE o.deleted_at IS NULL AND o.completed_at IS NOT NULL
+    WHERE o.deleted_at IS NULL AND c.deleted_at IS NULL AND o.report_excluded=0 AND (o.completed_at IS NOT NULL OR o.is_historical=1)
       AND (o.partner_id=? OR lower(trim(COALESCE(o.origin,'')))=lower(trim(?)) OR lower(COALESCE(o.origin,'')) LIKE '%gg veículos%' OR lower(COALESCE(o.origin,'')) LIKE '%germano%' OR lower(COALESCE(o.origin,'')) LIKE '%gg%')
     ORDER BY o.operation_date DESC,o.id DESC`).bind(partner.id,partner.id,partner.name).all<any>();
 

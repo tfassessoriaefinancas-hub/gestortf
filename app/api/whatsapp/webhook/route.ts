@@ -20,7 +20,7 @@ export async function POST(request:Request){
     for(const message of value?.messages||[]){
       const id=String(message.id||''),from=cleanPhone(message.from),type=String(message.type||'unknown'),received=Date.now();
       if(!id)continue;
-      const inserted=await env.DB.prepare("INSERT OR IGNORE INTO whatsapp_messages (message_id,owner_id,from_phone,message_type,status,received_at) VALUES (?,?,?,?,?,?)").bind(id,integration?.owner_id||null,from,type,'recebida',received).run();
+      const inserted=await env.DB.prepare("INSERT INTO whatsapp_messages (message_id,owner_id,from_phone,message_type,status,received_at) VALUES (?,?,?,?,?,?) ON CONFLICT(message_id) DO NOTHING").bind(id,integration?.owner_id||null,from,type,'recebida',received).run();
       if(!inserted.meta.changes)continue;
       if(!integration||!integration.enabled||cleanPhone(integration.admin_phone)!==from){
         await env.DB.prepare("UPDATE whatsapp_messages SET status='nao_autorizada',processed_at=? WHERE message_id=?").bind(Date.now(),id).run();

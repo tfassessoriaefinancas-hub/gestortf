@@ -2,15 +2,16 @@ import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { env } from '@/lib/runtime';
 import { localIdentity } from '@/lib/local-identity';
+import { getSessionUser, ownerIdentity } from '@/lib/auth-session';
 
 export type ChatGPTUser = {
   userId: string;
   displayName: string;
   email: string;
   fullName: string | null;
+  role?: 'admin' | 'employee';
+  serverAuthenticated?: boolean;
 };
-
-export const TF_OWNER_EMAIL = (process.env.LOCAL_USER_EMAIL || 'admin@example.com').trim().toLowerCase();
 
 export const TF_PERMISSIONS = [
   'inicio','clientes','atendimento','producao','parceiros','servicos',
@@ -28,7 +29,7 @@ export type TfAccess = ChatGPTUser & {
 
 export async function getTfOwner(): Promise<(ChatGPTUser & { ownerKey: string }) | null> {
   const user = await getChatGPTUser();
-  if (!user || user.email.trim().toLowerCase() !== TF_OWNER_EMAIL) return null;
+  if (!user || (user.role !== 'admin' && user.serverAuthenticated)) return null;
   return { ...user, ownerKey: user.userId };
 }
 
@@ -36,11 +37,12 @@ export async function getTfAccess(existingUser?: ChatGPTUser | null): Promise<Tf
   const user = existingUser === undefined ? await getChatGPTUser() : existingUser;
   if (!user) return null;
   const email = user.email.trim().toLowerCase();
-  if (email === TF_OWNER_EMAIL)
-    return { ...user, ownerKey: user.userId, ownerKeys: [user.userId, TF_OWNER_EMAIL], role: 'admin', memberId: null, partnerId:null, permissions: [...TF_PERMISSIONS] };
+  if (user.role === 'admin' || !user.serverAuthenticated)
+    return { ...user, ownerKey: user.userId, ownerKeys: [user.userId, email], role: 'admin', memberId: null, partnerId:null, permissions: [...TF_PERMISSIONS] };
+  const owner = await ownerIdentity();
   const member = await env.DB.prepare(
-    'SELECT id,owner_id,partner_id,permissions_json FROM access_users WHERE lower(email)=? AND active=1 LIMIT 1',
-  ).bind(email).first<{id:number;owner_id:string;partner_id:number|null;permissions_json:string}>();
+    'SELECT id,owner_id,partner_id,permissions_json FROM access_users WHERE lower(email)=? AND owner_id IN (?,?) AND active=1 LIMIT 1',
+  ).bind(email,owner.id,owner.email).first<{id:number;owner_id:string;partner_id:number|null;permissions_json:string}>();
   if (!member) return null;
   let permissions: TfPermission[] = ['inicio'];
   try {
@@ -48,7 +50,7 @@ export async function getTfAccess(existingUser?: ChatGPTUser | null): Promise<Tf
     if (Array.isArray(parsed)) permissions = TF_PERMISSIONS.filter((p) => parsed.includes(p));
   } catch {}
   if (!permissions.includes('inicio')) permissions.unshift('inicio');
-  return { ...user, ownerKey: member.owner_id, ownerKeys: [member.owner_id, TF_OWNER_EMAIL], role: 'employee', memberId: member.id, partnerId:member.partner_id||null, permissions };
+  return { ...user, ownerKey: member.owner_id, ownerKeys: [owner.id, owner.email], role: 'employee', memberId: member.id, partnerId:member.partner_id||null, permissions };
 }
 
 export const hasTfPermission = (access: TfAccess, permission: TfPermission) =>
@@ -59,6 +61,8 @@ const SIGN_OUT_PATH = '/signout-with-chatgpt';
 const CALLBACK_PATH = '/callback';
 
 export async function getChatGPTUser(): Promise<ChatGPTUser | null> {
+  const sessionUser = await getSessionUser();
+  if (sessionUser) return sessionUser;
   const requestHeaders = await headers();
   // The original identity headers were injected by the Sites gateway. A native
   // Next server must never trust those headers from the incoming browser.

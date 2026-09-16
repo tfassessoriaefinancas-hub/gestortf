@@ -9,7 +9,7 @@ export async function POST(request:Request){
   if(!env.OPENAI_API_KEY)return json({error:'A leitura inteligente ainda não está configurada.'},503);
   const form=await request.formData(),file=form.get('file');
   if(!(file instanceof File))return json({error:'Selecione uma CNH, RG ou documento com foto.'},400);
-  if(file.size>15*1024*1024)return json({error:'O arquivo deve ter no máximo 15 MB.'},400);
+  if(file.size>4*1024*1024)return json({error:'O arquivo deve ter no máximo 4 MB.'},400);
   const allowed=['application/pdf','image/jpeg','image/png','image/webp'];
   if(!allowed.includes(file.type))return json({error:'Envie um arquivo PDF, JPG, PNG ou WEBP.'},400);
 

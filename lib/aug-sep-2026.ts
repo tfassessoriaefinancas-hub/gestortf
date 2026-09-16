@@ -1,4 +1,4 @@
-import { readPrivateData } from './private-data';
+import { env } from './runtime';
 
 export type SpreadsheetImportRecord = {
   fingerprint: string;
@@ -27,6 +27,7 @@ export type SpreadsheetImportRecord = {
   partner?: string;
 };
 
-export function getAugustSeptemberRecords(): SpreadsheetImportRecord[] {
-  return readPrivateData<SpreadsheetImportRecord[]>('imports/aug-sep-2026.json', []);
+export async function getAugustSeptemberRecords(): Promise<SpreadsheetImportRecord[]> {
+  const rows = await env.DB.prepare('SELECT payload FROM source_records WHERE source=? ORDER BY source_id').bind('legacy-import:aug-sep-2026').all<{payload: SpreadsheetImportRecord}>();
+  return rows.results.map((row) => row.payload);
 }

@@ -176,124 +176,10 @@ type Deal = {
   assignedUserId?: number | null;
   assignedName?: string;
 };
-type TeamMember={id:number;name:string;email:string;active:boolean;permissions:View[];partnerId:number|null;partnerName?:string};
+type TeamMember={password?:string;id:number;name:string;email:string;active:boolean;permissions:View[];partnerId:number|null;partnerName?:string};
 type Receivable={id:number;operationId:number;name:string;value:number;dueDate:string;status:string;type:string;product:string};
 type InvoiceRecord={id:number;number:string;clientName:string;partnerName?:string;value:number;issuedAt:string;paidAt?:string;status:string;fileName?:string};
-type DashboardUser={name:string;email:string;role:"admin"|"employee";memberId:number|null;partnerId:number|null;permissions:string[]};
-const sampleClients: Client[] = [
-  {
-    id: 1,
-    name: "Nayllton Junior de Assis Barbosa",
-    cpf: "068.856.843-25",
-    benefit: "198.552.741-0",
-    birth: "1996-04-05",
-    phone: "(88) 99326-7339",
-    city: "Juazeiro do Norte",
-    partner: "GG Veículos",
-  },
-  {
-    id: 2,
-    name: "Mariana Alves Ferreira",
-    cpf: "421.783.650-09",
-    benefit: "172.881.903-4",
-    birth: "1987-09-18",
-    phone: "(85) 99841-2203",
-    city: "Fortaleza",
-    partner: "Indicação direta",
-  },
-  {
-    id: 3,
-    name: "Carlos Eduardo Lima",
-    cpf: "317.942.180-32",
-    benefit: "—",
-    birth: "1979-09-27",
-    phone: "(88) 99213-5108",
-    city: "Crato",
-    partner: "Auto Prime",
-  },
-  {
-    id: 4,
-    name: "Ana Paula Rodrigues",
-    cpf: "095.412.763-08",
-    benefit: "204.338.129-7",
-    birth: "1968-02-11",
-    phone: "(88) 98814-0310",
-    city: "Barbalha",
-    partner: "Balcão TF",
-  },
-];
-const sampleOps: Operation[] = [
-  {
-    id: 1,
-    clientId: 1,
-    product: "Aumento de margem",
-    bank: "C6 Bank",
-    producer: "Thiago",
-    origin: "Balcão",
-    value: 1518.24,
-    installment: 36,
-    term: 96,
-    date: "2026-01-06",
-    status: "Concluído",
-    commission: 182.19,
-  },
-  {
-    id: 2,
-    clientId: 1,
-    product: "Portabilidade INSS",
-    bank: "C6 Bank",
-    producer: "Marcelo",
-    origin: "TF",
-    value: 17500,
-    installment: 329,
-    term: 96,
-    date: "2025-08-12",
-    status: "Concluído",
-    commission: 525,
-  },
-  {
-    id: 3,
-    clientId: 2,
-    product: "Seguro Auto",
-    bank: "Porto Seguro",
-    producer: "Thiago",
-    origin: "Indicação",
-    value: 2986.8,
-    installment: 248.9,
-    term: 12,
-    date: "2026-08-14",
-    status: "Pago",
-    commission: 358.42,
-  },
-  {
-    id: 4,
-    clientId: 3,
-    product: "Financiamento de veículo",
-    bank: "Banco BV",
-    producer: "Thiago",
-    origin: "Parceiro",
-    value: 85000,
-    installment: 1280,
-    term: 60,
-    date: "2026-09-02",
-    status: "Em análise",
-    commission: 1700,
-  },
-  {
-    id: 5,
-    clientId: 4,
-    product: "Empréstimo consignado INSS",
-    bank: "Banco PAN",
-    producer: "Marcelo",
-    origin: "Balcão",
-    value: 12400,
-    installment: 312.4,
-    term: 84,
-    date: "2024-03-21",
-    status: "Concluído",
-    commission: 496,
-  },
-];
+type DashboardUser={name:string;email:string;role:"admin"|"employee";memberId:number|null;partnerId:number|null;permissions:string[];serverAuthenticated?:boolean};
 const cpfKey = (cpf?: string) => String(cpf || "").replace(/\D/g, "");
 const formatCpf = (cpf?: string) => {
   const d = cpfKey(cpf);
@@ -365,59 +251,6 @@ const formatMoneyInput = (value: string | number | undefined) =>
   }).format(parseMoneyBr(value));
 const moneyToStorage = (value: string | number | undefined) =>
   value === "" || value == null ? "" : String(parseMoneyBr(value));
-const normalizeHistoricalData=(importedClients:any[],importedOperations:any[])=>{
- const rawClients: Client[] = importedClients.length
-  ? importedClients.map((c:any) => ({
-      id: c.id,
-      name: c.name,
-      cpf: formatCpf(c.cpf),
-      benefit: c.benefit_number || "—",
-      birth: c.birth_date || "1900-01-01",
-      phone: formatPhone(c.phone),
-      city: "",
-      partner: "Origem histórica",
-    }))
-  : sampleClients;
- const clientIdMap = new Map<number, number>();
- const clients: Client[] = [];
- const clientByCpf = new Map<string, Client>();
-for (const client of rawClients) {
-  const key = cpfKey(client.cpf),
-    existing = key ? clientByCpf.get(key) : undefined;
-  if (existing) {
-    clientIdMap.set(client.id, existing.id);
-    if (existing.phone === "Não informado" && client.phone !== "Não informado")
-      existing.phone = client.phone;
-    if (existing.benefit === "—" && client.benefit !== "—")
-      existing.benefit = client.benefit;
-    if (existing.birth === "1900-01-01" && client.birth !== "1900-01-01")
-      existing.birth = client.birth;
-  } else {
-    clients.push(client);
-    clientIdMap.set(client.id, client.id);
-    if (key) clientByCpf.set(key, client);
-  }
-}
- const ops: Operation[] = importedOperations.length
-  ? importedOperations
-    .filter((o:any) => !["2026-08", "2026-09"].some((month) => String(o.operation_date || "").startsWith(month)))
-    .map((o:any) => ({
-      id: o.id,
-      clientId: clientIdMap.get(o.client_id) ?? o.client_id,
-      product: o.original_product || o.category,
-      bank: o.bank || "Não informado",
-      producer: o.producer || "TF",
-      origin: o.origin || "Histórico",
-      value: o.value || 0,
-      installment: o.installment || 0,
-      term: o.term || 0,
-      date: o.operation_date || "1900-01-01",
-      status: o.status || "Registro histórico",
-      commission: o.commission || 0,
-    }))
-  : sampleOps.filter((o) => !["2026-08", "2026-09"].some((month) => o.date.startsWith(month)));
- return {clients,ops};
-};
 const productionCategory = (product: string) => {
   const p = product.toLowerCase();
   if (p.includes("financiamento")) return "Crédito";
@@ -636,8 +469,6 @@ export default function Dashboard({
     [deals, setDeals] = useState<Deal[]>([]),
     [liveClients, setLiveClients] = useState<Client[]>([]),
     [liveOps, setLiveOps] = useState<Operation[]>([]),
-    [historicalClients,setHistoricalClients]=useState<Client[]>([]),
-    [historicalOps,setHistoricalOps]=useState<Operation[]>([]),
     [teamMembers,setTeamMembers]=useState<TeamMember[]>([]),
     [receivables,setReceivables]=useState<Receivable[]>([]),
     [invoices,setInvoices]=useState<InvoiceRecord[]>([]),
@@ -697,7 +528,7 @@ export default function Dashboard({
   }, []);
   useEffect(() => {
     setGateReady(true);
-    setLocked(localStorage.getItem("tf_access_unlocked") !== "1");
+    setLocked(!user.serverAuthenticated && localStorage.getItem("tf_access_unlocked") !== "1");
     setVisualTheme(localStorage.getItem("tf_visual_theme")==="mono"?"mono":"classic");
     localStorage.setItem("tf_dark_mode", "1");
     const refreshApp=()=>navigator.serviceWorker?.getRegistration().then(async(registration)=>{
@@ -722,12 +553,26 @@ export default function Dashboard({
         window.location.assign(`/signin-with-chatgpt?return_to=${encodeURIComponent(window.location.pathname + window.location.search)}`);
         return null;
       }
-      return response.ok ? response.json() : null;
+      if (!response.ok) throw new Error("Não foi possível atualizar os dados. Tente novamente.");
+      return response.json();
     };
+    const readCrm = async () => {
+      const data:{clients:Client[];operations:Operation[];receivables:Receivable[]}={clients:[],operations:[],receivables:[]};
+      let offset:number|null=0;
+      do {
+        const page=await readJson(`/api/crm/data?limit=1000&offset=${offset}`);
+        if(!page)return null;
+        data.clients.push(...page.clients);data.operations.push(...page.operations);data.receivables.push(...page.receivables);
+        offset=page.nextOffset??null;
+      } while(offset!==null);
+      return data;
+    };
+    let loading=false;
     const load = async () => {
+      if(loading)return;loading=true;
       const [dealsData,crmData,teamData,partnerData,invoiceData]=await Promise.all([
-        (user.role==="admin"||user.permissions.includes("atendimento"))?readJson("/api/deals"):Promise.resolve(null),readJson("/api/crm/data"),user.role==="admin"?readJson("/api/access-users"):Promise.resolve(null),(user.role==="admin"||user.permissions.includes("parceiros"))?readJson("/api/partners"):Promise.resolve(null),(user.role==="admin"||user.permissions.includes("notas"))?readJson("/api/invoices"):Promise.resolve(null),
-      ]).catch(()=>[null,null,null,null,null]);
+        (user.role==="admin"||user.permissions.includes("atendimento"))?readJson("/api/deals"):Promise.resolve(null),readCrm(),user.role==="admin"?readJson("/api/access-users"):Promise.resolve(null),(user.role==="admin"||user.permissions.includes("parceiros"))?readJson("/api/partners"):Promise.resolve(null),(user.role==="admin"||user.permissions.includes("notas"))?readJson("/api/invoices"):Promise.resolve(null),
+      ]).catch(()=>{setNotice("Falha ao carregar os dados. Verifique sua conexão e tente novamente.");return [null,null,null,null,null]});
       if(dealsData?.deals)setDeals(dealsData.deals);
       const x=crmData;
       if(x){
@@ -745,13 +590,9 @@ export default function Dashboard({
       if(teamData?.members)setTeamMembers(teamData.members);
       if(partnerData?.partners){const loaded=partnerData.partners as PartnerRecord[];setPartners(loaded.some(partner=>partner.name.localeCompare("GG Veículos","pt-BR",{sensitivity:"base"})===0)?loaded:[{id:0,name:"GG Veículos",taxRate:0,invoiceRate:0,tfShare:50},...loaded]);}
       if(invoiceData?.invoices)setInvoices(invoiceData.invoices);
+      loading=false;
     };
     load();
-    if(user.role==="admin")fetch('/data/tf-clients.json').then(r=>r.json()).then(async clientData=>{
-      const operationData:any[]=await fetch('/data/tf-operations.json').then(r=>r.json() as Promise<any[]>);
-      const normalized=normalizeHistoricalData(clientData,operationData);
-      setHistoricalClients(normalized.clients);setHistoricalOps(normalized.ops);
-    }).catch(()=>{});
     const timer = window.setInterval(load, 30000);
     const refreshOnFocus=()=>load();window.addEventListener('focus',refreshOnFocus);
     return () => {
@@ -761,22 +602,8 @@ export default function Dashboard({
       window.removeEventListener('focus',refreshOnFocus);
     };
   }, [user.role,dataRevision]);
-  const allClients = useMemo(() => {
-    const key=(c:Client)=>cpfKey(c.cpf)||String(c.benefit||'').replace(/\D/g,'')||`id-${c.id}`;
-    const seen = new Set(historicalClients.map(key));
-    return [...historicalClients, ...liveClients.filter((c) => !seen.has(key(c)))];
-  }, [historicalClients,liveClients]);
-  const historicalClientByCpf=useMemo(()=>new Map(historicalClients.map(c=>[cpfKey(c.cpf),c])),[historicalClients]);
-  const allOps = useMemo(
-    () => [
-      ...historicalOps,
-      ...liveOps.map((o) => ({
-        ...o,
-        clientId: historicalClientByCpf.get(cpfKey(o.clientCpf))?.id ?? o.clientId,
-      })),
-    ].map(operation=>/proteção auto/i.test(operation.product)&&operation.installment>0?{...operation,value:operation.installment}:operation),
-    [historicalOps,liveOps,historicalClientByCpf],
-  );
+  const allClients = liveClients;
+  const allOps = useMemo(() => liveOps.map(operation => /proteção auto/i.test(operation.product) && operation.installment > 0 ? {...operation, value:operation.installment} : operation), [liveOps]);
   const currentPeriod=(()=>{const date=new Date();return new Date(date.getTime()-date.getTimezoneOffset()*60000).toISOString().slice(0,7)})();
   const currentMonthOps = allOps.filter((o) => o.date.startsWith(currentPeriod));
   const total = currentMonthOps.reduce((s, o) => s + o.value, 0),
@@ -929,7 +756,7 @@ export default function Dashboard({
               <b>3</b>
             </button>
             {user.role==="admin"&&<button className={`tf-top-settings${settingsOpen ? " active" : ""}`} aria-label="Configurações" title="Configurações" onClick={()=>setSettingsOpen(true)}><SettingsIcon/></button>}
-            <button className="tf-logout" aria-label="Sair e bloquear o sistema" title="Sair" onClick={()=>{localStorage.removeItem("tf_access_unlocked");setLocked(true)}}><LogOut/></button>
+            <button className="tf-logout" aria-label="Sair e bloquear o sistema" title="Sair" onClick={()=>{localStorage.removeItem("tf_access_unlocked");if(user.serverAuthenticated)window.location.assign("/signout-with-chatgpt");else setLocked(true)}}><LogOut/></button>
             <button
               className="tf-primary tf-main-action"
               onClick={() => {setView("atendimento");setNewDealRequest(value=>value+1)}}
@@ -981,7 +808,7 @@ export default function Dashboard({
           {view==="usuarios"&&user.role==="admin"&&<AccessManagement members={teamMembers} setMembers={setTeamMembers} partners={partners}/>} {" "}
         </div>
       </section>
-      {settingsOpen && <SettingsPanel close={() => setSettingsOpen(false)} />}{" "}
+      {settingsOpen && <SettingsPanel close={() => setSettingsOpen(false)} serverAuthenticated={user.serverAuthenticated} />}{" "}
       {showReceivables&&<div className={`tf-modal-back${dueReminderRequired?" tf-receivable-blocking":""}`}><section className="tf-modal tf-receivables-modal">{!dueReminderRequired&&<button type="button" className="tf-modal-close" onClick={()=>setShowReceivables(false)}>×</button>}<small>FINANCEIRO</small><h2>{dueReminderRequired?"Você tem comissões a receber":"Comissões a receber"}</h2><p>{dueReminderRequired?"Confira quem deve pagar hoje ou possui pagamento atrasado.":"Valores previstos de comissões, taxas de adesão e assessorias."}</p><div>{displayedReceivables.map(item=><article key={item.id}><i><BadgeDollarSign/></i><span><b>{item.name}</b><small>{item.product} · {item.type}</small></span><strong>{brl(item.value)}</strong><time className={item.dueDate&&item.dueDate<todayDate?"overdue":""}>{item.dueDate?formatDateBr(item.dueDate):"Sem data"}</time><button type="button" onClick={()=>markCommissionReceived(item.id)}>Marcar recebido</button></article>)}</div>{dueReminderRequired&&<button type="button" className="tf-primary tf-receivable-ack" onClick={()=>{localStorage.setItem(`tf_receivables_seen_${todayDate}`,"1");setDueReminderRequired(false);setShowReceivables(false)}}>Visualizei os recebimentos</button>}</section></div>}{" "}
       {selected && <ClientSheet client={selected} operations={allOps} close={() => setSelected(null)} refresh={()=>{setSelected(null);setDataRevision(value=>value+1)}} />}{" "}
       {notice && <div className="tf-toast">✓ {notice}</div>}
@@ -3109,16 +2936,16 @@ function ReportsFiltered({
 const permissionLabels:Record<string,string>={inicio:'Início',clientes:'Clientes',atendimento:'Atendimento / Kanban',producao:'Produção',parceiros:'Parceiros',servicos:'Serviços',financeiro:'Financeiro / Comissões',notas:'Notas fiscais',bancos:'Bancos e financiamentos',relatorios:'Relatórios'};
 function AccessManagement({members,setMembers,partners}:{members:TeamMember[];setMembers:React.Dispatch<React.SetStateAction<TeamMember[]>>;partners:PartnerRecord[]}){
  const accessUrl='https://nexo-crm-gestao.thiagon-oliveira.chatgpt.site';
- const empty={id:0,name:'',email:'',active:true,permissions:['inicio','atendimento'] as View[],partnerId:null as number|null};
+ const empty={id:0,name:'',email:'',password:'',active:true,permissions:['inicio','atendimento'] as View[],partnerId:null as number|null};
  const [form,setForm]=useState<TeamMember>(empty),[saving,setSaving]=useState(false),[message,setMessage]=useState(''),[copied,setCopied]=useState(false),[lastInvite,setLastInvite]=useState<TeamMember|null>(null);
- const save=async(e:React.FormEvent)=>{e.preventDefault();setSaving(true);setMessage('');const editing=Boolean(form.id);const r=await fetch('/api/access-users',{method:editing?'PATCH':'POST',headers:{'content-type':'application/json'},body:JSON.stringify(form)});const x=await r.json();setSaving(false);if(!r.ok){setMessage(x.error||'Não foi possível salvar.');return}setMembers(xs=>editing?xs.map(m=>m.id===x.member.id?x.member:m):[x.member,...xs]);setLastInvite(x.member);setForm(empty);setMessage('Acesso salvo. Envie o convite por e-mail ou copie o link.')};
+ const save=async(e:React.FormEvent)=>{e.preventDefault();setSaving(true);setMessage('');const editing=Boolean(form.id);const r=await fetch('/api/access-users',{method:editing?'PATCH':'POST',headers:{'content-type':'application/json'},body:JSON.stringify(form)});const x=await r.json();setSaving(false);if(!r.ok){setMessage(x.error||'Não foi possível salvar.');return}setMembers(xs=>editing?xs.map(m=>m.id===x.member.id?x.member:m):[x.member,...xs]);setLastInvite(x.member);setForm(empty);setMessage('Acesso salvo. Compartilhe o link e a senha com o usuário.')};
  const toggleActive=async(member:TeamMember)=>{const r=await fetch('/api/access-users',{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({...member,active:!member.active})});const x=await r.json();if(r.ok)setMembers(xs=>xs.map(m=>m.id===x.member.id?x.member:m))};
  const copyAccessLink=async()=>{try{await navigator.clipboard.writeText(accessUrl);setCopied(true);setTimeout(()=>setCopied(false),2200)}catch{setMessage(`Link de acesso: ${accessUrl}`)}};
  const visiblePermissions=(member:TeamMember)=>member.permissions.filter(p=>p!=='inicio').map(p=>permissionLabels[p]).filter(Boolean).sort((a,b)=>a.localeCompare(b,'pt-BR',{sensitivity:'base'}));
- return <><Title over="EQUIPE E SEGURANÇA" title="Usuários e acessos" text="Cadastre funcionários ou parceiros e envie o link do sistema." action="Novo acesso" onAction={()=>setForm(empty)}/><section className="tf-access-layout"><div className="tf-access-list"><header><div><small>USUÁRIOS CADASTRADOS</small><h2>Equipe e parceiros</h2></div><b>{members.filter(m=>m.active).length} ativos</b></header>{[...members].sort((a,b)=>a.name.localeCompare(b.name,'pt-BR',{sensitivity:'base'})).map((member,index)=>{const permissions=visiblePermissions(member),partnerName=partners.find(partner=>partner.id===member.partnerId)?.name||member.partnerName;return <article key={member.id} className={`${!member.active?'inactive ':''}member-tone-${index%6}`}><i>{member.name.split(/\s+/).slice(0,2).map(n=>n[0]).join('').toUpperCase()}</i><div><b>{member.name}</b><small>{member.email}</small><p>{partnerName?`Parceiro · ${partnerName}`:permissions.length?permissions.join(' · '):'Somente acesso básico'}</p></div><em>{member.active?'Ativo':'Pausado'}</em><button onClick={()=>setForm(member)}>Editar</button><button onClick={()=>toggleActive(member)}>{member.active?'Pausar':'Reativar'}</button></article>})}{!members.length&&<div className="tf-access-empty"><UserRoundCog/><b>Nenhum subacesso criado</b><small>Cadastre o primeiro acesso ao lado.</small></div>}</div><form className="tf-access-form" onSubmit={save}><small>{form.id?'EDITAR ACESSO':'NOVO ACESSO'}</small><h2>{form.id?form.name:'Cadastrar usuário'}</h2><p>Use qualquer e-mail válido. Selecione um parceiro para limitar o acesso somente à produção dele.</p><div className="tf-access-share"><span><b>Link para entrar no Gestão TF</b><small>Depois de salvar, envie o convite diretamente por e-mail ou copie o link.</small></span><code>{accessUrl}</code><button type="button" onClick={copyAccessLink}><Copy/>{copied?'Link copiado':'Copiar link'}</button>{lastInvite&&<a href={`mailto:${lastInvite.email}?subject=${encodeURIComponent('Seu acesso ao Gestão TF')}&body=${encodeURIComponent(`Olá, ${lastInvite.name}! Seu acesso ao Gestão TF está pronto. Entre por este link: ${accessUrl}`)}`}><Send/>Enviar por e-mail</a>}</div><label>Nome<input required value={form.name} onChange={e=>setForm(x=>({...x,name:e.target.value}))} placeholder="Nome do usuário"/></label><label>E-mail de acesso<input required type="email" value={form.email} onChange={e=>setForm(x=>({...x,email:e.target.value}))} placeholder="nome@empresa.com"/></label><label>Vincular a parceiro<select value={form.partnerId||''} onChange={event=>setForm(current=>({...current,partnerId:event.target.value?Number(event.target.value):null}))}><option value="">Equipe TF · acesso interno</option>{partners.filter(partner=>partner.id>0).map(partner=><option key={partner.id} value={partner.id}>{partner.name}</option>)}</select></label>{form.partnerId?<div className="tf-partner-access-note"><ShieldCheck/><span><b>Acesso restrito ao parceiro</b><small>Este usuário verá somente clientes, produção, relatórios e acertos desse parceiro.</small></span></div>:<fieldset><legend>Áreas autorizadas</legend>{Object.entries(permissionLabels).filter(([id])=>id!=='inicio').sort(([,a],[,b])=>a.localeCompare(b,'pt-BR',{sensitivity:'base'})).map(([id,label])=><label key={id}><input type="checkbox" checked={form.permissions.includes(id as View)} onChange={e=>setForm(x=>({...x,permissions:e.target.checked?[...x.permissions,id as View]:x.permissions.filter(p=>p!==id)}))}/><span><b>{label}</b>{id==='atendimento'&&<small>Kanban individual, sem visualizar o seu.</small>}</span></label>)}</fieldset>}{message&&<em>{message}</em>}<footer>{form.id&&<button type="button" onClick={()=>setForm(empty)}>Cancelar</button>}<button className="tf-primary" disabled={saving}>{saving?'Salvando...':'Salvar acesso'}</button></footer></form></section></>;
+ return <><Title over="EQUIPE E SEGURANÇA" title="Usuários e acessos" text="Cadastre funcionários ou parceiros e envie o link do sistema." action="Novo acesso" onAction={()=>setForm(empty)}/><section className="tf-access-layout"><div className="tf-access-list"><header><div><small>USUÁRIOS CADASTRADOS</small><h2>Equipe e parceiros</h2></div><b>{members.filter(m=>m.active).length} ativos</b></header>{[...members].sort((a,b)=>a.name.localeCompare(b.name,'pt-BR',{sensitivity:'base'})).map((member,index)=>{const permissions=visiblePermissions(member),partnerName=partners.find(partner=>partner.id===member.partnerId)?.name||member.partnerName;return <article key={member.id} className={`${!member.active?'inactive ':''}member-tone-${index%6}`}><i>{member.name.split(/\s+/).slice(0,2).map(n=>n[0]).join('').toUpperCase()}</i><div><b>{member.name}</b><small>{member.email}</small><p>{partnerName?`Parceiro · ${partnerName}`:permissions.length?permissions.join(' · '):'Somente acesso básico'}</p></div><em>{member.active?'Ativo':'Pausado'}</em><button onClick={()=>setForm({...member,password:''})}>Editar</button><button onClick={()=>toggleActive(member)}>{member.active?'Pausar':'Reativar'}</button></article>})}{!members.length&&<div className="tf-access-empty"><UserRoundCog/><b>Nenhum subacesso criado</b><small>Cadastre o primeiro acesso ao lado.</small></div>}</div><form className="tf-access-form" onSubmit={save}><small>{form.id?'EDITAR ACESSO':'NOVO ACESSO'}</small><h2>{form.id?form.name:'Cadastrar usuário'}</h2><p>Use qualquer e-mail válido. Selecione um parceiro para limitar o acesso somente à produção dele.</p><div className="tf-access-share"><span><b>Link para entrar no Gestão TF</b><small>Depois de salvar, envie o convite diretamente por e-mail ou copie o link.</small></span><code>{accessUrl}</code><button type="button" onClick={copyAccessLink}><Copy/>{copied?'Link copiado':'Copiar link'}</button>{lastInvite&&<a href={`mailto:${lastInvite.email}?subject=${encodeURIComponent('Seu acesso ao Gestão TF')}&body=${encodeURIComponent(`Olá, ${lastInvite.name}! Seu acesso ao Gestão TF está pronto. Entre por este link: ${accessUrl}`)}`}><Send/>Enviar por e-mail</a>}</div><label>Nome<input required value={form.name} onChange={e=>setForm(x=>({...x,name:e.target.value}))} placeholder="Nome do usuário"/></label><label>E-mail de acesso<input required type="email" value={form.email} onChange={e=>setForm(x=>({...x,email:e.target.value}))} placeholder="nome@empresa.com"/></label><label>{form.id?"Nova senha (opcional)":"Senha de acesso"}<input type="password" autoComplete="new-password" minLength={8} maxLength={256} required={!form.id} value={form.password||''} onChange={e=>setForm(x=>({...x,password:e.target.value}))}/></label><label>Vincular a parceiro<select value={form.partnerId||''} onChange={event=>setForm(current=>({...current,partnerId:event.target.value?Number(event.target.value):null}))}><option value="">Equipe TF · acesso interno</option>{partners.filter(partner=>partner.id>0).map(partner=><option key={partner.id} value={partner.id}>{partner.name}</option>)}</select></label>{form.partnerId?<div className="tf-partner-access-note"><ShieldCheck/><span><b>Acesso restrito ao parceiro</b><small>Este usuário verá somente clientes, produção, relatórios e acertos desse parceiro.</small></span></div>:<fieldset><legend>Áreas autorizadas</legend>{Object.entries(permissionLabels).filter(([id])=>id!=='inicio').sort(([,a],[,b])=>a.localeCompare(b,'pt-BR',{sensitivity:'base'})).map(([id,label])=><label key={id}><input type="checkbox" checked={form.permissions.includes(id as View)} onChange={e=>setForm(x=>({...x,permissions:e.target.checked?[...x.permissions,id as View]:x.permissions.filter(p=>p!==id)}))}/><span><b>{label}</b>{id==='atendimento'&&<small>Kanban individual, sem visualizar o seu.</small>}</span></label>)}</fieldset>}{message&&<em>{message}</em>}<footer>{form.id&&<button type="button" onClick={()=>setForm(empty)}>Cancelar</button>}<button className="tf-primary" disabled={saving}>{saving?'Salvando...':'Salvar acesso'}</button></footer></form></section></>;
 }
 
-function SettingsPanel({ close }: { close: () => void }) {
+function SettingsPanel({ close, serverAuthenticated }: { close: () => void; serverAuthenticated?: boolean }) {
   const [newTab, setNewTab] = useState(true);
   const [currentPassword,setCurrentPassword]=useState(""),[newPassword,setNewPassword]=useState(""),[passwordMessage,setPasswordMessage]=useState("");
   const [wa, setWa] = useState<any>(null),
@@ -3155,7 +2982,21 @@ function SettingsPanel({ close }: { close: () => void }) {
     setNewTab(next);
     localStorage.setItem("tf_open_new_tab", next ? "1" : "0");
   };
-  const changePassword=(e:React.FormEvent)=>{e.preventDefault();const saved=localStorage.getItem("tf_access_password")||"";if(currentPassword!==saved){setPasswordMessage("A senha atual não confere.");return}if(newPassword.length<4){setPasswordMessage("A nova senha deve ter pelo menos 4 caracteres.");return}localStorage.setItem("tf_access_password",newPassword);setCurrentPassword("");setNewPassword("");setPasswordMessage("Senha alterada com sucesso.")};
+  const changePassword=async(e:React.FormEvent)=>{
+    e.preventDefault();setPasswordMessage("");
+    if(serverAuthenticated){
+      try{
+        const response=await fetch('/api/auth/password',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({currentPassword,newPassword})});
+        const result=await response.json();
+        if(!response.ok){setPasswordMessage(result.error||"Não foi possível alterar a senha.");return}
+      }catch{setPasswordMessage("Falha de conexão. Tente novamente.");return}
+    }else{
+      if(currentPassword!==(localStorage.getItem("tf_access_password")||"")){setPasswordMessage("A senha atual não confere.");return}
+      if(newPassword.length<8){setPasswordMessage("A nova senha deve ter pelo menos 8 caracteres.");return}
+      localStorage.setItem("tf_access_password",newPassword);
+    }
+    setCurrentPassword("");setNewPassword("");setPasswordMessage("Senha alterada com sucesso.");
+  };
   const saveWhatsapp = async (e: React.FormEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -3220,7 +3061,7 @@ function SettingsPanel({ close }: { close: () => void }) {
         </div>
         <form className="tf-password-settings" onSubmit={changePassword}>
           <header><KeyRound/><span><b>Alterar senha de acesso</b><small>Atualiza a senha usada nesta tela de entrada.</small></span></header>
-          <div><label>Senha atual<input type="password" value={currentPassword} onChange={e=>setCurrentPassword(e.target.value)} required/></label><label>Nova senha<input type="password" value={newPassword} onChange={e=>setNewPassword(e.target.value)} minLength={4} required/></label></div>
+          <div><label>Senha atual<input type="password" value={currentPassword} onChange={e=>setCurrentPassword(e.target.value)} required/></label><label>Nova senha<input type="password" value={newPassword} onChange={e=>setNewPassword(e.target.value)} minLength={8} required/></label></div>
           {passwordMessage&&<p>{passwordMessage}</p>}<button className="tf-primary">Alterar senha</button>
         </form>
         <div className="tf-settings-row">
@@ -3489,7 +3330,7 @@ function ClientDocuments({ clientId }: { clientId: number }) {
           <option value="outro">Outro documento</option>
           <option value="identidade">RG / Identidade</option>
         </select>
-        <span>PDF, JPG ou PNG · até 15 MB</span>
+        <span>PDF, JPG ou PNG · até 4 MB</span>
       </div>
       {docs.length ? (
         <ul>

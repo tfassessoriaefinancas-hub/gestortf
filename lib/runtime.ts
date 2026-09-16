@@ -1,13 +1,11 @@
 import 'server-only';
-import { resolve } from 'node:path';
-import { LocalDatabase, LocalFiles } from './local-runtime';
+import { PostgresDatabase, PostgresFiles } from './postgres';
 
-const localState = globalThis as typeof globalThis & { tfDatabase?: LocalDatabase; tfFiles?: LocalFiles };
-const directory = () => resolve(process.env.LOCAL_DATA_DIR || './data');
+const localState = globalThis as typeof globalThis & { tfPostgres?: PostgresDatabase; tfPostgresFiles?: PostgresFiles };
 
 export const env = {
-  get DB() { return localState.tfDatabase ??= new LocalDatabase(resolve(directory(), 'crm.sqlite')); },
-  get FILES() { return localState.tfFiles ??= new LocalFiles(resolve(directory(), 'files')); },
+  get DB() { return localState.tfPostgres ??= new PostgresDatabase(); },
+  get FILES() { return localState.tfPostgresFiles ??= new PostgresFiles(this.DB); },
   get WHATSAPP_VERIFY_TOKEN() { return process.env.WHATSAPP_VERIFY_TOKEN; },
   get WHATSAPP_APP_SECRET() { return process.env.WHATSAPP_APP_SECRET; },
   get WHATSAPP_ACCESS_TOKEN() { return process.env.WHATSAPP_ACCESS_TOKEN; },

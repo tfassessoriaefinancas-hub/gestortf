@@ -1,3 +1,4 @@
+// Legacy SQLite schema, retained only for inspecting and migrating old backups.
 import { index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
 const audit={createdAt:integer('created_at',{mode:'timestamp'}).notNull(),updatedAt:integer('updated_at',{mode:'timestamp'}).notNull(),deletedAt:integer('deleted_at',{mode:'timestamp'})};
 export const users=sqliteTable('users',{id:text('id').primaryKey(),email:text('email').notNull(),name:text('name'),role:text('role').notNull().default('admin'),active:integer('active',{mode:'boolean'}).notNull().default(true),...audit},t=>[uniqueIndex('users_email_unique').on(t.email)]);

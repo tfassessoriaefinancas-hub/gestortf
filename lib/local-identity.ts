@@ -1,5 +1,5 @@
 export function localIdentity(host: string | null) {
-  if (process.env.LOCAL_AUTH_ENABLED !== 'true' || !host) return null;
+  if (process.env.VERCEL || process.env.LOCAL_AUTH_ENABLED !== 'true' || !host) return null;
   let hostname: string;
   try { hostname = new URL(`http://${host}`).hostname; } catch { return null; }
   if (!['localhost', '127.0.0.1', '[::1]'].includes(hostname)) return null;

@@ -3,26 +3,31 @@ import { getTfAccess, hasTfPermission } from '../../../chatgpt-auth';
 
 const json=(data:unknown,status=200)=>Response.json(data,{status,headers:{'cache-control':'no-store, no-cache, must-revalidate','pragma':'no-cache'}});
 
-export async function GET(){
+export async function GET(request:Request){
+  const params=new URL(request.url).searchParams;
+  const offset=Math.max(0,Math.floor(Number(params.get('offset'))||0));
+  const limit=Math.max(1,Math.min(1000,Math.floor(Number(params.get('limit'))||1000)));
+  if(!Number.isSafeInteger(offset)||offset>10000000)return json({error:'Página inválida.'},400);
   const user=await getTfAccess();if(!user)return json({error:'Não autorizado'},401);
   const canClients=hasTfPermission(user,'clientes'),canProduction=hasTfPermission(user,'producao')||hasTfPermission(user,'relatorios')||hasTfPermission(user,'comissoes')||hasTfPermission(user,'financeiro');
-  if(!canClients&&!canProduction)return json({clients:[],operations:[]});
+  if(!canClients&&!canProduction)return json({clients:[],operations:[],receivables:[],nextOffset:null});
   const memberScopeField=user.partnerId?'partner_id':'assigned_user_id',memberScopeId=user.partnerId||user.memberId,memberFilter=user.role==='employee'?` AND o.${memberScopeField}=?`:'';
-  const completedOperationFilter=" AND o.completed_at IS NOT NULL";
+  const completedOperationFilter=" AND o.report_excluded=0 AND (o.completed_at IS NOT NULL OR o.is_historical=1)";
   const clientSql=user.role==='employee'
-    ? `SELECT DISTINCT c.id,c.name,c.cpf,c.benefit_number,c.birth_date,c.phone,c.city FROM clients c WHERE c.owner_id IN (?,?) AND c.deleted_at IS NULL AND EXISTS (SELECT 1 FROM operations o WHERE o.client_id=c.id AND o.owner_id IN (?,?) AND o.deleted_at IS NULL${completedOperationFilter} AND o.${memberScopeField}=?) ORDER BY c.updated_at DESC`
-    : `SELECT c.id,c.name,c.cpf,c.benefit_number,c.birth_date,c.phone,c.city FROM clients c WHERE c.deleted_at IS NULL AND EXISTS (SELECT 1 FROM operations o WHERE o.client_id=c.id AND o.deleted_at IS NULL${completedOperationFilter}) ORDER BY c.updated_at DESC`;
-  const operationScope=user.role==='employee'?` AND o.owner_id IN (?,?)${memberFilter}`:'';
+    ? `SELECT c.id,c.name,c.cpf,c.benefit_number,c.birth_date,c.phone,c.city FROM clients c WHERE c.owner_id IN (?,?) AND c.deleted_at IS NULL AND EXISTS (SELECT 1 FROM operations o WHERE o.client_id=c.id AND o.owner_id IN (?,?) AND o.deleted_at IS NULL${completedOperationFilter} AND o.${memberScopeField}=?) ORDER BY c.updated_at DESC,c.id DESC LIMIT ${limit} OFFSET ${offset}`
+    : `SELECT c.id,c.name,c.cpf,c.benefit_number,c.birth_date,c.phone,c.city FROM clients c WHERE c.deleted_at IS NULL AND c.owner_id IN (?,?) ORDER BY c.updated_at DESC,c.id DESC LIMIT ${limit} OFFSET ${offset}`;
+  const operationScope=` AND o.owner_id IN (?,?)${memberFilter}`;
   const commissionScope=user.role==='employee'?' AND cm.owner_id=o.owner_id':'';
-  const opSql=`SELECT o.id,o.assigned_user_id,o.client_id,o.partner_id,c.cpf as client_cpf,o.original_product,o.category,o.bank,o.promoter,o.producer,o.origin,o.value_cents,o.installment_cents,o.term,o.operation_date,o.paid_at,o.status,o.notes,COALESCE((SELECT SUM(value_cents) FROM commissions cm WHERE cm.operation_id=o.id${commissionScope} AND cm.deleted_at IS NULL AND (cm.rate_bps IS NOT NULL OR cm.notes IN ('Taxa de adesão','Taxa de assessoria','Bonificação'))),0) as commission_cents,COALESCE((SELECT MAX(rate_bps) FROM commissions cm WHERE cm.operation_id=o.id${commissionScope} AND cm.deleted_at IS NULL),0) as commission_rate_bps,COALESCE((SELECT COUNT(*) FROM commissions cm WHERE cm.operation_id=o.id${commissionScope} AND cm.deleted_at IS NULL AND (cm.rate_bps IS NOT NULL OR cm.notes IN ('Taxa de adesão','Taxa de assessoria','Bonificação')) AND cm.status NOT IN ('recebida','paga')),0) as commission_pending_count,COALESCE((SELECT MIN(expected_at) FROM commissions cm WHERE cm.operation_id=o.id${commissionScope} AND cm.deleted_at IS NULL),'') as revenue_due_date FROM operations o JOIN clients c ON c.id=o.client_id WHERE o.deleted_at IS NULL${completedOperationFilter}${operationScope} ORDER BY o.updated_at DESC`;
-  const receivableScope=user.role==='employee'?` AND cm.owner_id IN (?,?)${memberFilter}`:'';
-  const receivableSql=`SELECT cm.id,cm.operation_id,c.name,cm.value_cents,cm.expected_at,cm.status,cm.notes,o.original_product FROM commissions cm JOIN operations o ON o.id=cm.operation_id JOIN clients c ON c.id=o.client_id WHERE cm.deleted_at IS NULL AND cm.status NOT IN ('recebida','paga','cancelada')${completedOperationFilter}${receivableScope} ORDER BY cm.expected_at ASC`;
+  const opSql=`SELECT o.id,o.assigned_user_id,o.client_id,o.partner_id,c.cpf as client_cpf,o.original_product,o.category,o.bank,o.promoter,o.producer,o.origin,o.value_cents,o.installment_cents,o.term,o.operation_date,o.paid_at,o.status,o.notes,COALESCE((SELECT SUM(value_cents) FROM commissions cm WHERE cm.operation_id=o.id${commissionScope} AND cm.deleted_at IS NULL AND (cm.rate_bps IS NOT NULL OR cm.notes IN ('Taxa de adesão','Taxa de assessoria','Bonificação'))),0) as commission_cents,COALESCE((SELECT MAX(rate_bps) FROM commissions cm WHERE cm.operation_id=o.id${commissionScope} AND cm.deleted_at IS NULL),0) as commission_rate_bps,COALESCE((SELECT COUNT(*) FROM commissions cm WHERE cm.operation_id=o.id${commissionScope} AND cm.deleted_at IS NULL AND (cm.rate_bps IS NOT NULL OR cm.notes IN ('Taxa de adesão','Taxa de assessoria','Bonificação')) AND cm.status NOT IN ('recebida','paga')),0) as commission_pending_count,COALESCE((SELECT MIN(expected_at) FROM commissions cm WHERE cm.operation_id=o.id${commissionScope} AND cm.deleted_at IS NULL),'') as revenue_due_date FROM operations o JOIN clients c ON c.id=o.client_id WHERE o.deleted_at IS NULL AND c.deleted_at IS NULL${completedOperationFilter}${operationScope} ORDER BY o.updated_at DESC,o.id DESC LIMIT ${limit} OFFSET ${offset}`;
+  const receivableScope=` AND cm.owner_id IN (?,?)${memberFilter}`;
+  const receivableSql=`SELECT cm.id,cm.operation_id,c.name,cm.value_cents,cm.expected_at,cm.status,cm.notes,o.original_product FROM commissions cm JOIN operations o ON o.id=cm.operation_id JOIN clients c ON c.id=o.client_id WHERE cm.deleted_at IS NULL AND o.deleted_at IS NULL AND c.deleted_at IS NULL AND cm.status NOT IN ('recebida','paga','cancelada','historica')${completedOperationFilter}${receivableScope} ORDER BY cm.expected_at ASC,cm.id ASC LIMIT ${limit} OFFSET ${offset}`;
   const [clientRows,operationRows,receivableRows]=await Promise.all([
-    (canClients||canProduction)?(user.role==='employee'?env.DB.prepare(clientSql).bind(user.ownerKeys[0],user.ownerKeys[1],user.ownerKeys[0],user.ownerKeys[1],memberScopeId).all<any>():env.DB.prepare(clientSql).all<any>()):Promise.resolve({results:[]}),
-    canProduction?(user.role==='employee'?env.DB.prepare(opSql).bind(user.ownerKeys[0],user.ownerKeys[1],memberScopeId).all<any>():env.DB.prepare(opSql).all<any>()):Promise.resolve({results:[]}),
-    canProduction?(user.role==='employee'?env.DB.prepare(receivableSql).bind(user.ownerKeys[0],user.ownerKeys[1],memberScopeId).all<any>():env.DB.prepare(receivableSql).all<any>()):Promise.resolve({results:[]})
+    (canClients||canProduction)?(user.role==='employee'?env.DB.prepare(clientSql).bind(user.ownerKeys[0],user.ownerKeys[1],user.ownerKeys[0],user.ownerKeys[1],memberScopeId).all<any>():env.DB.prepare(clientSql).bind(user.ownerKeys[0],user.ownerKeys[1]).all<any>()):Promise.resolve({results:[]}),
+    canProduction?(user.role==='employee'?env.DB.prepare(opSql).bind(user.ownerKeys[0],user.ownerKeys[1],memberScopeId).all<any>():env.DB.prepare(opSql).bind(user.ownerKeys[0],user.ownerKeys[1]).all<any>()):Promise.resolve({results:[]}),
+    canProduction?(user.role==='employee'?env.DB.prepare(receivableSql).bind(user.ownerKeys[0],user.ownerKeys[1],memberScopeId).all<any>():env.DB.prepare(receivableSql).bind(user.ownerKeys[0],user.ownerKeys[1]).all<any>()):Promise.resolve({results:[]})
   ]);
   return json({
+    nextOffset:[clientRows,operationRows,receivableRows].some(rows=>rows.results.length===limit)?offset+limit:null,
     clients:clientRows.results.map((c:any)=>({id:10_000_000+c.id,dbId:c.id,name:c.name,cpf:c.cpf||'',benefit:c.benefit_number||'—',birth:c.birth_date||'1900-01-01',phone:c.phone||'Não informado',city:c.city||'',partner:'WhatsApp / Gestor TF'})),
     operations:operationRows.results.map((o:any)=>{
       let extra:any={};

@@ -1,10 +1,14 @@
 import { defineConfig } from '@playwright/test';
-import { existsSync, mkdtempSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { existsSync } from 'node:fs';
+import { randomBytes } from 'node:crypto';
+
+if(existsSync('.env.local'))process.loadEnvFile('.env.local');
+process.env.TF_TEST_SCHEMA??=`tf_test_${randomBytes(8).toString('hex')}`;
+process.env.DATABASE_SCHEMA=process.env.TF_TEST_SCHEMA;
 
 export default defineConfig({
   testDir: './tests/browser',
+  globalSetup: './tests/browser/setup.ts',
   fullyParallel: false,
   workers: 1,
   timeout: 60_000,
@@ -24,8 +28,9 @@ export default defineConfig({
     reuseExistingServer: false,
     timeout: 60_000,
     env: {
-      LOCAL_AUTH_ENABLED: 'true',
-      LOCAL_DATA_DIR: mkdtempSync(join(tmpdir(), 'tf-browser-test-')),
+      DATABASE_URL: process.env.DATABASE_URL!,
+      DATABASE_SCHEMA: process.env.DATABASE_SCHEMA,
+      LOCAL_AUTH_ENABLED: 'false',
       LOCAL_USER_ID: 'local-test-owner',
       LOCAL_USER_EMAIL: 'admin@example.com',
       LOCAL_USER_NAME: 'Teste local',

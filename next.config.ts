@@ -1,8 +1,7 @@
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ['node:sqlite'],
-  outputFileTracingIncludes: { '/*': ['./drizzle/*.sql'] },
+  serverExternalPackages: ['pg'],
 };
 
 export default nextConfig;

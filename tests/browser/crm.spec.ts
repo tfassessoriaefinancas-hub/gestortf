@@ -1,6 +1,15 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type APIRequestContext } from '@playwright/test';
+import { PostgresDatabase, PostgresFiles } from '../../lib/postgres';
+
+const origin='http://127.0.0.1:3100';
+async function login(request:APIRequestContext,email='admin@example.com',password='test-only-password'){
+  const response=await request.post('/api/auth/login',{headers:{origin},data:{email,password}});
+  expect(response.status(),await response.text()).toBe(200);
+}
+
 
 test('CRM APIs persist a deal, its stage and its document', async ({ request }) => {
+  await login(request);
   const create = await request.post('/api/deals', { data: {
     name: 'Cliente de teste local', cpf: '00000000000', birthDate: '1990-01-01', product: 'Financiamento', phone: '85999999999',
   } });
@@ -41,26 +50,22 @@ test('CRM APIs persist a deal, its stage and its document', async ({ request }) 
     const response = await request.get(path);
     expect(response.ok(), `${path}: ${await response.text()}`).toBeTruthy();
   }
-  const outsideHost = await request.get('/api/crm/data', { headers: { host: 'crm.example.com' } });
-  expect(outsideHost.status()).toBe(401);
   for (const file of ['tf-clients.json', 'tf-operations.json']) {
     const missing = await request.get(`/data/${file}`);
     expect(missing.status()).toBe(200);
     expect(await missing.json()).toEqual([]);
     expect(missing.headers()['cache-control']).toContain('no-store');
-    const unauthorized = await request.get(`/data/${file}`, { headers: { host: 'crm.example.com' } });
-    expect(unauthorized.status()).toBe(401);
   }
   expect((await request.get('/data/unknown.json')).status()).toBe(404);
 });
 
-test('original gate, all navigation sections, themes and mobile layout work', async ({ page }) => {
+test('hosted login, all navigation sections and mobile layout work', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Gestão', exact: true })).toBeVisible();
-  await page.getByLabel('CPF', { exact: true }).fill('00000000000');
-  await page.getByLabel('Senha', { exact: true }).fill('teste-local');
+  await page.getByLabel('E-mail', { exact: true }).fill('admin@example.com');
+  await page.getByLabel('Senha', { exact: true }).fill('test-only-password');
   await page.locator('.tf-gate form button[type="submit"]').click();
   await expect(page.locator('.tf-sidebar, .tf-side').first()).toBeVisible();
   const menu = page.locator('aside nav button[aria-label]');
@@ -82,4 +87,67 @@ test('original gate, all navigation sections, themes and mobile layout work', as
   expect(errors).toEqual([]);
   await page.goto('/signout-with-chatgpt');
   await expect(page.getByRole('heading', { name: 'Gestão', exact: true })).toBeVisible();
+});
+
+
+test('historical records are editable in PostgreSQL and superseded entries stay out of reports',async({request})=>{
+  await login(request);
+  const page=await request.get('/api/crm/data?limit=1');
+  expect(page.ok(),await page.text()).toBeTruthy();
+  expect((await page.json()).nextOffset).toBe(1);
+  const production=await request.get('/api/crm/data');
+  const data=await production.json();
+  expect(data.operations).toEqual(expect.arrayContaining([expect.objectContaining({dbId:100,value:1234.56})]));
+  expect(data.operations.some((row:{dbId:number})=>row.dbId===101)).toBe(false);
+  const edit=await request.patch('/api/records',{data:{entity:'client',id:100,details:{name:'Histórico atualizado no Neon',document:'11111111111',birthDate:'1990-01-01'}}});
+  expect(edit.ok(),await edit.text()).toBeTruthy();
+  expect((await (await request.get('/api/crm/data')).json()).clients).toEqual(expect.arrayContaining([expect.objectContaining({dbId:100,name:'Histórico atualizado no Neon'})]));
+});
+
+test('server authentication rejects anonymous access and manages employee sessions',async({request,playwright})=>{
+  for(const path of ['/api/crm/data','/api/access-users','/data/tf-clients.json'])expect((await request.get(path)).status()).toBe(401);
+  expect((await request.post('/api/germano-report',{data:{password:'GG'}})).status()).toBe(401);
+  expect((await request.post('/api/auth/login',{headers:{origin:'https://outside.example'},data:{email:'admin@example.com',password:'test-only-password'}})).status()).toBe(403);
+  expect((await request.post('/api/auth/login',{headers:{origin},data:{email:'admin@example.com',password:'incorrect'}})).status()).toBe(401);
+  await login(request);
+  const create=await request.post('/api/access-users',{data:{name:'Funcionário teste',email:'employee@example.com',password:'employee-test-password',permissions:['inicio','clientes','atendimento','producao']}});
+  expect(create.status(),await create.text()).toBe(201);
+  const member=(await create.json()).member;
+  const employee=await playwright.request.newContext({baseURL:origin});
+  const secondSession=await playwright.request.newContext({baseURL:origin});
+  try{
+    await login(employee,'employee@example.com','employee-test-password');
+    await login(secondSession,'employee@example.com','employee-test-password');
+    expect((await employee.get('/api/access-users')).status()).toBe(401);
+    const scoped=await employee.get('/api/crm/data');
+    expect(scoped.ok(),await scoped.text()).toBeTruthy();
+    expect((await scoped.json()).operations).toEqual([]);
+    expect((await employee.patch('/api/records',{data:{entity:'client',id:100,details:{name:'Forbidden edit'}}})).status()).toBe(404);
+    const change=await employee.post('/api/auth/password',{headers:{origin},data:{currentPassword:'employee-test-password',newPassword:'updated-test-password'}});
+    expect(change.ok(),await change.text()).toBeTruthy();
+    expect((await secondSession.get('/api/crm/data')).status()).toBe(401);
+    await employee.post('/api/auth/logout',{headers:{origin}});
+    expect((await employee.get('/api/crm/data')).status()).toBe(401);
+    await login(employee,'employee@example.com','updated-test-password');
+    const pause=await request.patch('/api/access-users',{data:{id:member.id,active:false}});
+    expect(pause.ok(),await pause.text()).toBeTruthy();
+    expect((await employee.get('/api/crm/data')).status()).toBe(401);
+  }finally{await employee.dispose();await secondSession.dispose();}
+});
+
+test('PostgreSQL batches roll back and document bytes survive reconnection',async()=>{
+  let db=new PostgresDatabase();
+  try{
+    await expect(db.batch([
+      db.prepare("INSERT INTO companies (owner_id,name,created_at) VALUES ('test','Rollback company',1)"),
+      db.prepare("INSERT INTO contacts (company_id,name) VALUES (999999,'Missing parent')"),
+    ])).rejects.toThrow();
+    expect(await db.prepare('SELECT COUNT(*) AS count FROM companies').first('count')).toBe(0);
+    const inserted=await db.prepare("INSERT INTO companies (owner_id,name,created_at) VALUES ('test','Persistent company',1) RETURNING id AS companyId").first<{companyId:number}>();
+    expect(typeof inserted?.companyId).toBe('number');
+    const files=new PostgresFiles(db);
+    await files.put('test/persistent.txt',new TextEncoder().encode('Bytes persistidos no PostgreSQL').buffer);
+    await db.close();db=new PostgresDatabase();
+    expect(new TextDecoder().decode((await new PostgresFiles(db).get('test/persistent.txt'))?.body)).toBe('Bytes persistidos no PostgreSQL');
+  }finally{await db.close();}
 });
