@@ -104,6 +104,49 @@ test('historical records are editable in PostgreSQL and superseded entries stay 
   expect((await (await request.get('/api/crm/data')).json()).clients).toEqual(expect.arrayContaining([expect.objectContaining({dbId:100,name:'Histórico atualizado no Neon'})]));
 });
 
+test('advisory fees keep their cents when typed, pasted, saved and reopened', async ({ page }) => {
+  const db = new PostgresDatabase();
+  try {
+    await db.batch([
+      db.prepare("INSERT INTO clients (id,owner_id,name,normalized_name,cpf,created_at,updated_at) VALUES (200,'local-test-owner','Teste de taxa de assessoria','teste de taxa de assessoria','22222222222',1,1)"),
+      db.prepare("INSERT INTO operations (id,owner_id,client_id,bank,original_product,category,value_cents,status,completed_at,notes,created_at,updated_at) VALUES (200,'local-test-owner',200,'Banco do Brasil','Financiamento','Financiamento',1000000,'Finalizado','2026-09-16',?,1,1)").bind(JSON.stringify({ agreement: 'Veículo' })),
+    ]);
+  } finally { await db.close(); }
+  await login(page.request);
+
+  const openEditor = async () => {
+    await page.goto('/');
+    await page.locator('aside nav').getByRole('button', { name: 'Clientes', exact: true }).click();
+    await page.locator('.tf-client-row').filter({ hasText: 'Teste de taxa de assessoria' }).click();
+    await page.getByRole('button', { name: 'Editar informações', exact: true }).click();
+  };
+  await openEditor();
+  const editor = page.locator('.tf-operation-editor');
+  const fee = editor.getByLabel('Taxa de assessoria', { exact: true });
+  await fee.fill('');
+  await fee.pressSequentially('15050');
+  await expect(fee).toHaveValue(/R\$\s150,50/);
+  await fee.press('Tab');
+  await expect(fee).toHaveValue(/R\$\s150,50/);
+  await fee.fill('');
+  await expect(fee).toHaveValue('');
+  await fee.evaluate(element => {
+    const clipboardData = new DataTransfer();
+    clipboardData.setData('text/plain', '1.234,56');
+    element.dispatchEvent(new ClipboardEvent('paste', { clipboardData, bubbles: true, cancelable: true }));
+  });
+  await expect(fee).toHaveValue(/R\$\s1\.234,56/);
+  await editor.getByLabel('Vencimento da receita', { exact: true }).fill('2099-12-31');
+  const saved = page.waitForResponse(response => response.url().endsWith('/api/records') && response.request().method() === 'PATCH');
+  await editor.getByRole('button', { name: 'Salvar alterações', exact: true }).click();
+  const response = await saved;
+  expect(response.ok(), await response.text()).toBeTruthy();
+  expect(response.request().postDataJSON().details.advisoryFee).toBe(1234.56);
+
+  await openEditor();
+  await expect(fee).toHaveValue(/R\$\s1\.234,56/);
+});
+
 test('server authentication rejects anonymous access and manages employee sessions',async({request,playwright})=>{
   for(const path of ['/api/crm/data','/api/access-users','/data/tf-clients.json'])expect((await request.get(path)).status()).toBe(401);
   expect((await request.post('/api/germano-report',{data:{password:'GG'}})).status()).toBe(401);
