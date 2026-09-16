@@ -1,4 +1,6 @@
 'use client';
+import { formatMoney as brl } from '../../lib/money';
+import { CRM_CHANGED, CRM_STORAGE_KEY } from '../../lib/crm-events';
 
 import { useEffect, useMemo, useState } from 'react';
 import type { CSSProperties } from 'react';
@@ -7,7 +9,7 @@ type Operation={id:number;clientName:string;cpf:string;bank:string;product:strin
 type PortalData={partner:{id:number;name:string};periods:string[];operations:Operation[]};
 type Point={x:number;y:number};
 
-const brl=(value:number)=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL',minimumFractionDigits:2,maximumFractionDigits:2}).format(value);
+
 const monthName=(period:string)=>{const label=new Intl.DateTimeFormat('pt-BR',{month:'long',year:'numeric',timeZone:'UTC'}).format(new Date(`${period}-01T00:00:00Z`));return label.charAt(0).toUpperCase()+label.slice(1)};
 const previousPeriod=(period:string)=>{const [year,month]=period.split('-').map(Number),date=new Date(Date.UTC(year,month-2,1));return `${date.getUTCFullYear()}-${String(date.getUTCMonth()+1).padStart(2,'0')}`};
 const formatCpf=(value:string)=>value.replace(/\D/g,'').replace(/(\d{3})(\d{3})(\d{3})(\d{2})/,'$1.$2.$3-$4');
@@ -42,6 +44,26 @@ export default function GermanoPortal(){
     sessionStorage.setItem('tf_germano_access','1');setData(payload);setPeriod(payload.periods[0]||new Date().toISOString().slice(0,7));
   };
   useEffect(()=>{if(sessionStorage.getItem('tf_germano_access')==='1'){setPassword('GG');void enter(undefined,'GG')}},[]);
+  const authenticated = Boolean(data);
+  useEffect(() => {
+    if (!authenticated) return;
+    let disposed = false;
+    const refresh = async () => {
+      try {
+        const response = await fetch('/api/germano-report', { method: 'POST', cache: 'no-store' });
+        if (response.ok) {
+          const current = await response.json();
+          if (!disposed) setData(current);
+        }
+      } catch { /* Preserve the visible report while the connection is unavailable. */ }
+    };
+    const storage = (event: StorageEvent) => { if (event.key === CRM_STORAGE_KEY) void refresh(); };
+    const timer = window.setInterval(refresh, 30000);
+    window.addEventListener('focus', refresh);
+    window.addEventListener(CRM_CHANGED, refresh);
+    window.addEventListener('storage', storage);
+    return () => { disposed = true; window.clearInterval(timer); window.removeEventListener('focus', refresh); window.removeEventListener(CRM_CHANGED, refresh); window.removeEventListener('storage', storage); };
+  }, [authenticated]);
 
   const report=useMemo(()=>{
     if(!data||!period)return null;

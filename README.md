@@ -67,3 +67,11 @@ npm run test:e2e
 Os testes de navegador criam e removem um esquema PostgreSQL próprio com prefixo `tf_test_`. Eles cobrem login, permissões, encerramento de sessões, atendimento, comissões, anexos, edição histórica, navegação e tela móvel, sem alterar o esquema `public`. Use uma conexão com permissão para criar esse esquema. O Playwright usa Chrome instalado; alternativamente, defina `PLAYWRIGHT_CHROMIUM_EXECUTABLE`.
 
 WhatsApp e extração por IA continuam opcionais e dependem das credenciais correspondentes em `.env.example`.
+
+## Sincronização e temas
+
+`lib/operations.ts` consulta clientes e operações atuais; `lib/operation-finance.ts` centraliza os cálculos usados pela produção, comissões, indicadores e parceiros. O percentual atual da operação prevalece sobre cópias históricas. Taxas de assessoria e adesão ficam separadas da comissão bruta do parceiro, preservando ILA, nota e divisão já cadastradas. Importações sem percentual mantêm o valor histórico como referência.
+
+As edições usam `lib/update-operation.ts`, com transação e os mesmos IDs de cliente, operação e receitas. Campos omitidos, dados de origem e histórico de recebimentos são preservados. As telas atualizam após salvar, ao recuperar o foco e periodicamente; alterações também notificam outras abas.
+
+Os dois temas compartilham componentes e `app/shared-layout.css`. Cores e fundos ficam nos estilos de identidade visual. Toda alteração estrutural deve valer para ambos os temas, salvo pedido expresso do usuário. Os testes verificam comissão de 6% para 4%, persistência sem duplicação e alternância dos temas em cinco larguras de tela.

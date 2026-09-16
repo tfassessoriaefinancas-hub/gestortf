@@ -1,12 +1,14 @@
 import { env } from '@/lib/runtime';
+import { readOperations } from '@/lib/operations';
+import { updateClientRecord, updateOperationRecord, RecordUpdateError } from '@/lib/update-operation';
+import { toCents } from '@/lib/money';
 import { getTfAccess, hasTfPermission, type TfAccess } from '../../chatgpt-auth';
 
 const cleanCpf=(v:string)=>v.replace(/\D/g,'');
 const norm=(v:string)=>v.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
-const moneyBr=(v:unknown)=>{const s=String(v||'').replace(/[^\d,.-]/g,'').replace(/\.(?=\d{3}(?:\D|$))/g,'').replace(',','.');const n=Number(s);return Number.isFinite(n)?Math.round(n*100):0;};
+const moneyBr=toCents;
 const isoDate=(v:unknown)=>{const s=String(v||'').trim(),m=s.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);return m?`${m[3]}-${m[2]}-${m[1]}`:s;};
 const phoneBr=(v:unknown)=>{let d=String(v||'').replace(/\D/g,'');if(d.startsWith('55')&&d.length>11)d=d.slice(2);d=d.slice(0,11);if(d.length===11)return `(${d.slice(0,2)}) ${d.slice(2,7)}-${d.slice(7)}`;if(d.length===10)return `(${d.slice(0,2)}) ${d.slice(2,6)}-${d.slice(6)}`;return String(v||'').trim();};
-const addMonths=(date:string,months:number)=>{const [year,month,day]=date.split('-').map(Number),next=new Date(Date.UTC(year,month-1+months,Math.min(day||1,28)));return next.toISOString().slice(0,10);};
 const json=(data:unknown,status=200)=>Response.json(data,{status,headers:{'cache-control':'no-store, no-cache, must-revalidate','pragma':'no-cache'}});
 const parse=(v:unknown)=>{try{return JSON.parse(String(v||'{}'))}catch{return {name:String(v||''),cpf:'',birthDate:'',product:''}}};
 
@@ -16,7 +18,19 @@ export async function GET(){
  const employeeClause=user.role==='employee'?' AND d.assigned_user_id=?':'';
  const statement=env.DB.prepare(`SELECT d.id,d.title,d.payload_json,d.stage,d.status,d.needs_completion,d.created_at,d.updated_at,d.client_id,d.operation_id,d.source,d.assigned_user_id,a.name assigned_name FROM deals d LEFT JOIN access_users a ON a.id=d.assigned_user_id WHERE d.owner_id IN (?,?) AND d.stage!='cancelado' AND d.status!='excluido'${employeeClause} ORDER BY d.updated_at DESC`);
  const rows=await (user.role==='employee'?statement.bind(user.ownerKeys[0],user.ownerKeys[1],user.memberId):statement.bind(user.ownerKeys[0],user.ownerKeys[1])).all();
- return json({deals:rows.results.map((r:any)=>({...parse(r.payload_json||r.title),id:r.id,stage:r.stage,status:r.status,needsCompletion:Boolean(r.needs_completion),createdAt:r.created_at||r.updated_at,updatedAt:r.updated_at,clientId:r.client_id,operationId:r.operation_id,source:r.source,assignedUserId:r.assigned_user_id,assignedName:r.assigned_name}))});
+ const operationIds=Array.from(new Set(rows.results.map(row=>Number(row.operation_id)).filter(Boolean)));
+ const operations=new Map((await readOperations(env.DB,user,{ids:operationIds,includeIncomplete:true})).map(operation=>[operation.dbId,operation]));
+ return json({deals:rows.results.map((r:any)=>{
+  const base=parse(r.payload_json||r.title),operation=operations.get(Number(r.operation_id));
+  const canonical=operation?{name:operation.clientName,cpf:operation.clientCpf,birthDate:operation.clientBirthDate,phone:operation.clientPhone,benefit:operation.clientBenefit,
+   product:operation.product,bank:operation.bank,producer:operation.producer,origin:operation.origin,promoter:operation.promoter,operationType:operation.operationType,
+   agreement:operation.agreement,contractType:operation.contractType,dueDay:operation.dueDay,productionIndicator:operation.productionIndicator,
+   value:operation.value,installment:operation.installment,term:String(operation.term||''),commissionRate:String(operation.commissionRate),commissionCustomRate:'',commissionPaid:operation.commissionPaid?'Sim':'Não',commissionInstallments:String(operation.commissionInstallments),commissionDueDate:operation.revenueDueDate,
+   adhesionFee:operation.adhesionFee,advisoryFee:operation.advisoryFee,bonus:operation.bonus,quotaQuantity:String(operation.quotaQuantity||1),quotaUnitValue:operation.quotaUnitValue,fipeValue:operation.fipeValue,postSale:operation.postSale,postSaleNotes:operation.postSaleNotes,
+   vehiclePlate:operation.vehiclePlate,vehicleValue:operation.vehicleValue,financedValue:operation.financedValue,desiredCredit:operation.desiredCredit,loanValue:operation.value,
+   ...(operation.completedAt?{operationDate:operation.date,paidDate:operation.paidDate,contractStatus:operation.status}:{})}:{};
+  return {...base,...canonical,id:r.id,stage:r.stage,status:r.status,needsCompletion:Boolean(r.needs_completion),createdAt:r.created_at||r.updated_at,updatedAt:r.updated_at,clientId:r.client_id,operationId:r.operation_id,source:r.source,assignedUserId:r.assigned_user_id,assignedName:r.assigned_name};
+ })});
 }
 
 export async function POST(request:Request){
@@ -54,8 +68,15 @@ export async function PATCH(request:Request){
   if(!name||cpf.length!==11||!birthDate||!product)return json({error:'Confira nome, CPF, nascimento e produto.'},400);
   const now=Date.now(),payload={...base,...d,name,cpf,birthDate,product,phone};
   const statements=[env.DB.prepare('UPDATE deals SET title=?,payload_json=?,updated_at=? WHERE id=?').bind(JSON.stringify(payload),JSON.stringify(payload),now,id)];
-  if(current.client_id)statements.push(env.DB.prepare('UPDATE clients SET name=?,normalized_name=?,cpf=?,birth_date=?,phone=?,updated_at=? WHERE id=?').bind(name,norm(name),cpf,birthDate,phone||null,now,current.client_id));
-  if(current.operation_id)statements.push(env.DB.prepare('UPDATE operations SET original_product=?,category=?,vehicle_plate=?,vehicle_value_cents=?,financed_value_cents=?,desired_credit_cents=?,value_cents=?,updated_at=? WHERE id=?').bind(product,product,d.vehiclePlate||null,moneyBr(d.vehicleValue),moneyBr(d.financedValue),moneyBr(d.desiredCredit||d.loanValue||d.financedValue),moneyBr(d.financedValue||d.desiredCredit||d.loanValue),now,current.operation_id));
+  try {
+   if(current.operation_id){
+    const patch:Record<string,unknown>={name,cpf,birthDate,phone,product};
+    for(const key of ['vehiclePlate','vehicleValue','financedValue','desiredCredit'])if(d[key]!=null)patch[key]=d[key];
+    const amount=d.financedValue||d.desiredCredit||d.loanValue;
+    if(amount!=null&&amount!=='')patch.value=amount;
+    await updateOperationRecord(env.DB,user,Number(current.operation_id),patch);
+   }else if(current.client_id)await updateClientRecord(env.DB,user,Number(current.client_id),{name,cpf,birthDate,phone});
+  }catch(error){if(error instanceof RecordUpdateError)return json({error:error.message},error.status);throw error;}
   statements.push(env.DB.prepare("INSERT INTO deal_history (owner_id,deal_id,operation_id,event_type,description,before_json,after_json,source,created_at) VALUES (?,?,?,?,?,?,?,'Gestão TF',?)").bind(user.ownerKey,id,current.operation_id||null,'edicao','Dados do atendimento editados.',JSON.stringify(base),JSON.stringify(payload),now));
   await env.DB.batch(statements);
   return json({ok:true,deal:{...payload,id,stage:current.stage,status:current.status,needsCompletion:Boolean(current.needs_completion),updatedAt:now,clientId:current.client_id,operationId:current.operation_id,source:current.source}});
@@ -125,25 +146,23 @@ export async function PATCH(request:Request){
   partnerId=partner?.id||null;
  }
  let client=current.client_id?{id:Number(current.client_id)}:cpf?await env.DB.prepare('SELECT id FROM clients WHERE owner_id IN (?,?) AND cpf=? AND deleted_at IS NULL').bind(user.ownerKeys[0],user.ownerKeys[1],cpf).first<{id:number}>():await env.DB.prepare('SELECT id FROM clients WHERE owner_id IN (?,?) AND benefit_number=? AND deleted_at IS NULL').bind(user.ownerKeys[0],user.ownerKeys[1],benefit).first<{id:number}>();
- if(client)await env.DB.prepare('UPDATE clients SET name=?,normalized_name=?,cpf=COALESCE(?,cpf),benefit_number=COALESCE(?,benefit_number),birth_date=?,phone=?,updated_at=? WHERE id=?').bind(d.name||base.name,norm(d.name||base.name),cpf||null,benefit||null,isoDate(d.birthDate||base.birthDate),phoneBr(d.phone||base.phone)||null,now,client.id).run();
- else client=await env.DB.prepare('INSERT INTO clients (owner_id,name,normalized_name,cpf,benefit_number,birth_date,phone,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?) RETURNING id').bind(user.ownerKey,d.name||base.name,norm(d.name||base.name),cpf||null,benefit||null,isoDate(d.birthDate||base.birthDate),phoneBr(d.phone||base.phone)||null,now,now).first<{id:number}>();
+ if(client&&!current.operation_id)await env.DB.prepare('UPDATE clients SET name=?,normalized_name=?,cpf=COALESCE(?,cpf),benefit_number=COALESCE(?,benefit_number),birth_date=?,phone=?,updated_at=? WHERE id=?').bind(d.name||base.name,norm(d.name||base.name),cpf||null,benefit||null,isoDate(d.birthDate||base.birthDate),phoneBr(d.phone||base.phone)||null,now,client.id).run();
+ else if(!client)client=await env.DB.prepare('INSERT INTO clients (owner_id,name,normalized_name,cpf,benefit_number,birth_date,phone,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?) RETURNING id').bind(user.ownerKey,d.name||base.name,norm(d.name||base.name),cpf||null,benefit||null,isoDate(d.birthDate||base.birthDate),phoneBr(d.phone||base.phone)||null,now,now).first<{id:number}>();
  if(!client)return json({error:'Não foi possível concluir o cliente.'},500);
  const operationNotes=JSON.stringify({agreement:d.agreement||'',contractType:d.contractType||d.product||'',dueDay:d.dueDay||'',productionIndicator:d.productionIndicator||'',adhesionFeeCents,advisoryFeeCents,bonusCents,commissionRate,commissionCustomRate:customCommissionRate>0?customCommissionRate:0,commissionInstallments:Number(d.commissionInstallments||1),commissionPaid:d.commissionPaid==='Sim',invoiceRequired:d.invoiceRequired==='Sim',quotaQuantity:Number(d.quotaQuantity||0),quotaUnitValueCents:moneyBr(d.quotaUnitValue),fipeValueCents:moneyBr(d.fipeValue),postSale:d.postSale,postSaleNotes:d.postSaleNotes||''});
  let operationId=Number(current.operation_id||0);
- if(operationId){
-  await env.DB.prepare("UPDATE operations SET client_id=?,partner_id=?,bank=?,promoter=?,original_product=?,category=?,producer=?,origin=?,benefit_number=?,value_cents=?,installment_cents=?,term=?,operation_date=?,paid_at=?,completed_at=?,status=?,notes=?,updated_at=? WHERE id=?").bind(client.id,partnerId,d.bank,d.promoter||null,d.product||base.product,d.operationType,d.producer,operationOrigin,benefit||null,moneyBr(d.value),moneyBr(d.installment),Number(d.term||0),isoDate(d.operationDate)||new Date().toISOString().slice(0,10),paidAt,new Date().toISOString(),operationStatus,operationNotes,now,operationId).run();
- }else{
+ if(!operationId){
   const op=await env.DB.prepare("INSERT INTO operations (owner_id,assigned_user_id,client_id,partner_id,bank,promoter,original_product,category,producer,origin,benefit_number,value_cents,installment_cents,term,operation_date,paid_at,completed_at,status,notes,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) RETURNING id").bind(user.ownerKey,current.assigned_user_id||null,client.id,partnerId,d.bank,d.promoter||null,d.product||base.product,d.operationType,d.producer,operationOrigin,benefit||null,moneyBr(d.value),moneyBr(d.installment),Number(d.term||0),isoDate(d.operationDate)||new Date().toISOString().slice(0,10),paidAt,new Date().toISOString(),operationStatus,operationNotes,now,now).first<{id:number}>();
   if(!op)return json({error:'Não foi possível concluir a operação.'},500);operationId=op.id;
  }
- await env.DB.prepare('UPDATE commissions SET deleted_at=?,updated_at=? WHERE owner_id IN (?,?) AND operation_id=? AND deleted_at IS NULL').bind(now,now,user.ownerKeys[0],user.ownerKeys[1],operationId).run();
- const receivables:Array<{id:number;operationId:number;name:string;value:number;dueDate:string;status:string;type:string;product:string}>=[],dueDate=isoDate(d.commissionDueDate)||paidAt||isoDate(d.operationDate);
- const addReceivable=async(valueCents:number,expectedAt:string,type:string,rateBps:number|null,received=false)=>{if(valueCents<=0)return;const status=received?'recebida':'prevista';const commission=await env.DB.prepare("INSERT INTO commissions (owner_id,operation_id,rate_bps,value_cents,expected_at,received_at,status,notes,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?) RETURNING id").bind(user.ownerKey,operationId,rateBps,valueCents,expectedAt,received?expectedAt:null,status,type,now,now).first<{id:number}>();if(!commission)throw new Error('Não foi possível registrar o crédito a receber.');if(!received)receivables.push({id:commission.id,operationId,name:d.name||base.name,value:valueCents/100,dueDate:expectedAt,status,type,product:d.product||base.product});};
- const commissionInstallments=/consórcio/i.test(d.product||base.product)?Math.max(1,Math.min(120,Number(d.commissionInstallments||1))):1;
- if(commissionValueCents>0){const basePart=Math.floor(commissionValueCents/commissionInstallments),remainder=commissionValueCents-basePart*commissionInstallments;for(let index=0;index<commissionInstallments;index++)await addReceivable(basePart+(index===0?remainder:0),addMonths(dueDate,index),commissionInstallments>1?`Comissão · Parcela ${index+1}/${commissionInstallments}`:'Comissão',Math.round(commissionRate*100),d.commissionPaid==='Sim');}
- await addReceivable(adhesionFeeCents,dueDate,'Taxa de adesão',null,d.commissionPaid==='Sim');
- await addReceivable(advisoryFeeCents,dueDate,'Taxa de assessoria',null,d.commissionPaid==='Sim');
- await addReceivable(bonusCents,dueDate,'Bonificação',null,d.commissionPaid==='Sim');
+ let updatedOperation;
+ try{
+  updatedOperation=await updateOperationRecord(env.DB,user,operationId,{...d,name:d.name||base.name,...(cpf?{cpf}:{}),birthDate:d.birthDate||base.birthDate,phone:phoneBr(d.phone||base.phone),
+   origin:operationOrigin,commissionRate,commissionPaid:d.commissionPaid,revenueDueDate:isoDate(d.commissionDueDate)||paidAt||isoDate(d.operationDate),
+   status:operationStatus,paidAt,completedAt:new Date().toISOString()});
+ }catch(error){if(error instanceof RecordUpdateError)return json({error:error.message},error.status);throw error;}
+ const pendingRows=await env.DB.prepare("SELECT id,value_cents,expected_at,status,notes FROM commissions WHERE operation_id=? AND deleted_at IS NULL AND value_cents>0 AND status NOT IN ('recebida','paga','historica','cancelada') AND (rate_bps IS NOT NULL OR notes IN ('Taxa de adesão','Taxa de assessoria','Bonificação'))").bind(operationId).all<{id:number;value_cents:number;expected_at:string|null;status:string;notes:string|null}>();
+ const receivables=pendingRows.results.map(item=>({id:item.id,operationId,name:updatedOperation.clientName,value:Number(item.value_cents)/100,dueDate:item.expected_at||'',status:item.status,type:item.notes||'Comissão',product:updatedOperation.product}));
  if(d.invoiceRequired==='Sim'){
   const number=String(d.invoiceNumber).trim(),issuedAt=isoDate(d.invoiceIssuedAt),invoicePaid=d.invoicePaid==='Sim',invoiceStatus=invoicePaid?'paga':'pendente',invoicePaidAt=invoicePaid?issuedAt:null,invoiceValue=moneyBr(d.invoiceValue);
   const existingInvoice=await env.DB.prepare('SELECT id FROM invoices WHERE owner_id IN (?,?) AND number=? AND deleted_at IS NULL LIMIT 1').bind(user.ownerKeys[0],user.ownerKeys[1],number).first<{id:number}>();

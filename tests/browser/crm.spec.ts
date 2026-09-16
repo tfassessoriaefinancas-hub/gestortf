@@ -80,7 +80,7 @@ test('hosted login, all navigation sections and mobile layout work', async ({ pa
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(page.getByRole('button', { name: 'Abrir menu', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Abrir menu', exact: true }).click();
-  await page.locator('.tf-icon-drawer nav button').first().click();
+  await page.locator('.tf-side nav button').first().click();
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
   expect(overflow).toBe(false);
   await page.screenshot({ path: 'test-results/dashboard-mobile.png', fullPage: true });
@@ -203,4 +203,6 @@ test('CPF and email aliases share the same login attempt limit',async({request})
   }
   const blocked=await request.post('/api/auth/login',{headers:{origin},data:{login:'01234567890',password:'test-only-password'}});
   expect(blocked.status()).toBe(429);
+  const db=new PostgresDatabase();
+  try { await db.prepare('DELETE FROM auth_attempts').run(); } finally { await db.close(); }
 });

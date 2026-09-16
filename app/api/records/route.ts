@@ -1,3 +1,4 @@
+import { updateClientRecord, updateOperationRecord, RecordUpdateError } from '@/lib/update-operation';
 import { ownerIdentity } from '@/lib/auth-session';
 import { env } from '@/lib/runtime';
 import { getTfAccess, hasTfPermission } from '../../chatgpt-auth';
@@ -118,28 +119,18 @@ export async function PATCH(request:Request){
     if(!allowed)return json({error:'Registro não encontrado.'},404);
   }
 
-  if(body.entity==='client'){
-    const owned=await env.DB.prepare('SELECT id FROM clients WHERE id=? AND owner_id IN (?,?) AND deleted_at IS NULL').bind(id,user.ownerKeys[0],user.ownerKeys[1]).first();if(!owned)return json({error:'Cliente não encontrado.'},404);
-    const name=String(d.name||'').trim(),document=digits(d.document),cpf=document.length===11?document:null,benefit=document.length===11?null:document||null;if(!name)return json({error:'Informe o nome.'},400);
-    await env.DB.prepare('UPDATE clients SET name=?,normalized_name=?,cpf=?,benefit_number=?,birth_date=?,phone=?,updated_at=? WHERE id=?').bind(name,norm(name),cpf,benefit,d.birthDate||null,d.phone||null,now,id).run();return json({ok:true});
-  }
-  if(body.entity==='operation'){
-    const owned=await env.DB.prepare('SELECT id,notes FROM operations WHERE id=? AND owner_id IN (?,?) AND deleted_at IS NULL').bind(id,user.ownerKeys[0],user.ownerKeys[1]).first<{id:number;notes:string}>();if(!owned)return json({error:'Operação não encontrada.'},404);
-    const currentNotes=notes(owned.notes),extra={...currentNotes,agreement:d.agreement||'',contractType:d.contractType||d.product||'',dueDay:d.dueDay||'',productionIndicator:d.productionIndicator||'',adhesionFeeCents:money(d.adhesionFee),advisoryFeeCents:money(d.advisoryFee),bonusCents:money(d.bonus),commissionRate:Number(String(d.commissionRate||0).replace(',','.')),commissionInstallments:Number(d.commissionInstallments||1),commissionPaid:d.commissionPaid==='Sim',quotaQuantity:Number(d.quotaQuantity||0),quotaUnitValueCents:money(d.quotaUnitValue),fipeValueCents:money(d.fipeValue),postSale:d.postSale||'',postSaleNotes:d.postSaleNotes||''};
-    const hasRevenue=money(d.adhesionFee)>0||money(d.advisoryFee)>0||money(d.bonus)>0||Number(String(d.commissionRate||0).replace(',','.'))>0;if(hasRevenue&&d.commissionPaid!=='Sim'&&!String(d.revenueDueDate||'').trim())return json({error:'Informe o vencimento da receita.'},400);
-    let partnerId:number|null=null,origin=productionSources.includes(String(d.producer))?(hasGgCode(String(d.producer))?'GG Veículos':'TF'):(String(d.origin||'TF').trim()||'TF');
-    if(!['Balcão','TF'].includes(origin)){
-      let partner=await env.DB.prepare('SELECT id FROM partners WHERE owner_id IN (?,?) AND lower(name)=lower(?) AND deleted_at IS NULL LIMIT 1').bind(user.ownerKeys[0],user.ownerKeys[1],origin).first<{id:number}>();
-      if(!partner)partner=await env.DB.prepare('INSERT INTO partners (owner_id,name,active,created_at,updated_at) VALUES (?,?,1,?,?) RETURNING id').bind(user.ownerKey,origin,now,now).first<{id:number}>();
-      partnerId=partner?.id||null;
+  try {
+    if(body.entity==='client'){
+      await updateClientRecord(env.DB,user,id,d);
+      return json({ok:true});
     }
-    await env.DB.prepare('UPDATE operations SET partner_id=?,bank=?,original_product=?,category=?,producer=?,origin=?,value_cents=?,installment_cents=?,term=?,operation_date=?,paid_at=?,status=?,notes=?,updated_at=? WHERE id=?').bind(partnerId,d.bank||null,d.product||'Operação',d.operationType||d.product||'Operação',d.producer||'TF',origin,money(d.value),money(d.installment),Number(d.term||0),d.operationDate||null,d.paidAt||null,d.status||'Finalizado',JSON.stringify(extra),now,id).run();
-    await env.DB.prepare('UPDATE commissions SET deleted_at=?,updated_at=? WHERE operation_id=? AND owner_id IN (?,?) AND deleted_at IS NULL').bind(now,now,id,user.ownerKeys[0],user.ownerKeys[1]).run();
-    const due=String(d.revenueDueDate||d.operationDate||''),rate=Number(String(d.commissionRate||0).replace(',','.')),commission=rate>0?Math.round(money(d.value)*rate/100):0;
-    const commissionInstallments=/consórcio/i.test(String(d.product||''))?Math.max(1,Math.min(120,Number(d.commissionInstallments||1))):1;
-    if(commission>0){const basePart=Math.floor(commission/commissionInstallments),remainder=commission-basePart*commissionInstallments,status=d.commissionPaid==='Sim'?'recebida':'prevista';for(let index=0;index<commissionInstallments;index++){const expected=due?addMonths(due,index):null;await env.DB.prepare("INSERT INTO commissions (owner_id,operation_id,rate_bps,value_cents,expected_at,received_at,status,notes,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)").bind(user.ownerKey,id,Math.round(rate*100),basePart+(index===0?remainder:0),expected,status==='recebida'?expected:null,status,commissionInstallments>1?`Comissão · Parcela ${index+1}/${commissionInstallments}`:'Comissão',now,now).run();}}
-    for(const [label,value] of [['Taxa de adesão',money(d.adhesionFee)],['Taxa de assessoria',money(d.advisoryFee)],['Bonificação',money(d.bonus)]] as Array<[string,number]>)if(value>0){const status=d.commissionPaid==='Sim'?'recebida':'prevista';await env.DB.prepare("INSERT INTO commissions (owner_id,operation_id,value_cents,expected_at,received_at,status,notes,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?)").bind(user.ownerKey,id,value,due||null,status==='recebida'?(due||new Date().toISOString().slice(0,10)):null,status,label,now,now).run();}
-    return json({ok:true});
+    if(body.entity==='operation'){
+      const operation=await updateOperationRecord(env.DB,user,id,d);
+      return json({ok:true,operation});
+    }
+  } catch(error) {
+    if(error instanceof RecordUpdateError)return json({error:error.message},error.status);
+    throw error;
   }
   if(body.entity==='commission'){
     const owned=await env.DB.prepare('SELECT id FROM commissions WHERE id=? AND owner_id IN (?,?) AND deleted_at IS NULL').bind(id,user.ownerKeys[0],user.ownerKeys[1]).first();if(!owned)return json({error:'Crédito não encontrado.'},404);

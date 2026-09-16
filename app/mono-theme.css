@@ -44,13 +44,6 @@
 .tf-app.theme-mono .tf-mobile-logo{filter:drop-shadow(0 3px 7px rgba(198,156,82,.34))!important}
 .tf-app.theme-mono .tf-brand img{filter:drop-shadow(0 5px 12px rgba(217,174,90,.30))!important}
 
-/* O bloco de apresentação permanece alinhado, mesmo sem ações à direita. */
-.tf-app.theme-mono .tf-command-hero>.tf-command-copy{
-  display:block!important;
-  width:100%!important;
-  text-align:left!important;
-}
-
 .tf-app.theme-mono :is(
   .tf-command-hero,.tf-kpi-strip,.tf-operation-board,.tf-result-card,
   .tf-month-comparison,.tf-quick-panel,.tf-panel,.tf-metric,.tf-filters,
@@ -160,15 +153,6 @@
 @media(max-width:700px){
   .tf-app.theme-mono,.tf-app.theme-mono.dark{
     background:#08090a!important;
-  }
-}
-
-@media(min-width:701px){
-  .tf-app.theme-mono .tf-content:has(> .tf-command-hero){
-    width:100%!important;
-    max-width:1848px!important;
-    padding-left:clamp(18px,1.4vw,27px)!important;
-    padding-right:clamp(18px,1.4vw,27px)!important;
   }
 }
 

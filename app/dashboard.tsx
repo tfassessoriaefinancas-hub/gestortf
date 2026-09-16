@@ -1,7 +1,11 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { productionSources, hasGgCode } from "../lib/production-source";
+import { parseMoney as parseMoneyBr, formatMoney as brl, formatMoneyInput, moneyToStorage } from "../lib/money";
+import { partnerFinance } from "../lib/operation-finance";
+import { CRM_CHANGED, CRM_STORAGE_KEY, notifyCrmChanged } from "../lib/crm-events";
+import type { CanonicalOperation } from "../lib/operations";
 import {
   House,
   UsersRound,
@@ -72,45 +76,9 @@ type Client = {
   city: string;
   partner: string;
 };
-type Operation = {
-  id: number;
-  dbId?: number;
-  clientCpf?: string;
-  clientId: number;
-  product: string;
-  promoter?: string;
-  bank: string;
-  producer: string;
-  origin: string;
-  partnerId?: number | null;
-  value: number;
-  installment: number;
-  term: number;
-  date: string;
-  status: string;
-  commission: number;
-  commissionRate?: number;
-  commissionInstallments?: number;
-  commissionPaid?: boolean;
-  revenueDueDate?: string;
-  paidDate?: string;
-  operationType?: string;
-  agreement?: string;
-  contractType?: string;
-  dueDay?: string;
-  productionIndicator?: string;
-  adhesionFee?: number;
-  advisoryFee?: number;
-  bonus?: number;
-  postSale?: string;
-  postSaleNotes?: string;
-  quotaQuantity?: number;
-  quotaUnitValue?: number;
-  fipeValue?: number;
-  assignedUserId?: number | null;
-};
+type Operation = CanonicalOperation;
 type PartnerSettlementRecord={period:string;status:string;paidAt?:string;grossCommission?:number;feeRate?:number;tfShare?:number};
-type PartnerOperationAdjustment={operationId:number;ilaRate:number;invoiceRate:number;tfShare:number;afterIlaOverride?:number|null};
+type PartnerOperationAdjustment={operationId:number;ilaRate:number;invoiceRate:number;tfShare:number};
 type PartnerBonusRecord={period:string;value:number;description?:string};
 type PartnerRecord = { id: number; name: string; taxRate?:number; invoiceRate?:number; tfShare?:number; settlements?:PartnerSettlementRecord[]; adjustments?:PartnerOperationAdjustment[]; bonuses?:PartnerBonusRecord[] };
 type Deal = {
@@ -136,18 +104,18 @@ type Deal = {
   agreement?: string;
   contractType?: string;
   dueDay?: string;
-  installment?: string;
-  value?: string;
+  installment?: string | number;
+  value?: string | number;
   quotaQuantity?: string;
-  quotaUnitValue?: string;
-  fipeValue?: string;
+  quotaUnitValue?: string | number;
+  fipeValue?: string | number;
   term?: string;
   contractStatus?: string;
   paidDate?: string;
   operationDate?: string;
-  adhesionFee?: string;
-  advisoryFee?: string;
-  bonus?: string;
+  adhesionFee?: string | number;
+  advisoryFee?: string | number;
+  bonus?: string | number;
   commissionRate?: string;
   commissionCustomRate?: string;
   commissionInstallments?: string;
@@ -155,7 +123,7 @@ type Deal = {
   commissionDueDate?: string;
   invoiceRequired?: string;
   invoiceNumber?: string;
-  invoiceValue?: string;
+  invoiceValue?: string | number;
   invoiceIssuedAt?: string;
   invoicePaid?: string;
   postSale?: string;
@@ -169,10 +137,10 @@ type Deal = {
   lastConversation?: string;
   history?: Array<{at:number;type:string;conversation?:string;returnAt?:string;reason?:string}>;
   vehiclePlate?: string;
-  vehicleValue?: string;
-  financedValue?: string;
-  desiredCredit?: string;
-  loanValue?: string;
+  vehicleValue?: string | number;
+  financedValue?: string | number;
+  desiredCredit?: string | number;
+  loanValue?: string | number;
   assignedUserId?: number | null;
   assignedName?: string;
 };
@@ -229,43 +197,25 @@ const formatDateBr = (value?: string) => {
   const parsed = new Date(v);
   return Number.isNaN(parsed.getTime()) ? v : parsed.toLocaleDateString("pt-BR");
 };
-const parseMoneyBr = (value: string | number | undefined) => {
-  if (typeof value === "number") return Number.isFinite(value) ? value : 0;
-  const raw = String(value || "").trim();
-  if (!raw) return 0;
-  const clean = raw.replace(/[^\d,.-]/g, "");
-  const normalized = clean.includes(",")
-    ? clean.replace(/\./g, "").replace(",", ".")
-    : /^-?\d{1,3}(\.\d{3})+$/.test(clean)
-      ? clean.replace(/\./g, "")
-      : clean;
-  const amount = Number(normalized);
-  return Number.isFinite(amount) ? amount : 0;
-};
-const formatMoneyInput = (value: string | number | undefined) =>
-  value === "" || value == null ? "" : new Intl.NumberFormat("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(parseMoneyBr(value));
-const moneyToStorage = (value: string | number | undefined) =>
-  value === "" || value == null ? "" : String(parseMoneyBr(value));
-function CurrencyInput({ value, onChange }: { value: string; onChange: (value: string) => void }) {
-  return <input
+function CurrencyInput({ value, defaultValue, onChange, ...props }: Omit<React.InputHTMLAttributes<HTMLInputElement>, "value" | "defaultValue" | "onChange"> & { value?: string | number; defaultValue?: string | number; onChange?: (value: string) => void }) {
+  const [draft, setDraft] = useState(() => formatMoneyInput(defaultValue));
+  const current = value === undefined ? draft : formatMoneyInput(value);
+  const change = (next: string) => { setDraft(next); onChange?.(next); };
+  return <input {...props}
+    type="text"
     inputMode="decimal"
-    value={value}
+    value={current}
     onChange={event => {
       const digits = event.target.value.replace(/\D/g, "");
-      onChange(digits ? formatMoneyInput(Number(digits) / 100) : "");
+      change(digits ? formatMoneyInput(Number(digits) / 100) : "");
     }}
     onPaste={event => {
       event.preventDefault();
       const pasted = event.clipboardData.getData("text");
-      if (/\d/.test(pasted)) onChange(formatMoneyInput(pasted));
+      if (/\d/.test(pasted)) change(formatMoneyInput(pasted));
     }}
-    onBlur={() => onChange(formatMoneyInput(value))}
-    placeholder="R$ 0,00"
+    onBlur={() => change(formatMoneyInput(current))}
+    placeholder={props.placeholder || "R$ 0,00"}
   />;
 }
 const productionCategory = (product: string) => {
@@ -396,10 +346,6 @@ const sliceLabelPoint = (start: number, end: number, radius = 84) => {
   const angle = ((start + end) / 2) * Math.PI / 180;
   return { x: 160 + radius * Math.cos(angle), y: 135 + radius * Math.sin(angle) };
 };
-const brl = (v: number) =>
-  new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(
-    v,
-  );
 const fmt = (v: string) => formatDateBr(v);
 const productOptions = [
   "Consignado INSS",
@@ -498,6 +444,14 @@ export default function Dashboard({
     [locked, setLocked] = useState(true),
     [gateReady, setGateReady] = useState(false),
     [visualTheme,setVisualTheme]=useState<"classic"|"mono">("classic");
+  const refreshData = useCallback(() => notifyCrmChanged(), []);
+  useEffect(() => {
+    const refresh = () => setDataRevision(value => value + 1);
+    const storage = (event: StorageEvent) => { if (event.key === CRM_STORAGE_KEY) refresh(); };
+    window.addEventListener(CRM_CHANGED, refresh);
+    window.addEventListener('storage', storage);
+    return () => { window.removeEventListener(CRM_CHANGED, refresh); window.removeEventListener('storage', storage); };
+  }, []);
   const dark = true;
   const toggleVisualTheme=()=>setVisualTheme(current=>{
     const next=current==="classic"?"mono":"classic";
@@ -561,9 +515,12 @@ export default function Dashboard({
       document.addEventListener("visibilitychange",refreshApp);
       navigator.serviceWorker.addEventListener("controllerchange",reloadForUpdate);
     }
+    let disposed=false;
+    const controller=new AbortController();
     const readJson = async (url:string):Promise<any> => {
       const response = await fetch(`${url}${url.includes("?")?"&":"?"}_=${Date.now()}`, {
         cache: "no-store",
+        signal: controller.signal,
         headers: { "cache-control": "no-cache" },
       });
       if (response.status === 401) {
@@ -589,7 +546,8 @@ export default function Dashboard({
       if(loading)return;loading=true;
       const [dealsData,crmData,teamData,partnerData,invoiceData]=await Promise.all([
         (user.role==="admin"||user.permissions.includes("atendimento"))?readJson("/api/deals"):Promise.resolve(null),readCrm(),user.role==="admin"?readJson("/api/access-users"):Promise.resolve(null),(user.role==="admin"||user.permissions.includes("parceiros"))?readJson("/api/partners"):Promise.resolve(null),(user.role==="admin"||user.permissions.includes("notas"))?readJson("/api/invoices"):Promise.resolve(null),
-      ]).catch(()=>{setNotice("Falha ao carregar os dados. Verifique sua conexão e tente novamente.");return [null,null,null,null,null]});
+      ]).catch(()=>{if(!disposed)setNotice("Falha ao carregar os dados. Verifique sua conexão e tente novamente.");return [null,null,null,null,null]});
+      if(disposed)return;
       if(dealsData?.deals)setDeals(dealsData.deals);
       const x=crmData;
       if(x){
@@ -613,12 +571,14 @@ export default function Dashboard({
     const timer = window.setInterval(load, 30000);
     const refreshOnFocus=()=>load();window.addEventListener('focus',refreshOnFocus);
     return () => {
+      disposed=true;
+      controller.abort();
       window.clearInterval(timer);
       document.removeEventListener("visibilitychange",refreshApp);
       navigator.serviceWorker?.removeEventListener("controllerchange",reloadForUpdate);
       window.removeEventListener('focus',refreshOnFocus);
     };
-  }, [user.role,dataRevision]);
+  }, [user.role,user.permissions,user.serverAuthenticated,dataRevision]);
   const allClients = liveClients;
   const allOps = useMemo(() => liveOps.map(operation => /proteção auto/i.test(operation.product) && operation.installment > 0 ? {...operation, value:operation.installment} : operation), [liveOps]);
   const currentPeriod=(()=>{const date=new Date();return new Date(date.getTime()-date.getTimezoneOffset()*60000).toISOString().slice(0,7)})();
@@ -645,7 +605,7 @@ export default function Dashboard({
     setNotice(s);
     setTimeout(() => setNotice(""), 2200);
   };
-  const markCommissionReceived=async(id:number)=>{const response=await fetch('/api/records',{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({entity:'commission',id,details:{status:'recebida'}})});if(response.ok){setReceivables(current=>current.filter(item=>item.id!==id));setDataRevision(value=>value+1);flash('Crédito marcado como recebido')}else{const data=await response.json().catch(()=>({}));alert(data.error||'Não foi possível atualizar o crédito.')}};
+  const markCommissionReceived=async(id:number)=>{const response=await fetch('/api/records',{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({entity:'commission',id,details:{status:'recebida'}})});if(response.ok){setReceivables(current=>current.filter(item=>item.id!==id));refreshData();flash('Crédito marcado como recebido')}else{const data=await response.json().catch(()=>({}));alert(data.error||'Não foi possível atualizar o crédito.')}};
   const can=(section:View)=>user.role==="admin"||user.permissions.includes(section);
   useEffect(()=>{if(!can(view))setView('inicio')},[view,user.permissions]);
   if (!gateReady) return <main className="tf-gate-loading" />;
@@ -662,15 +622,7 @@ export default function Dashboard({
     <main
       className={`tf-app ${dark ? "dark" : "light"} theme-${visualTheme}${mobileMenu ? " menu-open" : ""}`}
     >
-      <button
-        className="tf-menu-backdrop"
-        aria-label="Fechar"
-        onClick={() => setMobileMenu(false)}
-      />
-      {mobileMenu&&<aside className="tf-icon-drawer" aria-label="Menu lateral">
-        <nav>{menu.filter(([id])=>can(id)).map(([id,MenuIcon,label])=><button type="button" key={id} className={view===id?"active":""} aria-label={label} onClick={()=>{setView(id);setMobileMenu(false)}}><MenuIcon/></button>)}{user.role==="admin"&&<button type="button" className={view==="usuarios"?"active":""} aria-label="Usuários e acessos" onClick={()=>{setView("usuarios");setMobileMenu(false)}}><UserRoundCog/></button>}<button type="button" className={visualTheme==="mono"?"active":""} aria-label={visualTheme==="mono"?"Usar tema original":"Usar tema Preto Luxo"} onClick={()=>{toggleVisualTheme();setMobileMenu(false)}}><Palette/></button></nav>
-      </aside>}
-      <aside className="tf-side">
+      <aside className="tf-side" aria-label="Menu principal" id="tf-navigation">
         <div className="tf-brand">
           <button
             type="button"
@@ -745,8 +697,8 @@ export default function Dashboard({
         <header className="tf-top">
           <button
             className="tf-mobile-menu"
-            aria-label="Abrir menu"
-            onClick={() => setMobileMenu(true)}
+            aria-label={mobileMenu?"Recolher menu":"Abrir menu"} aria-expanded={mobileMenu} aria-controls="tf-navigation"
+            onClick={() => setMobileMenu(open => !open)}
           >
             <Menu />
           </button>
@@ -763,7 +715,7 @@ export default function Dashboard({
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Buscar nome, CPF, benefício, telefone, banco..."
+              placeholder="Buscar por nome ou CPF"
             />
           </label>
           <div>
@@ -805,12 +757,12 @@ export default function Dashboard({
             <ClientsFiltered data={found} operations={allOps} open={setSelected} />
           )}{" "}
           {view === "atendimento" && (
-            <Kanban deals={deals} setDeals={setDeals} user={user} members={teamMembers} partnerNames={partners.map(partner=>partner.name)} receivables={receivables} newDealRequest={newDealRequest} onMarkReceived={markCommissionReceived} onReceivableCreated={(item)=>setReceivables(items=>[item,...items.filter(existing=>existing.id!==item.id)])} onDataChanged={()=>setDataRevision(value=>value+1)} />
+            <Kanban deals={deals} setDeals={setDeals} user={user} members={teamMembers} partnerNames={partners.map(partner=>partner.name)} receivables={receivables} newDealRequest={newDealRequest} onMarkReceived={markCommissionReceived} onReceivableCreated={(item)=>setReceivables(items=>[item,...items.filter(existing=>existing.id!==item.id)])} onDataChanged={refreshData} />
           )}{" "}
           {view === "producao" && (
             <Production rows={allOps} clientsData={allClients} initialPeriod={productionPeriod} openClient={setSelected} />
           )}{" "}
-          {view === "parceiros" && <Partners rows={allOps} clientsData={allClients} partners={partners} onPartnerCreated={(partner)=>setPartners(current=>current.some(item=>item.name.localeCompare(partner.name,"pt-BR",{sensitivity:"base"})===0)?current:[...current,partner].sort((a,b)=>a.name.localeCompare(b.name,"pt-BR",{sensitivity:"base"})))} onPartnerUpdated={(partner)=>setPartners(current=>current.map(item=>item.id===partner.id?partner:item))} />}{" "}
+          {view === "parceiros" && <Partners rows={allOps} clientsData={allClients} partners={partners} onPartnerCreated={(partner)=>setPartners(current=>current.some(item=>item.name.localeCompare(partner.name,"pt-BR",{sensitivity:"base"})===0)?current:[...current,partner].sort((a,b)=>a.name.localeCompare(b.name,"pt-BR",{sensitivity:"base"})))} onPartnerUpdated={(partner)=>{setPartners(current=>current.map(item=>item.id===partner.id?partner:item));refreshData()}} />}{" "}
           {view === "servicos" && <Services rows={allOps} />}{" "}
           {view === "comissoes" && (
             <Commissions total={commission} rows={currentMonthOps} clientsData={allClients} />
@@ -827,7 +779,7 @@ export default function Dashboard({
       </section>
       {settingsOpen && <SettingsPanel close={() => setSettingsOpen(false)} serverAuthenticated={user.serverAuthenticated} />}{" "}
       {showReceivables&&<div className={`tf-modal-back${dueReminderRequired?" tf-receivable-blocking":""}`}><section className="tf-modal tf-receivables-modal">{!dueReminderRequired&&<button type="button" className="tf-modal-close" onClick={()=>setShowReceivables(false)}>×</button>}<small>FINANCEIRO</small><h2>{dueReminderRequired?"Você tem comissões a receber":"Comissões a receber"}</h2><p>{dueReminderRequired?"Confira quem deve pagar hoje ou possui pagamento atrasado.":"Valores previstos de comissões, taxas de adesão e assessorias."}</p><div>{displayedReceivables.map(item=><article key={item.id}><i><BadgeDollarSign/></i><span><b>{item.name}</b><small>{item.product} · {item.type}</small></span><strong>{brl(item.value)}</strong><time className={item.dueDate&&item.dueDate<todayDate?"overdue":""}>{item.dueDate?formatDateBr(item.dueDate):"Sem data"}</time><button type="button" onClick={()=>markCommissionReceived(item.id)}>Marcar recebido</button></article>)}</div>{dueReminderRequired&&<button type="button" className="tf-primary tf-receivable-ack" onClick={()=>{localStorage.setItem(`tf_receivables_seen_${todayDate}`,"1");setDueReminderRequired(false);setShowReceivables(false)}}>Visualizei os recebimentos</button>}</section></div>}{" "}
-      {selected && <ClientSheet client={selected} operations={allOps} close={() => setSelected(null)} refresh={()=>{setSelected(null);setDataRevision(value=>value+1)}} />}{" "}
+      {selected && <ClientSheet client={allClients.find(client=>client.id===selected.id)||selected} operations={allOps} close={() => setSelected(null)} refresh={()=>{setSelected(null);refreshData()}} />}{" "}
       {notice && <div className="tf-toast">✓ {notice}</div>}
     </main>
   );
@@ -1151,8 +1103,8 @@ function Home({
   const groups = serviceCatalog.map(service=>{const matched=monthRows.filter(operation=>productionProducts.find(product=>product.name===service.name)?.match(operation.product)),used=Array.from(new Set(matched.map(operation=>operation.operationType||operation.product))).slice(0,2);return {name:service.name,tone:service.tone,items:(used.length?used:service.subtopics.slice(0,2)).map(topic=>[topic,used.length?`${matched.filter(operation=>(operation.operationType||operation.product)===topic).length} registrada(s)`:"Sem movimentação"] as [string,string])}}),
     monthTotal = monthRows.reduce((s, o) => s + o.value, 0),
     monthCommission = monthRows.reduce((s, o) => s + o.commission, 0),
-    monthCommissionPaid = monthRows.filter(o=>o.commissionPaid).reduce((s,o)=>s+o.commission,0),
-    monthCommissionPending = monthRows.filter(o=>!o.commissionPaid).reduce((s,o)=>s+o.commission,0),
+    monthCommissionPaid = monthRows.reduce((s,o)=>s+o.commissionReceived,0),
+    monthCommissionPending = monthRows.reduce((s,o)=>s+o.commissionPending,0),
     monthClients = new Set(monthRows.map((o) => o.clientId)).size,
     groupTotals = groups.map((g) => ({
       name: g.name,
@@ -1820,6 +1772,7 @@ function Kanban({
       setForm(false);
       setFormStep(1);
       setSelectedProduct("Financiamento");
+      onDataChanged();
     } else alert(x.error || "Não foi possível iniciar o atendimento.");
   };
   const nowDate=new Date(clock);
@@ -1839,7 +1792,7 @@ function Kanban({
     e.preventDefault(); if(!returnDeal)return;
     const r=await fetch('/api/deals',{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({id:returnDeal.id,action:'schedule_return',...returnForm})});
     const x=await r.json();
-    if(r.ok){setDeals(xs=>xs.map(d=>d.id===returnDeal.id?{...d,...x.deal}:d));setReturnDeal(null)}else alert(x.error||'Não foi possível agendar o retorno.');
+    if(r.ok){setDeals(xs=>xs.map(d=>d.id===returnDeal.id?{...d,...x.deal}:d));setReturnDeal(null);onDataChanged()}else alert(x.error||'Não foi possível agendar o retorno.');
   };
   const completeReturn = async (d:Deal) => {
     const r=await fetch('/api/deals',{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({id:d.id,action:'complete_return'})});
@@ -1875,7 +1828,7 @@ function Kanban({
     };
     const r=await fetch('/api/deals',{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({id:editDeal.id,action:'edit',details:normalizedEdit})});
     const x=await r.json();
-    if(r.ok){setDeals(xs=>xs.map(d=>d.id===editDeal.id?{...d,...x.deal}:d));setEditDeal(null)}
+    if(r.ok){setDeals(xs=>xs.map(d=>d.id===editDeal.id?{...d,...x.deal}:d));setEditDeal(null);onDataChanged()}
     else alert(x.error||'Não foi possível editar o atendimento.');
   };
   const digits=(v='')=>v.replace(/\D/g,'');
@@ -2256,15 +2209,15 @@ function Kanban({
                 {(selectedProduct === "Financiamento" || selectedProduct === "Crédito com garantia") && (
                   <>
                     <label>Placa do veículo<input name="vehiclePlate" placeholder="ABC1D23" required /></label>
-                    <label>Valor total do veículo<input name="vehicleValue" inputMode="decimal" placeholder="R$ 95.000,00" onBlur={(e)=>{e.currentTarget.value=formatMoneyInput(e.currentTarget.value)}} required /></label>
-                    <label>{selectedProduct === "Financiamento" ? "Valor do financiamento" : "Valor desejado com garantia"}<input name="financedValue" inputMode="decimal" placeholder="R$ 65.000,00" onBlur={(e)=>{e.currentTarget.value=formatMoneyInput(e.currentTarget.value)}} required /></label>
+                    <label>Valor total do veículo<CurrencyInput name="vehicleValue" inputMode="decimal" placeholder="R$ 95.000,00"  required /></label>
+                    <label>{selectedProduct === "Financiamento" ? "Valor do financiamento" : "Valor desejado com garantia"}<CurrencyInput name="financedValue" inputMode="decimal" placeholder="R$ 65.000,00"  required /></label>
                   </>
                 )}
                 {selectedProduct === "Consórcio" && (
-                  <label>Crédito / carta desejada<input name="desiredCredit" inputMode="decimal" placeholder="R$ 50.000,00" onBlur={(e)=>{e.currentTarget.value=formatMoneyInput(e.currentTarget.value)}} required /></label>
+                  <label>Crédito / carta desejada<CurrencyInput name="desiredCredit" inputMode="decimal" placeholder="R$ 50.000,00"  required /></label>
                 )}
                 {/^Consignado\b/i.test(selectedProduct) && (
-                  <label>Valor do consignado<input name="loanValue" inputMode="decimal" placeholder="R$ 20.000,00" onBlur={(e)=>{e.currentTarget.value=formatMoneyInput(e.currentTarget.value)}} required /></label>
+                  <label>Valor do consignado<CurrencyInput name="loanValue" inputMode="decimal" placeholder="R$ 20.000,00"  required /></label>
                 )}
                 {(["Seguros","Proteção Auto","FGTS","Assessoria Financeira"].includes(selectedProduct)) && (
                   <p className="tf-form-hint">Para este produto, somente os dados básicos são necessários neste primeiro atendimento.</p>
@@ -2292,8 +2245,8 @@ function Kanban({
               <label>Telefone / WhatsApp<input inputMode="tel" maxLength={15} value={editForm.phone||""} onChange={e=>setEditForm(x=>({...x,phone:maskPhone(e.target.value)}))}/></label>
               <label>Produto<select value={editForm.product||"Financiamento"} onChange={e=>setEditForm(x=>({...x,product:e.target.value}))}>{productOptions.map((option)=><option key={option}>{option}</option>)}</select></label>
               <label>Placa do veículo<input value={editForm.vehiclePlate||""} onChange={e=>setEditForm(x=>({...x,vehiclePlate:e.target.value.toUpperCase()}))}/></label>
-              <label>Valor do veículo<input inputMode="decimal" value={editForm.vehicleValue||""} onChange={e=>setEditForm(x=>({...x,vehicleValue:e.target.value}))} onBlur={()=>setEditForm(x=>({...x,vehicleValue:formatMoneyInput(x.vehicleValue)}))}/></label>
-              <label>Valor financiado / desejado<input inputMode="decimal" value={editForm.financedValue||editForm.desiredCredit||editForm.loanValue||""} onChange={e=>setEditForm(x=>({...x,financedValue:e.target.value,desiredCredit:e.target.value,loanValue:e.target.value}))} onBlur={()=>setEditForm(x=>({...x,financedValue:formatMoneyInput(x.financedValue),desiredCredit:formatMoneyInput(x.desiredCredit),loanValue:formatMoneyInput(x.loanValue)}))}/></label>
+              <label>Valor do veículo<CurrencyInput inputMode="decimal" value={editForm.vehicleValue||""} onChange={nextValue=>setEditForm(x=>({...x,vehicleValue:nextValue}))} /></label>
+              <label>Valor financiado / desejado<CurrencyInput inputMode="decimal" value={editForm.financedValue||editForm.desiredCredit||editForm.loanValue||""} onChange={nextValue=>setEditForm(x=>({...x,financedValue:nextValue,desiredCredit:nextValue,loanValue:nextValue}))} /></label>
             </div>
             <div className="tf-modal-actions"><button type="button" className="tf-secondary" onClick={()=>setEditDeal(null)}>Cancelar</button><button className="tf-primary">Salvar alterações</button></div>
           </form>
@@ -2333,8 +2286,8 @@ function Kanban({
               <SmartChoice label="Convênio" required={false} value={details.agreement||""} options={agreementOptions} onChange={value=>setDetails(current=>({...current,agreement:value,contractType:"",product:"",operationType:""}))} helper="Selecione o convênio ou cadastre um novo."/>
               <SmartChoice label="Tipo de contrato" value={details.contractType||resolvedProduct(details)} options={contractTypeOptionsFor(details.agreement||"")} onChange={value=>setDetails(current=>({...current,contractType:value,product:value,operationType:""}))} helper="As opções acompanham o convênio selecionado."/>
               <FinalChoice label="Tipo de operação" field="operationType" details={details} setDetails={setDetails} options={operationOptionsFor(details.contractType||resolvedProduct(details))}/>
-              <label>Valor da parcela<input required={/proteção auto/i.test(resolvedProduct(details))} inputMode="decimal" value={details.installment||""} onChange={e=>setDetails(x=>({...x,installment:e.target.value}))} onBlur={()=>setDetails(x=>({...x,installment:formatMoneyInput(x.installment)}))} placeholder="R$ 0,00 (se aplicável)"/></label>
-              {/consórcio/i.test(resolvedProduct(details))?<><label>Quantidade de cotas<input required type="number" min="1" max="999" value={details.quotaQuantity||"1"} onChange={e=>setDetails(x=>({...x,quotaQuantity:e.target.value}))}/></label><label>Valor por cota<input required inputMode="decimal" value={details.quotaUnitValue||""} onChange={e=>setDetails(x=>({...x,quotaUnitValue:e.target.value}))} onBlur={()=>setDetails(x=>({...x,quotaUnitValue:formatMoneyInput(x.quotaUnitValue)}))} placeholder="R$ 0,00"/><output>Valor total: {brl(operationValueForDetails(details))}</output></label></>:/proteção auto/i.test(resolvedProduct(details))?<label>Valor FIPE<input inputMode="decimal" value={details.fipeValue||""} onChange={e=>setDetails(x=>({...x,fipeValue:e.target.value}))} onBlur={()=>setDetails(x=>({...x,fipeValue:formatMoneyInput(x.fipeValue)}))} placeholder="R$ 0,00"/><output>Produção do mês: {brl(operationValueForDetails(details))}</output></label>:<label>Valor da operação<input required inputMode="decimal" value={details.value||""} onChange={e=>setDetails(x=>({...x,value:e.target.value}))} onBlur={()=>setDetails(x=>({...x,value:formatMoneyInput(x.value)}))} placeholder="R$ 0,00"/></label>}
+              <label>Valor da parcela<CurrencyInput required={/proteção auto/i.test(resolvedProduct(details))} inputMode="decimal" value={details.installment||""} onChange={nextValue=>setDetails(x=>({...x,installment:nextValue}))}  placeholder="R$ 0,00 (se aplicável)"/></label>
+              {/consórcio/i.test(resolvedProduct(details))?<><label>Quantidade de cotas<input required type="number" min="1" max="999" value={details.quotaQuantity||"1"} onChange={e=>setDetails(x=>({...x,quotaQuantity:e.target.value}))}/></label><label>Valor por cota<CurrencyInput required inputMode="decimal" value={details.quotaUnitValue||""} onChange={nextValue=>setDetails(x=>({...x,quotaUnitValue:nextValue}))}  placeholder="R$ 0,00"/><output>Valor total: {brl(operationValueForDetails(details))}</output></label></>:/proteção auto/i.test(resolvedProduct(details))?<label>Valor FIPE<CurrencyInput inputMode="decimal" value={details.fipeValue||""} onChange={nextValue=>setDetails(x=>({...x,fipeValue:nextValue}))}  placeholder="R$ 0,00"/><output>Produção do mês: {brl(operationValueForDetails(details))}</output></label>:<label>Valor da operação<CurrencyInput required inputMode="decimal" value={details.value||""} onChange={nextValue=>setDetails(x=>({...x,value:nextValue}))}  placeholder="R$ 0,00"/></label>}
               <label>Prazo da operação<input type="number" min="1" value={details.term||""} onChange={e=>setDetails(x=>({...x,term:e.target.value}))} placeholder="Ex.: 84 (se aplicável)"/></label>
               <label>Dia do vencimento<input inputMode="numeric" maxLength={2} value={details.dueDay||""} onChange={e=>setDetails(x=>({...x,dueDay:e.target.value.replace(/\D/g,"").slice(0,2)}))} placeholder="Ex.: 10 (se aplicável)"/></label>
               <label>Situação do contrato<select required value={details.contractStatus||"Finalizado"} onChange={e=>setDetails(x=>({...x,contractStatus:e.target.value}))}><option>Finalizado</option><option>Concluído</option><option>Pendência</option></select></label>
@@ -2343,14 +2296,14 @@ function Kanban({
               <FinalChoice label="Produção" field="producer" details={details} setDetails={setDetails} options={["Balcão","TF","CDF","Parceiro GG Veículos",...Array.from(new Set([user.name,...members.map(member=>member.name)])).filter(name=>!["Balcão","TF","CDF","Parceiro GG Veículos"].includes(name)).sort((a,b)=>a.localeCompare(b,"pt-BR",{sensitivity:"base"}))]}/>
               <SmartChoice label="Quem indicou a produção" required={false} value={details.productionIndicator||""} options={["Balcão","Indicação direta","Parceiro","Prospecção","WhatsApp",...members.map(member=>member.name)]} onChange={value=>setDetails(current=>({...current,productionIndicator:value}))} helper="Digite o nome do indicador quando houver."/>
               <FinalChoice label="Parceiro / origem" field="origin" details={details} setDetails={setDetails} options={Array.from(new Set(["TF","GG Veículos",...partnerNames]))}/>
-              <label>Taxa de adesão<input inputMode="decimal" value={details.adhesionFee||""} onChange={e=>setDetails(x=>({...x,adhesionFee:e.target.value}))} onBlur={()=>setDetails(x=>({...x,adhesionFee:formatMoneyInput(x.adhesionFee)}))} placeholder="R$ 0,00 (seguros)"/></label>
+              <label>Taxa de adesão<CurrencyInput inputMode="decimal" value={details.adhesionFee||""} onChange={nextValue=>setDetails(x=>({...x,adhesionFee:nextValue}))}  placeholder="R$ 0,00 (seguros)"/></label>
               <label>Taxa de assessoria<CurrencyInput value={details.advisoryFee||""} onChange={value=>setDetails(x=>({...x,advisoryFee:value}))}/></label>
               <label>Comissão percentual<input inputMode="decimal" value={details.commissionRate||""} onChange={e=>setDetails(x=>({...x,commissionRate:e.target.value.replace(/[^\d,.]/g,"")}))} placeholder="Ex.: 3%"/><output>Comissão calculada: {brl(operationValueForDetails(details)*(Number(String(details.commissionRate||"0").replace(",","."))/100))}</output></label>
               <label>Comissão / adesão / assessoria recebidas?<select value={details.commissionPaid||"Não"} onChange={e=>setDetails(x=>({...x,commissionPaid:e.target.value}))}><option>Não</option><option>Sim</option></select></label>
               {/consórcio/i.test(resolvedProduct(details))&&<label>Parcelas da comissão<input type="number" min="1" max="120" value={details.commissionInstallments||"1"} onChange={e=>setDetails(x=>({...x,commissionInstallments:e.target.value}))}/><output>Valor por parcela: {brl((operationValueForDetails(details)*(Number(String(details.commissionRate||"0").replace(",","."))/100))/Math.max(1,Number(details.commissionInstallments||1)))}</output></label>}
               <label>{details.commissionPaid==="Sim"?"Data do recebimento":"Primeiro vencimento das receitas"}<input required={Boolean(details.commissionRate||details.adhesionFee||details.advisoryFee)} type="date" value={details.commissionDueDate||""} onChange={e=>setDetails(x=>({...x,commissionDueDate:e.target.value}))}/></label>
               <label>Possui nota fiscal?<select value={details.invoiceRequired||"Não"} onChange={e=>setDetails(x=>({...x,invoiceRequired:e.target.value}))}><option>Não</option><option>Sim</option></select></label>
-              {details.invoiceRequired==="Sim"&&<><label>Número da nota fiscal<input required value={details.invoiceNumber||""} onChange={e=>setDetails(x=>({...x,invoiceNumber:e.target.value}))} placeholder="Ex.: 000123"/></label><label>Valor da nota fiscal<input required inputMode="decimal" value={details.invoiceValue||""} onChange={e=>setDetails(x=>({...x,invoiceValue:e.target.value}))} onBlur={()=>setDetails(x=>({...x,invoiceValue:formatMoneyInput(x.invoiceValue)}))} placeholder="R$ 0,00"/></label><label>Data de emissão<input required type="date" value={details.invoiceIssuedAt||""} onChange={e=>setDetails(x=>({...x,invoiceIssuedAt:e.target.value}))}/></label><label>Nota fiscal paga?<select value={details.invoicePaid||"Não"} onChange={e=>setDetails(x=>({...x,invoicePaid:e.target.value}))}><option>Não</option><option>Sim</option></select></label></>}
+              {details.invoiceRequired==="Sim"&&<><label>Número da nota fiscal<input required value={details.invoiceNumber||""} onChange={e=>setDetails(x=>({...x,invoiceNumber:e.target.value}))} placeholder="Ex.: 000123"/></label><label>Valor da nota fiscal<CurrencyInput required inputMode="decimal" value={details.invoiceValue||""} onChange={nextValue=>setDetails(x=>({...x,invoiceValue:nextValue}))}  placeholder="R$ 0,00"/></label><label>Data de emissão<input required type="date" value={details.invoiceIssuedAt||""} onChange={e=>setDetails(x=>({...x,invoiceIssuedAt:e.target.value}))}/></label><label>Nota fiscal paga?<select value={details.invoicePaid||"Não"} onChange={e=>setDetails(x=>({...x,invoicePaid:e.target.value}))}><option>Não</option><option>Sim</option></select></label></>}
               <label>Telefone<input required inputMode="tel" maxLength={15} value={details.phone||""} onChange={e=>setDetails(x=>({...x,phone:maskPhone(e.target.value)}))} placeholder="(88) 99999-9999"/></label>
               <label>Pós-venda<select required value={details.postSale||"Pendente"} onChange={e=>setDetails(x=>({...x,postSale:e.target.value}))}><option>Pendente</option><option>Agendado</option><option>Concluído</option><option>Não se aplica</option></select></label>
               <label className="tf-form-full">Observações do pós-venda<textarea value={details.postSaleNotes||""} onChange={e=>setDetails(x=>({...x,postSaleNotes:e.target.value}))} placeholder="Registre orientações, retorno ou acompanhamento necessário."/></label>
@@ -2369,13 +2322,13 @@ function Kanban({
                 <header><small>02</small><h3>Dados da operação</h3></header>
                 <div className="tf-form-grid">
                   <SmartChoice label="Tipo de contrato" value={details.contractType||resolvedProduct(details)} options={contractTypeOptionsFor(details.agreement||"")} onChange={value=>setDetails(current=>({...current,contractType:value,product:value,operationType:""}))} helper="As opções acompanham o convênio selecionado."/>
-                  {/proteção auto/i.test(resolvedProduct(details))&&<label>Valor da tabela FIPE<input required inputMode="decimal" value={details.fipeValue||""} onChange={e=>setDetails(x=>({...x,fipeValue:e.target.value}))} onBlur={()=>setDetails(x=>({...x,fipeValue:formatMoneyInput(x.fipeValue)}))} placeholder="R$ 0,00"/></label>}
+                  {/proteção auto/i.test(resolvedProduct(details))&&<label>Valor da tabela FIPE<CurrencyInput required inputMode="decimal" value={details.fipeValue||""} onChange={nextValue=>setDetails(x=>({...x,fipeValue:nextValue}))}  placeholder="R$ 0,00"/></label>}
                   <FinalChoice label="Tipo de operação" field="operationType" details={details} setDetails={setDetails} options={operationOptionsFor(details.contractType||resolvedProduct(details))}/>
                   <SmartChoice label="Convênio" required={false} value={details.agreement||""} options={agreementOptions} onChange={value=>setDetails(current=>({...current,agreement:value,contractType:"",product:"",operationType:""}))} helper="Selecione o convênio ou cadastre um novo."/>
                   <FinalChoice label="Banco / instituição" field="bank" details={details} setDetails={setDetails} options={finalBankOptions}/>
-                  <label>Valor do contrato<input required inputMode="decimal" value={details.value||""} onChange={e=>setDetails(x=>({...x,value:e.target.value}))} onBlur={()=>setDetails(x=>({...x,value:formatMoneyInput(x.value)}))} placeholder="R$ 0,00"/></label>
-                  <label>Valor da parcela<input inputMode="decimal" value={details.installment||""} onChange={e=>setDetails(x=>({...x,installment:e.target.value}))} onBlur={()=>setDetails(x=>({...x,installment:formatMoneyInput(x.installment)}))} placeholder="R$ 0,00"/></label>
-                  {/consórcio/i.test(resolvedProduct(details))&&<><label>Quantidade de cotas<input type="number" min="1" max="999" value={details.quotaQuantity||"1"} onChange={e=>setDetails(x=>({...x,quotaQuantity:e.target.value}))}/></label><label>Valor por cota<input inputMode="decimal" value={details.quotaUnitValue||""} onChange={e=>setDetails(x=>({...x,quotaUnitValue:e.target.value}))} onBlur={()=>setDetails(x=>({...x,quotaUnitValue:formatMoneyInput(x.quotaUnitValue)}))} placeholder="R$ 0,00"/><output>Total das cotas: {brl(parseMoneyBr(details.quotaUnitValue)*Math.max(1,Number(details.quotaQuantity||1)))}</output></label></>}
+                  <label>Valor do contrato<CurrencyInput required inputMode="decimal" value={details.value||""} onChange={nextValue=>setDetails(x=>({...x,value:nextValue}))}  placeholder="R$ 0,00"/></label>
+                  <label>Valor da parcela<CurrencyInput inputMode="decimal" value={details.installment||""} onChange={nextValue=>setDetails(x=>({...x,installment:nextValue}))}  placeholder="R$ 0,00"/></label>
+                  {/consórcio/i.test(resolvedProduct(details))&&<><label>Quantidade de cotas<input type="number" min="1" max="999" value={details.quotaQuantity||"1"} onChange={e=>setDetails(x=>({...x,quotaQuantity:e.target.value}))}/></label><label>Valor por cota<CurrencyInput inputMode="decimal" value={details.quotaUnitValue||""} onChange={nextValue=>setDetails(x=>({...x,quotaUnitValue:nextValue}))}  placeholder="R$ 0,00"/><output>Total das cotas: {brl(parseMoneyBr(details.quotaUnitValue)*Math.max(1,Number(details.quotaQuantity||1)))}</output></label></>}
                   <label>Prazo do contrato<input type="number" min="1" value={details.term||""} onChange={e=>setDetails(x=>({...x,term:e.target.value}))} placeholder="Ex.: 84"/></label>
                   <label>Dia do vencimento<input inputMode="numeric" maxLength={2} value={details.dueDay||""} onChange={e=>setDetails(x=>({...x,dueDay:e.target.value.replace(/\D/g,"").slice(0,2)}))} placeholder="Ex.: 10"/></label>
                   <SmartChoice label="Indicador" required={false} value={details.productionIndicator||""} options={["Balcão TF","Indicação direta","Parceiro","Prospecção","WhatsApp",...members.map(member=>member.name)]} onChange={value=>setDetails(current=>({...current,productionIndicator:value}))} helper="Informe quem indicou a produção, quando houver."/>
@@ -2388,14 +2341,14 @@ function Kanban({
                 <div className="tf-form-grid">
                   <label>Valor bruto da comissão (%)<select value={details.commissionRate||"0"} onChange={e=>setDetails(x=>({...x,commissionRate:e.target.value}))}>{[0,1,2,3,4,5,6].map(rate=><option key={rate} value={String(rate)}>R{rate} · {rate}%</option>)}</select><output>Comissão calculada: {brl(operationValueForDetails(details)*(Number(String(details.commissionCustomRate||details.commissionRate||0).replace(",","."))/100))}</output></label>
                   <label>Percentual manual (%)<input inputMode="decimal" value={details.commissionCustomRate||""} onChange={e=>setDetails(x=>({...x,commissionCustomRate:e.target.value.replace(/[^\d,.]/g,"")}))} placeholder="Ex.: 2,75"/><output>{details.commissionCustomRate?`Percentual considerado: ${details.commissionCustomRate}%`:"Se preenchido, substitui a opção R."}</output></label>
-                  <label>Taxa de adesão<input inputMode="decimal" value={details.adhesionFee||""} onChange={e=>setDetails(x=>({...x,adhesionFee:e.target.value}))} onBlur={()=>setDetails(x=>({...x,adhesionFee:formatMoneyInput(x.adhesionFee)}))} placeholder="R$ 0,00"/></label>
+                  <label>Taxa de adesão<CurrencyInput inputMode="decimal" value={details.adhesionFee||""} onChange={nextValue=>setDetails(x=>({...x,adhesionFee:nextValue}))}  placeholder="R$ 0,00"/></label>
                   <label>Taxa de assessoria<CurrencyInput value={details.advisoryFee||""} onChange={value=>setDetails(x=>({...x,advisoryFee:value}))}/></label>
-                  <label>Bonificação<input inputMode="decimal" value={details.bonus||""} onChange={e=>setDetails(x=>({...x,bonus:e.target.value}))} onBlur={()=>setDetails(x=>({...x,bonus:formatMoneyInput(x.bonus)}))} placeholder="R$ 0,00"/></label>
+                  <label>Bonificação<CurrencyInput inputMode="decimal" value={details.bonus||""} onChange={nextValue=>setDetails(x=>({...x,bonus:nextValue}))}  placeholder="R$ 0,00"/></label>
                   <label>Comissão e demais receitas recebidas?<select value={details.commissionPaid||"Não"} onChange={e=>setDetails(x=>({...x,commissionPaid:e.target.value}))}><option>Não</option><option>Sim</option></select></label>
                   <label>{details.commissionPaid==="Sim"?"Data do recebimento":"Agendar recebimento para cobrança"}<input required={Boolean(details.commissionRate||details.commissionCustomRate||details.adhesionFee||details.advisoryFee||details.bonus)} type="date" value={details.commissionDueDate||""} onChange={e=>setDetails(x=>({...x,commissionDueDate:e.target.value}))}/>{details.commissionPaid!=="Sim"&&<small className="tf-field-note">O sistema exibirá um lembrete no dia agendado.</small>}</label>
                   {/consórcio/i.test(resolvedProduct(details))&&<label>Parcelas da comissão<input type="number" min="1" max="120" value={details.commissionInstallments||"1"} onChange={e=>setDetails(x=>({...x,commissionInstallments:e.target.value}))}/><output>Valor por parcela: {brl((operationValueForDetails(details)*(Number(String(details.commissionCustomRate||details.commissionRate||0).replace(",","."))/100))/Math.max(1,Number(details.commissionInstallments||1)))}</output></label>}
                   <label>Possui nota fiscal?<select value={details.invoiceRequired||"Não"} onChange={e=>setDetails(x=>({...x,invoiceRequired:e.target.value}))}><option>Não</option><option>Sim</option></select></label>
-                  {details.invoiceRequired==="Sim"&&<><label>Número da nota fiscal<input required value={details.invoiceNumber||""} onChange={e=>setDetails(x=>({...x,invoiceNumber:e.target.value}))} placeholder="Ex.: 000123"/></label><label>Valor da nota fiscal<input required inputMode="decimal" value={details.invoiceValue||""} onChange={e=>setDetails(x=>({...x,invoiceValue:e.target.value}))} onBlur={()=>setDetails(x=>({...x,invoiceValue:formatMoneyInput(x.invoiceValue)}))} placeholder="R$ 0,00"/></label><label>Data de emissão<input required type="date" value={details.invoiceIssuedAt||""} onChange={e=>setDetails(x=>({...x,invoiceIssuedAt:e.target.value}))}/></label><label>Nota fiscal paga?<select value={details.invoicePaid||"Não"} onChange={e=>setDetails(x=>({...x,invoicePaid:e.target.value}))}><option>Não</option><option>Sim</option></select></label></>}
+                  {details.invoiceRequired==="Sim"&&<><label>Número da nota fiscal<input required value={details.invoiceNumber||""} onChange={e=>setDetails(x=>({...x,invoiceNumber:e.target.value}))} placeholder="Ex.: 000123"/></label><label>Valor da nota fiscal<CurrencyInput required inputMode="decimal" value={details.invoiceValue||""} onChange={nextValue=>setDetails(x=>({...x,invoiceValue:nextValue}))}  placeholder="R$ 0,00"/></label><label>Data de emissão<input required type="date" value={details.invoiceIssuedAt||""} onChange={e=>setDetails(x=>({...x,invoiceIssuedAt:e.target.value}))}/></label><label>Nota fiscal paga?<select value={details.invoicePaid||"Não"} onChange={e=>setDetails(x=>({...x,invoicePaid:e.target.value}))}><option>Não</option><option>Sim</option></select></label></>}
                 </div>
               </section>
               <section className="tf-final-section tf-final-status">
@@ -2482,8 +2435,8 @@ function Kanban({
 }
 const operationDatabaseId=(row:Operation)=>row.dbId||((row.id>=20_000_000)?row.id-20_000_000:0);
 function partnerOperationCalculation(row:Operation,partner:PartnerRecord){
-  const operationId=operationDatabaseId(row),adjustment=partner.adjustments?.find(item=>item.operationId===operationId),ilaRate=adjustment?.ilaRate??0,invoiceRate=adjustment?.invoiceRate??(/omni/i.test(row.bank)?0:2.01),tfShare=adjustment?.tfShare??50,overrideValue=Number(adjustment?.afterIlaOverride||0),hasOverride=overrideValue>0,afterIla=hasOverride?overrideValue:Math.max(0,row.commission-row.commission*ilaRate/100),gross=hasOverride?(ilaRate<100?afterIla/(1-ilaRate/100):afterIla):row.commission,ilaValue=Math.max(0,gross-afterIla),invoiceFee=afterIla*invoiceRate/100,net=Math.max(0,afterIla-invoiceFee),thiagoShare=net*tfShare/100;
-  return {operationId,ilaRate,invoiceRate,tfShare,gross,ilaValue,afterIla,invoiceFee,net,thiagoShare};
+  const operationId=operationDatabaseId(row),adjustment=partner.adjustments?.find(item=>item.operationId===operationId);
+  return {operationId,...partnerFinance(row.grossCommission,adjustment?.ilaRate??row.ilaRate,adjustment?.invoiceRate??row.invoiceRate,adjustment?.tfShare??row.tfShare)};
 }
 function pdfEsc(value:string){
   const normalized=value.replace(/[–—−]/g,"-").replace(/…/g,"...").replace(/[“”]/g,'"').replace(/[‘’]/g,"'");
@@ -2531,8 +2484,9 @@ function downloadPartnerReportPdf({partnerName,monthLabel,status,production,calc
   const blob=new Blob([pdf],{type:'application/pdf'}),url=URL.createObjectURL(blob),link=document.createElement('a'),safeName=partnerName.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9]+/g,'-').replace(/^-|-$/g,'').toLowerCase();link.href=url;link.download=`relatorio-${safeName||'parceiro'}-${monthLabel.replace(/\s+/g,'-').toLowerCase()}.pdf`;document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1500);
 }
 function PartnerOperationRow({row,client,partner,onUpdated}:{row:Operation;client?:Client;partner:PartnerRecord;onUpdated:(partner:PartnerRecord)=>void}){
-  const initial=partnerOperationCalculation(row,partner),[ilaRate,setIlaRate]=useState(String(initial.ilaRate).replace('.',',')),[invoiceRate,setInvoiceRate]=useState(String(initial.invoiceRate).replace('.',',')),[saving,setSaving]=useState(false),[saved,setSaved]=useState(false),parseRate=(value:string)=>Math.max(0,Math.min(100,Number(value.replace(',','.'))||0)),calculation=(()=>{const ila=parseRate(ilaRate),invoice=parseRate(invoiceRate),overrideValue=Number(partner.adjustments?.find(item=>item.operationId===initial.operationId)?.afterIlaOverride||0),hasOverride=overrideValue>0,afterIla=hasOverride?initial.afterIla:Math.max(0,row.commission-row.commission*ila/100),gross=hasOverride?(ila<100?afterIla/(1-ila/100):afterIla):row.commission,ilaValue=Math.max(0,gross-afterIla),invoiceFee=afterIla*invoice/100,net=Math.max(0,afterIla-invoiceFee);return {ila,invoice,gross,ilaValue,afterIla,invoiceFee,net,thiagoShare:net/2}})();
-  const save=async()=>{if(!initial.operationId)return alert('Este registro histórico precisa ser vinculado a uma operação para salvar as taxas.');setSaving(true);setSaved(false);let id=partner.id;if(!id){const created=await fetch('/api/partners',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({name:partner.name})}),createdData=await created.json();if(!created.ok){setSaving(false);return alert(createdData.error||'Não foi possível preparar o parceiro.')}id=createdData.partner.id;}const response=await fetch('/api/partners',{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({id,operationId:initial.operationId,ilaRate:calculation.ila,invoiceRate:calculation.invoice,tfShare:50})}),data=await response.json();setSaving(false);if(!response.ok)return alert(data.error||'Não foi possível salvar as taxas.');onUpdated({...partner,id,adjustments:[data.adjustment,...(partner.adjustments||[]).filter(item=>item.operationId!==initial.operationId)]});setSaved(true);};
+  const initial=partnerOperationCalculation(row,partner),[ilaRate,setIlaRate]=useState(String(initial.ilaRate).replace('.',',')),[invoiceRate,setInvoiceRate]=useState(String(initial.invoiceRate).replace('.',',')),[saving,setSaving]=useState(false),[saved,setSaved]=useState(false),parseRate=(value:string)=>Math.max(0,Math.min(100,Number(value.replace(',','.'))||0));
+  const ila=parseRate(ilaRate),invoice=parseRate(invoiceRate),calculation={ila,invoice,...partnerFinance(row.grossCommission,ila,invoice,initial.tfShare)};
+  const save=async()=>{if(!initial.operationId)return alert('Este registro histórico precisa ser vinculado a uma operação para salvar as taxas.');setSaving(true);setSaved(false);let id=partner.id;if(!id){const created=await fetch('/api/partners',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({name:partner.name})}),createdData=await created.json();if(!created.ok){setSaving(false);return alert(createdData.error||'Não foi possível preparar o parceiro.')}id=createdData.partner.id;}const response=await fetch('/api/partners',{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({id,operationId:initial.operationId,ilaRate:calculation.ila,invoiceRate:calculation.invoice,tfShare:initial.tfShare})}),data=await response.json();setSaving(false);if(!response.ok)return alert(data.error||'Não foi possível salvar as taxas.');onUpdated({...partner,id,adjustments:[data.adjustment,...(partner.adjustments||[]).filter(item=>item.operationId!==initial.operationId)]});setSaved(true);};
   return <div className="tf-partner-operation-row"><span>{client?.name||'Cliente'}</span><span>{formatCpf(client?.cpf||'')}</span><span>{row.bank}</span><span>{row.product}</span><b>{brl(row.value)}</b><b>{brl(calculation.gross)}</b><label><input aria-label={`ILA de ${client?.name||'cliente'}`} inputMode="decimal" value={ilaRate} onChange={event=>{setIlaRate(event.target.value.replace(/[^\d,.]/g,''));setSaved(false)}}/><small>{brl(calculation.ilaValue)}</small></label><b>{brl(calculation.afterIla)}</b><label><input aria-label={`Taxa da nota de ${client?.name||'cliente'}`} inputMode="decimal" value={invoiceRate} onChange={event=>{setInvoiceRate(event.target.value.replace(/[^\d,.]/g,''));setSaved(false)}}/><small>{brl(calculation.invoiceFee)}</small></label><b>{brl(calculation.net)}</b><strong>{brl(calculation.thiagoShare)}</strong><button type="button" onClick={save} disabled={saving||!initial.operationId}>{saving?'Salvando':saved?'Salvo ✓':'Salvar taxas'}</button></div>;
 }
 function PartnerSettlement({partner,gross,period,rows,previousRows,clientsData,onUpdated}:{partner:PartnerRecord;gross:number;period:string;rows:Operation[];previousRows:Operation[];clientsData:Client[];onUpdated:(partner:PartnerRecord)=>void}){
@@ -2546,7 +2500,7 @@ function PartnerSettlement({partner,gross,period,rows,previousRows,clientsData,o
 
 function Partners({rows,clientsData,partners,onPartnerCreated,onPartnerUpdated}:{rows:Operation[];clientsData:Client[];partners:PartnerRecord[];onPartnerCreated:(partner:PartnerRecord)=>void;onPartnerUpdated:(partner:PartnerRecord)=>void}) {
   const [adding,setAdding]=useState(false),[partnerName,setPartnerName]=useState(""),[expandedPartner,setExpandedPartner]=useState<number|null>(null),[selectedMonth,setSelectedMonth]=useState("2026-09");
-  const savePartner=async(event:React.FormEvent)=>{event.preventDefault();const response=await fetch('/api/partners',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({name:partnerName})}),data=await response.json();if(response.ok){onPartnerCreated(data.partner);setPartnerName("");setAdding(false)}else alert(data.error||'Não foi possível cadastrar o parceiro.');};
+  const savePartner=async(event:React.FormEvent)=>{event.preventDefault();const response=await fetch('/api/partners',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({name:partnerName})}),data=await response.json();if(response.ok){onPartnerCreated(data.partner);notifyCrmChanged();setPartnerName("");setAdding(false)}else alert(data.error||'Não foi possível cadastrar o parceiro.');};
   const monthOptions=Array.from(new Set([...rows.map(row=>row.date.slice(0,7)).filter(value=>/^\d{4}-\d{2}$/.test(value)),"2026-09"])).sort((a,b)=>b.localeCompare(a)),monthLabel=(period:string)=>{const label=new Intl.DateTimeFormat("pt-BR",{month:"long",year:"numeric",timeZone:"UTC"}).format(new Date(`${period}-01T00:00:00Z`));return label.charAt(0).toUpperCase()+label.slice(1)},previousMonth=(()=>{const [year,month]=selectedMonth.split('-').map(Number),date=new Date(Date.UTC(year,month-2,1));return `${date.getUTCFullYear()}-${String(date.getUTCMonth()+1).padStart(2,'0')}`})();
   return (
     <>
@@ -2560,8 +2514,8 @@ function Partners({rows,clientsData,partners,onPartnerCreated,onPartnerUpdated}:
       <section className="tf-partner-month"><label>MÊS DO RELATÓRIO<select value={selectedMonth} onChange={event=>setSelectedMonth(event.target.value)}>{monthOptions.map(period=><option key={period} value={period}>{monthLabel(period)}</option>)}</select></label></section>
       <div className="tf-partner-list">{partners.map(partner=>{const partnerName=partner.name;
         const partnerRows=rows.filter(row=>row.partnerId===partner.id||row.origin?.localeCompare(partnerName,"pt-BR",{sensitivity:"base"})===0),currentRows=partnerRows.filter(row=>row.date.startsWith(selectedMonth)),previousRows=partnerRows.filter(row=>row.date.startsWith(previousMonth));
-        const clientIds=Array.from(new Set(currentRows.map(row=>row.clientId))),partnerClients=clientIds.map(id=>clientsData.find(client=>client.id===id)).filter(Boolean) as Client[],currentValue=currentRows.reduce((sum,row)=>sum+row.value,0),currentCommission=currentRows.reduce((sum,row)=>sum+row.commission,0),initials=partnerName.split(/\s+/).slice(0,2).map(word=>word[0]).join("").toUpperCase(),expanded=expandedPartner===partner.id;
-        return <article className={`tf-partner-executive${expanded?' expanded':''}`} key={partnerName}><header><span><i className={/GG Veículos/i.test(partnerName)?"tf-partner-logo":""}>{/GG Veículos/i.test(partnerName)?<img src="/gg-veiculos-logo.png" alt="GG Veículos"/>:initials}</i><span><h2>{partnerName}</h2><small>Parceiro comercial · {monthLabel(selectedMonth)}</small></span></span><button type="button" className="tf-partner-expand" aria-expanded={expanded} onClick={()=>setExpandedPartner(expanded?null:partner.id)}><span>{partnerClients.length} clientes · {brl(currentValue)}</span><ChevronRight/></button></header>{expanded&&<><div className="tf-partner-body"><section className="tf-partner-metrics"><div><small>CLIENTES NO MÊS</small><strong>{partnerClients.length}</strong></div><div><small>VALOR FINANCIADO</small><strong>{brl(currentValue)}</strong></div><div><small>COMISSÃO BRUTA</small><strong>{brl(currentCommission)}</strong></div><div className="tf-partner-detail-table"><header><span>Cliente</span><span>CPF</span><span>Banco</span><span>Produto</span><span>Valor financiado</span><span>Comissão bruta</span><span>ILA % / desconto</span><span>Após ILA</span><span>Nota % / desconto</span><span>Líquida</span><span>Repasse Thiago</span><span>Ação</span></header>{currentRows.map(row=><PartnerOperationRow key={row.id} row={row} client={clientsData.find(item=>item.id===row.clientId)} partner={partner} onUpdated={onPartnerUpdated}/>) }{!currentRows.length&&<p>Nenhuma operação vinculada neste mês.</p>}</div></section></div><PartnerSettlement partner={partner} gross={currentCommission} period={selectedMonth} rows={currentRows} previousRows={previousRows} clientsData={clientsData} onUpdated={onPartnerUpdated}/></>}</article>;
+        const clientIds=Array.from(new Set(currentRows.map(row=>row.clientId))),partnerClients=clientIds.map(id=>clientsData.find(client=>client.id===id)).filter(Boolean) as Client[],currentValue=currentRows.reduce((sum,row)=>sum+row.value,0),currentCommission=currentRows.reduce((sum,row)=>sum+row.grossCommission,0),initials=partnerName.split(/\s+/).slice(0,2).map(word=>word[0]).join("").toUpperCase(),expanded=expandedPartner===partner.id;
+        return <article className={`tf-partner-executive${expanded?' expanded':''}`} key={partnerName}><header><span><i className={/GG Veículos/i.test(partnerName)?"tf-partner-logo":""}>{/GG Veículos/i.test(partnerName)?<img src="/gg-veiculos-logo.png" alt="GG Veículos"/>:initials}</i><span><h2>{partnerName}</h2><small>Parceiro comercial · {monthLabel(selectedMonth)}</small></span></span><button type="button" className="tf-partner-expand" aria-expanded={expanded} onClick={()=>setExpandedPartner(expanded?null:partner.id)}><span>{partnerClients.length} clientes · {brl(currentValue)}</span><ChevronRight/></button></header>{expanded&&<><div className="tf-partner-body"><section className="tf-partner-metrics"><div><small>CLIENTES NO MÊS</small><strong>{partnerClients.length}</strong></div><div><small>VALOR FINANCIADO</small><strong>{brl(currentValue)}</strong></div><div><small>COMISSÃO BRUTA</small><strong>{brl(currentCommission)}</strong></div><div className="tf-partner-detail-table"><header><span>Cliente</span><span>CPF</span><span>Banco</span><span>Produto</span><span>Valor financiado</span><span>Comissão bruta</span><span>ILA % / desconto</span><span>Após ILA</span><span>Nota % / desconto</span><span>Líquida</span><span>Repasse Thiago</span><span>Ação</span></header>{currentRows.map(row=><PartnerOperationRow key={`${row.id}:${partner.adjustments?.find(item=>item.operationId===row.dbId)?.ilaRate}:${partner.adjustments?.find(item=>item.operationId===row.dbId)?.invoiceRate}`} row={row} client={clientsData.find(item=>item.id===row.clientId)} partner={partner} onUpdated={onPartnerUpdated}/>) }{!currentRows.length&&<p>Nenhuma operação vinculada neste mês.</p>}</div></section></div><PartnerSettlement partner={partner} gross={currentCommission} period={selectedMonth} rows={currentRows} previousRows={previousRows} clientsData={clientsData} onUpdated={onPartnerUpdated}/></>}</article>;
       })}</div>
       {adding&&<div className="tf-modal-back"><form className="tf-modal tf-partner-modal" onSubmit={savePartner}><button type="button" className="tf-modal-close" onClick={()=>setAdding(false)}>×</button><small>NOVO PARCEIRO</small><h2>Cadastrar parceiro</h2><p>Informe o nome que deverá aparecer nos relatórios e nas operações.</p><label>Nome do parceiro<input autoFocus required value={partnerName} onChange={event=>setPartnerName(event.target.value)} placeholder="Ex.: Nome da empresa"/></label><div className="tf-modal-actions"><button type="button" className="tf-secondary" onClick={()=>setAdding(false)}>Cancelar</button><button className="tf-primary">Cadastrar parceiro</button></div></form></div>}
     </>
@@ -2615,13 +2569,13 @@ function Commissions({
         <Metric
           icon="✓"
           label="Recebidas no mês"
-          value={brl(rows.filter(row=>row.commissionPaid).reduce((sum,row)=>sum+row.commission,0))}
+          value={brl(rows.reduce((sum,row)=>sum+row.commissionReceived,0))}
           note="Valores recebidos"
         />
         <Metric
           icon="!"
           label="A receber"
-          value={brl(rows.filter(row=>!row.commissionPaid).reduce((sum,row)=>sum+row.commission,0))}
+          value={brl(rows.reduce((sum,row)=>sum+row.commissionPending,0))}
           note="Valores pendentes"
         />
       </section>
@@ -2660,7 +2614,7 @@ function Finance({ rows }: { rows:Operation[] }) {
   const monthName=(period:string)=>{const label=new Intl.DateTimeFormat("pt-BR",{month:"long",year:"numeric",timeZone:"UTC"}).format(new Date(`${period}-01T00:00:00Z`));return label.charAt(0).toUpperCase()+label.slice(1)};
   const previousMonth=(()=>{const [year,month]=selectedMonth.split("-").map(Number),date=new Date(Date.UTC(year,month-2,1));return `${date.getUTCFullYear()}-${String(date.getUTCMonth()+1).padStart(2,"0")}`})();
   const selectedRows=rows.filter(o=>o.date.startsWith(selectedMonth)),previousRows=rows.filter(o=>o.date.startsWith(previousMonth));
-  const selectedTotal=selectedRows.reduce((s,o)=>s+o.value,0),selectedCommission=selectedRows.reduce((s,o)=>s+o.commission,0),paidCommission=selectedRows.filter(o=>o.commissionPaid).reduce((s,o)=>s+o.commission,0),pendingCommission=selectedRows.filter(o=>!o.commissionPaid).reduce((s,o)=>s+o.commission,0);
+  const selectedTotal=selectedRows.reduce((s,o)=>s+o.value,0),selectedCommission=selectedRows.reduce((s,o)=>s+o.commission,0),paidCommission=selectedRows.reduce((s,o)=>s+o.commissionReceived,0),pendingCommission=selectedRows.reduce((s,o)=>s+o.commissionPending,0);
   const periods=[{period:previousMonth,label:monthName(previousMonth),rows:previousRows},{period:selectedMonth,label:monthName(selectedMonth),rows:selectedRows}].map(item=>({...item,value:item.rows.reduce((s,o)=>s+o.value,0),commission:item.rows.reduce((s,o)=>s+o.commission,0)})),max=Math.max(1,...periods.flatMap(x=>[x.value,x.commission]));
   return (
     <>
@@ -3179,9 +3133,9 @@ function ClientSheet({ client, operations, close, refresh }: { client: Client; o
     sum = co.reduce((s, o) => s + o.value, 0);
   const [clientForm,setClientForm]=useState<Record<string,string>|null>(null),[operationForm,setOperationForm]=useState<{operation:Operation;details:Record<string,string>}|null>(null),[saving,setSaving]=useState(false);
   const saveClient=async(event:React.FormEvent)=>{event.preventDefault();if(!client.dbId||!clientForm)return;setSaving(true);const response=await fetch('/api/records',{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({entity:'client',id:client.dbId,details:{...clientForm,birthDate:dateToIso(clientForm.birthDate),phone:maskPhone(clientForm.phone)}})}),data=await response.json();setSaving(false);if(response.ok)refresh();else alert(data.error||'Não foi possível salvar o cliente.');};
-  const saveOperation=async(event:React.FormEvent)=>{event.preventDefault();if(!operationForm?.operation.dbId)return;setSaving(true);const d=operationForm.details,total=parseMoneyBr(d.value)||(/consórcio/i.test(d.product||'')?parseMoneyBr(d.quotaUnitValue)*Math.max(1,Number(d.quotaQuantity||1)):0),response=await fetch('/api/records',{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({entity:'operation',id:operationForm.operation.dbId,details:{...d,value:total,installment:parseMoneyBr(d.installment),adhesionFee:parseMoneyBr(d.adhesionFee),advisoryFee:parseMoneyBr(d.advisoryFee),bonus:parseMoneyBr(d.bonus),quotaUnitValue:parseMoneyBr(d.quotaUnitValue),fipeValue:parseMoneyBr(d.fipeValue),operationDate:dateToIso(d.operationDate),paidAt:dateToIso(d.paidAt)}})}),data=await response.json();setSaving(false);if(response.ok)refresh();else alert(data.error||'Não foi possível salvar a operação.');};
+  const saveOperation=async(event:React.FormEvent)=>{event.preventDefault();if(!operationForm?.operation.dbId)return;setSaving(true);const d=operationForm.details,total=parseMoneyBr(d.value)||(/consórcio/i.test(d.product||'')?parseMoneyBr(d.quotaUnitValue)*Math.max(1,Number(d.quotaQuantity||1)):0),response=await fetch('/api/records',{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({entity:'operation',id:operationForm.operation.dbId,details:{...d,value:total,installment:parseMoneyBr(d.installment),adhesionFee:parseMoneyBr(d.adhesionFee),advisoryFee:parseMoneyBr(d.advisoryFee),bonus:parseMoneyBr(d.bonus),quotaUnitValue:parseMoneyBr(d.quotaUnitValue),fipeValue:parseMoneyBr(d.fipeValue),operationDate:dateToIso(d.operationDate),paidAt:dateToIso(d.paidAt),birthDate:dateToIso(d.birthDate),phone:maskPhone(d.phone),vehicleValue:parseMoneyBr(d.vehicleValue),financedValue:parseMoneyBr(d.financedValue),desiredCredit:parseMoneyBr(d.desiredCredit),downPayment:parseMoneyBr(d.downPayment)}})}),data=await response.json();setSaving(false);if(response.ok)refresh();else alert(data.error||'Não foi possível salvar a operação.');};
   const deleteRecord=async(entity:'client'|'operation',id:number)=>{if(!confirm(entity==='client'?'Excluir este cliente definitivamente? Todos os atendimentos, operações, comissões, notas e documentos vinculados também serão removidos.':'Excluir esta operação dos relatórios e resultados?'))return;const response=await fetch(`/api/records?entity=${entity}&id=${id}`,{method:'DELETE'}),data=await response.json();if(response.ok)refresh();else alert(data.error||'Não foi possível excluir.');};
-  const openOperation=(operation:Operation)=>setOperationForm({operation,details:{bank:operation.bank,agreement:operation.agreement||agreementForProduct(operation.product),contractType:operation.contractType||operation.product,product:operation.product,operationType:operation.operationType||'',installment:formatMoneyInput(operation.installment),value:formatMoneyInput(operation.value),quotaQuantity:String(operation.quotaQuantity||1),quotaUnitValue:formatMoneyInput(operation.quotaUnitValue||operation.value),fipeValue:formatMoneyInput(operation.fipeValue),term:String(operation.term||''),dueDay:operation.dueDay||'',status:/finalizado|pago|conclu/i.test(operation.status)?'Finalizado':operation.status,producer:operation.producer,productionIndicator:operation.productionIndicator||'',origin:operation.origin||'TF',operationDate:operation.date,paidAt:operation.paidDate||'',adhesionFee:formatMoneyInput(operation.adhesionFee),advisoryFee:formatMoneyInput(operation.advisoryFee),bonus:formatMoneyInput(operation.bonus),commissionRate:String(operation.commissionRate||''),commissionInstallments:String(operation.commissionInstallments||1),commissionPaid:operation.commissionPaid?'Sim':'Não',revenueDueDate:operation.revenueDueDate||'',postSale:operation.postSale||'',postSaleNotes:operation.postSaleNotes||''}});
+  const openOperation=(operation:Operation)=>setOperationForm({operation,details:{name:operation.clientName||client.name,document:operation.clientCpf||operation.clientBenefit||client.cpf||client.benefit,birthDate:operation.clientBirthDate?formatDateBr(operation.clientBirthDate):client.birth&&!client.birth.startsWith("1900-")?formatDateBr(client.birth):"",phone:operation.clientPhone||client.phone,promoter:operation.promoter,contractNumber:operation.contractNumber,groupQuota:operation.groupQuota,observations:operation.observations,vehiclePlate:operation.vehiclePlate,vehicleName:operation.vehicleName,vehicleModel:operation.vehicleModel,vehicleYear:String(operation.vehicleYear||""),vehicleValue:formatMoneyInput(operation.vehicleValue),financedValue:formatMoneyInput(operation.financedValue),desiredCredit:formatMoneyInput(operation.desiredCredit),downPayment:formatMoneyInput(operation.downPayment),bank:operation.bank,agreement:operation.agreement||agreementForProduct(operation.product),contractType:operation.contractType||operation.product,product:operation.product,operationType:operation.operationType||'',installment:formatMoneyInput(operation.installment),value:formatMoneyInput(operation.value),quotaQuantity:String(operation.quotaQuantity||1),quotaUnitValue:formatMoneyInput(operation.quotaUnitValue||operation.value),fipeValue:formatMoneyInput(operation.fipeValue),term:String(operation.term||''),dueDay:operation.dueDay||'',status:/finalizado|pago|conclu/i.test(operation.status)?'Finalizado':operation.status,producer:operation.producer,productionIndicator:operation.productionIndicator||'',origin:operation.origin||'TF',operationDate:operation.date,paidAt:operation.paidDate||'',adhesionFee:formatMoneyInput(operation.adhesionFee),advisoryFee:formatMoneyInput(operation.advisoryFee),bonus:formatMoneyInput(operation.bonus),commissionRate:String(operation.commissionRate||''),commissionInstallments:String(operation.commissionInstallments||1),commissionPaid:operation.commissionPaid?'Sim':'Não',revenueDueDate:operation.revenueDueDate||'',postSale:operation.postSale||'',postSaleNotes:operation.postSaleNotes||''}});
   return (
     <div className="tf-sheet-back" onMouseDown={close}>
       <aside className="tf-sheet" onMouseDown={(e) => e.stopPropagation()}>
@@ -3275,13 +3229,33 @@ function ClientSheet({ client, operations, close, refresh }: { client: Client; o
         </div>
       </aside>
       {clientForm&&<div className="tf-modal-back" onMouseDown={event=>event.stopPropagation()}><form className="tf-modal" onSubmit={saveClient}><button type="button" className="tf-modal-close" onClick={()=>setClientForm(null)}>×</button><small>EDITAR CLIENTE</small><h2>Dados cadastrais</h2><label>Nome completo<input required value={clientForm.name} onChange={event=>setClientForm({...clientForm,name:event.target.value})}/></label><label>CPF ou benefício<input required value={clientForm.document} onChange={event=>setClientForm({...clientForm,document:event.target.value})}/></label><label>Data de nascimento<input value={clientForm.birthDate} onChange={event=>setClientForm({...clientForm,birthDate:maskDate(event.target.value)})} placeholder="DD/MM/AAAA"/></label><label>Telefone<input value={clientForm.phone} onChange={event=>setClientForm({...clientForm,phone:maskPhone(event.target.value)})}/></label><button className="tf-primary" disabled={saving}>{saving?'Salvando…':'Salvar cliente'}</button></form></div>}
-      {operationForm&&<div className="tf-modal-back" onMouseDown={event=>event.stopPropagation()}><form className="tf-modal tf-modal-wide tf-operation-editor" onSubmit={saveOperation}><button type="button" className="tf-modal-close" onClick={()=>setOperationForm(null)}>×</button><small>EDITAR OPERAÇÃO</small><h2>{client.name}</h2><p>Complete ou corrija qualquer informação desta produção.</p><div className="tf-form-grid"><SmartChoice label="Banco / instituição" value={operationForm.details.bank||''} options={finalBankOptions} onChange={value=>setOperationForm({...operationForm,details:{...operationForm.details,bank:value}})} helper="Pesquise ou cadastre outra instituição."/><SmartChoice label="Convênio" value={operationForm.details.agreement||''} options={agreementOptions} onChange={value=>setOperationForm({...operationForm,details:{...operationForm.details,agreement:value,contractType:'',product:'',operationType:''}})} helper="Selecione ou cadastre o convênio."/><SmartChoice label="Tipo de contrato" value={operationForm.details.contractType||operationForm.details.product||''} options={contractTypeOptionsFor(operationForm.details.agreement||'')} onChange={value=>setOperationForm({...operationForm,details:{...operationForm.details,contractType:value,product:value,operationType:''}})} helper="As opções acompanham o convênio."/><SmartChoice label="Tipo de operação" value={operationForm.details.operationType||''} options={operationOptionsFor(operationForm.details.contractType||operationForm.details.product||'')} onChange={value=>setOperationForm({...operationForm,details:{...operationForm.details,operationType:value}})} helper="As opções acompanham o tipo de contrato."/>{[
+      {operationForm&&<div className="tf-modal-back" onMouseDown={event=>event.stopPropagation()}><form className="tf-modal tf-modal-wide tf-operation-editor" onSubmit={saveOperation}><button type="button" className="tf-modal-close" onClick={()=>setOperationForm(null)}>×</button><small>EDITAR OPERAÇÃO</small><h2>{client.name}</h2><p>Complete ou corrija qualquer informação desta produção.</p><div className="tf-form-grid">
+        <label>Nome do cliente<input required value={operationForm.details.name||''} onChange={event=>setOperationForm({...operationForm,details:{...operationForm.details,name:event.target.value}})}/></label>
+        <label>CPF ou benefício<input required value={operationForm.details.document||''} onChange={event=>setOperationForm({...operationForm,details:{...operationForm.details,document:event.target.value}})}/></label>
+        <label>Data de nascimento<input value={operationForm.details.birthDate||''} onChange={event=>setOperationForm({...operationForm,details:{...operationForm.details,birthDate:maskDate(event.target.value)}})} placeholder="DD/MM/AAAA"/></label>
+        <label>Telefone / WhatsApp<input inputMode="tel" value={operationForm.details.phone||''} onChange={event=>setOperationForm({...operationForm,details:{...operationForm.details,phone:maskPhone(event.target.value)}})}/></label>
+        <label>Número do contrato<input value={operationForm.details.contractNumber||''} onChange={event=>setOperationForm({...operationForm,details:{...operationForm.details,contractNumber:event.target.value}})}/></label>
+        <label>Promotora<input value={operationForm.details.promoter||''} onChange={event=>setOperationForm({...operationForm,details:{...operationForm.details,promoter:event.target.value}})}/></label>
+<SmartChoice label="Banco / instituição" value={operationForm.details.bank||''} options={finalBankOptions} onChange={value=>setOperationForm({...operationForm,details:{...operationForm.details,bank:value}})} helper="Pesquise ou cadastre outra instituição."/><SmartChoice label="Convênio" value={operationForm.details.agreement||''} options={agreementOptions} onChange={value=>setOperationForm({...operationForm,details:{...operationForm.details,agreement:value,contractType:'',product:'',operationType:''}})} helper="Selecione ou cadastre o convênio."/><SmartChoice label="Tipo de contrato" value={operationForm.details.contractType||operationForm.details.product||''} options={contractTypeOptionsFor(operationForm.details.agreement||'')} onChange={value=>setOperationForm({...operationForm,details:{...operationForm.details,contractType:value,product:value,operationType:''}})} helper="As opções acompanham o convênio."/><SmartChoice label="Tipo de operação" value={operationForm.details.operationType||''} options={operationOptionsFor(operationForm.details.contractType||operationForm.details.product||'')} onChange={value=>setOperationForm({...operationForm,details:{...operationForm.details,operationType:value}})} helper="As opções acompanham o tipo de contrato."/>{[
         ['Indicador de produção','productionIndicator']
       ].map(([label,field])=><label key={field}>{label}<input value={operationForm.details[field]||''} onChange={event=>setOperationForm({...operationForm,details:{...operationForm.details,[field]:event.target.value}})}/></label>)}
       <label>Produção<select value={operationForm.details.producer||"Balcão TF"} onChange={event=>setOperationForm({...operationForm,details:{...operationForm.details,producer:event.target.value,origin:hasGgCode(event.target.value)?"GG Veículos":"TF"}})}>{[...new Set([...productionSources,operationForm.details.producer].filter(Boolean))].map(source=><option key={source}>{source}</option>)}</select></label>
       <SmartChoice label="Parceiro / origem" value={operationForm.details.origin||'TF'} options={["TF","GG Veículos"]} onChange={value=>setOperationForm({...operationForm,details:{...operationForm.details,origin:value}})} helper="TF e GG Veículos já estão cadastrados; para outro parceiro, digite o novo nome."/>
       <label>Dia do vencimento<input inputMode="numeric" maxLength={2} value={operationForm.details.dueDay||''} onChange={event=>setOperationForm({...operationForm,details:{...operationForm.details,dueDay:event.target.value.replace(/\D/g,'').slice(0,2)}})} placeholder="Ex.: 10"/></label>
-      <label>Data do cadastro<input type="date" value={operationForm.details.operationDate||''} onChange={event=>setOperationForm({...operationForm,details:{...operationForm.details,operationDate:event.target.value}})}/></label><label>Parcela<input required={/proteção auto/i.test(operationForm.details.product||'')} value={operationForm.details.installment||''} onChange={event=>setOperationForm({...operationForm,details:{...operationForm.details,installment:event.target.value}})}/></label>{/consórcio/i.test(operationForm.details.product||'')?<><label>Quantidade de cotas<input type="number" min="1" value={operationForm.details.quotaQuantity||'1'} onChange={event=>setOperationForm({...operationForm,details:{...operationForm.details,quotaQuantity:event.target.value}})}/></label><label>Valor por cota<input value={operationForm.details.quotaUnitValue||''} onChange={event=>setOperationForm({...operationForm,details:{...operationForm.details,quotaUnitValue:event.target.value}})}/><output>Valor total: {brl(parseMoneyBr(operationForm.details.quotaUnitValue)*Math.max(1,Number(operationForm.details.quotaQuantity||1)))}</output></label></>:/proteção auto/i.test(operationForm.details.product||'')?<label>Valor FIPE<input value={operationForm.details.fipeValue||''} onChange={event=>setOperationForm({...operationForm,details:{...operationForm.details,fipeValue:event.target.value}})}/><output>Produção do mês: {brl(parseMoneyBr(operationForm.details.installment))}</output></label>:<label>Valor pago / liberado<input required value={operationForm.details.value||''} onChange={event=>setOperationForm({...operationForm,details:{...operationForm.details,value:event.target.value}})}/></label>}<label>Prazo<input type="number" value={operationForm.details.term||''} onChange={event=>setOperationForm({...operationForm,details:{...operationForm.details,term:event.target.value}})}/></label><label>Situação do contrato<select value={operationForm.details.status||'Finalizado'} onChange={event=>setOperationForm({...operationForm,details:{...operationForm.details,status:event.target.value}})}><option>Concluído</option><option>Finalizado</option><option>Pendência</option></select></label><label>Data da conclusão<input type="date" value={operationForm.details.paidAt||''} onChange={event=>setOperationForm({...operationForm,details:{...operationForm.details,paidAt:event.target.value}})}/></label><label>Taxa de adesão<input value={operationForm.details.adhesionFee||''} onChange={event=>setOperationForm({...operationForm,details:{...operationForm.details,adhesionFee:event.target.value}})}/></label><label>Taxa de assessoria<CurrencyInput value={operationForm.details.advisoryFee||''} onChange={value=>setOperationForm({...operationForm,details:{...operationForm.details,advisoryFee:value}})}/></label><label>Comissão (%)<input inputMode="decimal" value={operationForm.details.commissionRate||''} onChange={event=>setOperationForm({...operationForm,details:{...operationForm.details,commissionRate:event.target.value.replace(/[^\d,.]/g,'')}})}/><output>Valor: {brl((/consórcio/i.test(operationForm.details.product||'')?parseMoneyBr(operationForm.details.quotaUnitValue)*Math.max(1,Number(operationForm.details.quotaQuantity||1)):/proteção auto/i.test(operationForm.details.product||'')?parseMoneyBr(operationForm.details.installment):parseMoneyBr(operationForm.details.value))*(Number(String(operationForm.details.commissionRate||'0').replace(',','.'))/100))}</output></label>{/consórcio/i.test(operationForm.details.product||'')&&<label>Parcelas da comissão<input type="number" min="1" max="120" value={operationForm.details.commissionInstallments||'1'} onChange={event=>setOperationForm({...operationForm,details:{...operationForm.details,commissionInstallments:event.target.value}})}/></label>}<label>Comissão / adesão / assessoria recebidas?<select value={operationForm.details.commissionPaid||'Não'} onChange={event=>setOperationForm({...operationForm,details:{...operationForm.details,commissionPaid:event.target.value}})}><option>Não</option><option>Sim</option></select></label><label>{operationForm.details.commissionPaid==='Sim'?'Data do recebimento':'Vencimento da receita'}<input required={Boolean(operationForm.details.commissionRate||operationForm.details.adhesionFee||operationForm.details.advisoryFee)} type="date" value={operationForm.details.revenueDueDate||''} onChange={event=>setOperationForm({...operationForm,details:{...operationForm.details,revenueDueDate:event.target.value}})}/></label><label>Pós-venda<select value={operationForm.details.postSale||''} onChange={event=>setOperationForm({...operationForm,details:{...operationForm.details,postSale:event.target.value}})}><option value="">Não informado</option><option>Pendente</option><option>Agendado</option><option>Concluído</option><option>Não se aplica</option></select></label><label className="tf-form-full">Observações<textarea value={operationForm.details.postSaleNotes||''} onChange={event=>setOperationForm({...operationForm,details:{...operationForm.details,postSaleNotes:event.target.value}})}/></label></div><button className="tf-primary" disabled={saving}>{saving?'Salvando…':'Salvar alterações'}</button></form></div>}
+      <label>Data do cadastro<input type="date" value={operationForm.details.operationDate||''} onChange={event=>setOperationForm({...operationForm,details:{...operationForm.details,operationDate:event.target.value}})}/></label><label>Parcela<CurrencyInput required={/proteção auto/i.test(operationForm.details.product||'')} value={operationForm.details.installment||''} onChange={nextValue=>setOperationForm({...operationForm,details:{...operationForm.details,installment:nextValue}})}/></label>{/consórcio/i.test(operationForm.details.product||'')?<><label>Quantidade de cotas<input type="number" min="1" value={operationForm.details.quotaQuantity||'1'} onChange={event=>setOperationForm({...operationForm,details:{...operationForm.details,quotaQuantity:event.target.value}})}/></label><label>Valor por cota<CurrencyInput value={operationForm.details.quotaUnitValue||''} onChange={nextValue=>setOperationForm({...operationForm,details:{...operationForm.details,quotaUnitValue:nextValue}})}/><output>Valor total: {brl(parseMoneyBr(operationForm.details.quotaUnitValue)*Math.max(1,Number(operationForm.details.quotaQuantity||1)))}</output></label></>:/proteção auto/i.test(operationForm.details.product||'')?<label>Valor FIPE<CurrencyInput value={operationForm.details.fipeValue||''} onChange={nextValue=>setOperationForm({...operationForm,details:{...operationForm.details,fipeValue:nextValue}})}/><output>Produção do mês: {brl(parseMoneyBr(operationForm.details.installment))}</output></label>:<label>Valor pago / liberado<CurrencyInput required value={operationForm.details.value||''} onChange={nextValue=>setOperationForm({...operationForm,details:{...operationForm.details,value:nextValue}})}/></label>}<label>Prazo<input type="number" value={operationForm.details.term||''} onChange={event=>setOperationForm({...operationForm,details:{...operationForm.details,term:event.target.value}})}/></label><label>Situação do contrato<select value={operationForm.details.status||'Finalizado'} onChange={event=>setOperationForm({...operationForm,details:{...operationForm.details,status:event.target.value}})}><option>Concluído</option><option>Finalizado</option><option>Pendência</option></select></label><label>Data da conclusão<input type="date" value={operationForm.details.paidAt||''} onChange={event=>setOperationForm({...operationForm,details:{...operationForm.details,paidAt:event.target.value}})}/></label><label>Taxa de adesão<CurrencyInput value={operationForm.details.adhesionFee||''} onChange={nextValue=>setOperationForm({...operationForm,details:{...operationForm.details,adhesionFee:nextValue}})}/></label><label>Taxa de assessoria<CurrencyInput value={operationForm.details.advisoryFee||''} onChange={value=>setOperationForm({...operationForm,details:{...operationForm.details,advisoryFee:value}})}/></label><label>Comissão (%)<input inputMode="decimal" value={operationForm.details.commissionRate||''} onChange={event=>setOperationForm({...operationForm,details:{...operationForm.details,commissionRate:event.target.value.replace(/[^\d,.]/g,'')}})}/><output>Comissão bruta: {brl((/consórcio/i.test(operationForm.details.product||'')?parseMoneyBr(operationForm.details.quotaUnitValue)*Math.max(1,Number(operationForm.details.quotaQuantity||1)):/proteção auto/i.test(operationForm.details.product||'')?parseMoneyBr(operationForm.details.installment):parseMoneyBr(operationForm.details.value))*(Number(String(operationForm.details.commissionRate||'0').replace(',','.'))/100))}</output></label>{/consórcio/i.test(operationForm.details.product||'')&&<label>Parcelas da comissão<input type="number" min="1" max="120" value={operationForm.details.commissionInstallments||'1'} onChange={event=>setOperationForm({...operationForm,details:{...operationForm.details,commissionInstallments:event.target.value}})}/></label>}<label>Comissão / adesão / assessoria recebidas?<select value={operationForm.details.commissionPaid||'Não'} onChange={event=>setOperationForm({...operationForm,details:{...operationForm.details,commissionPaid:event.target.value}})}><option>Não</option><option>Sim</option></select></label><label>{operationForm.details.commissionPaid==='Sim'?'Data do recebimento':'Vencimento da receita'}<input required={Boolean(operationForm.details.commissionRate||operationForm.details.adhesionFee||operationForm.details.advisoryFee)} type="date" value={operationForm.details.revenueDueDate||''} onChange={event=>setOperationForm({...operationForm,details:{...operationForm.details,revenueDueDate:event.target.value}})}/></label><label>Bonificação<CurrencyInput value={operationForm.details.bonus||''} onChange={value=>setOperationForm({...operationForm,details:{...operationForm.details,bonus:value}})}/></label>
+      <label className="tf-form-full">Observações da operação<textarea value={operationForm.details.observations||''} onChange={event=>setOperationForm({...operationForm,details:{...operationForm.details,observations:event.target.value}})}/></label>
+      <label>Grupo / cota<input value={operationForm.details.groupQuota||''} onChange={event=>setOperationForm({...operationForm,details:{...operationForm.details,groupQuota:event.target.value}})}/></label>
+      {(/financiamento|garantia|proteção auto/i.test(operationForm.details.product||''))&&<>
+        <label>Placa do veículo<input value={operationForm.details.vehiclePlate||''} onChange={event=>setOperationForm({...operationForm,details:{...operationForm.details,vehiclePlate:event.target.value}})}/></label>
+        <label>Veículo<input value={operationForm.details.vehicleName||''} onChange={event=>setOperationForm({...operationForm,details:{...operationForm.details,vehicleName:event.target.value}})}/></label>
+        <label>Modelo<input value={operationForm.details.vehicleModel||''} onChange={event=>setOperationForm({...operationForm,details:{...operationForm.details,vehicleModel:event.target.value}})}/></label>
+        <label>Ano<input inputMode="numeric" value={operationForm.details.vehicleYear||''} onChange={event=>setOperationForm({...operationForm,details:{...operationForm.details,vehicleYear:event.target.value}})}/></label>
+        <label>Valor do veículo<CurrencyInput value={operationForm.details.vehicleValue||''} onChange={value=>setOperationForm({...operationForm,details:{...operationForm.details,vehicleValue:value}})}/></label>
+        <label>Valor financiado<CurrencyInput value={operationForm.details.financedValue||''} onChange={value=>setOperationForm({...operationForm,details:{...operationForm.details,financedValue:value}})}/></label>
+        <label>Entrada<CurrencyInput value={operationForm.details.downPayment||''} onChange={value=>setOperationForm({...operationForm,details:{...operationForm.details,downPayment:value}})}/></label>
+      </>}
+      <label>Crédito desejado<CurrencyInput value={operationForm.details.desiredCredit||''} onChange={value=>setOperationForm({...operationForm,details:{...operationForm.details,desiredCredit:value}})}/></label>
+      <label>Pós-venda<select value={operationForm.details.postSale||''} onChange={event=>setOperationForm({...operationForm,details:{...operationForm.details,postSale:event.target.value}})}><option value="">Não informado</option><option>Pendente</option><option>Agendado</option><option>Concluído</option><option>Não se aplica</option></select></label><label className="tf-form-full">Observações<textarea value={operationForm.details.postSaleNotes||''} onChange={event=>setOperationForm({...operationForm,details:{...operationForm.details,postSaleNotes:event.target.value}})}/></label></div><button className="tf-primary" disabled={saving}>{saving?'Salvando…':'Salvar alterações'}</button></form></div>}
     </div>
   );
 }
