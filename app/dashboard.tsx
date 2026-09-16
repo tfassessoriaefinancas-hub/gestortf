@@ -397,7 +397,7 @@ const productOptions = [
   "Proteção Auto",
   "Seguros",
   "Assessoria Financeira",
-];
+].sort((a, b) => a.length - b.length || a.localeCompare(b, "pt-BR"));
 const agreementOptions=["INSS","CLT / Crédito do Trabalhador","Federal (SIAPE)","Estadual","Municipal","Veículo","Consórcio","FGTS","EVOGARD","Seguros","Assessoria Financeira"];
 const contractTypeOptionsFor=(agreement:string)=>{
   const value=agreement.toLocaleLowerCase("pt-BR");
