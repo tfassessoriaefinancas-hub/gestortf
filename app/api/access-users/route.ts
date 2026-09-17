@@ -5,20 +5,21 @@ import { env } from '@/lib/runtime';
 import { getTfOwner, TF_PERMISSIONS, type TfPermission } from '../../chatgpt-auth';
 
 const json=(data:unknown,status=200)=>Response.json(data,{status,headers:{'cache-control':'no-store'}});
+type MemberRow={id:number|string;name?:string|null;email?:string|null;permissions_json?:string|null;active?:number|boolean|null;partner_id?:number|string|null;partner_name?:string|null};
 const normalizePermissions=(value:unknown):TfPermission[]=>{
   const source=Array.isArray(value)?value.map(String):[];
   const permissions=TF_PERMISSIONS.filter((permission)=>source.includes(permission));
   if(!permissions.includes('inicio'))permissions.unshift('inicio');
   return permissions;
 };
-const mapMember=(row:any)=>({
+const mapMember=(row:MemberRow)=>({
   id:Number(row.id),name:String(row.name||''),email:String(row.email||''),
   active:Boolean(row.active),partnerId:row.partner_id?Number(row.partner_id):null,partnerName:String(row.partner_name||''),permissions:normalizePermissions((()=>{try{return JSON.parse(row.permissions_json||'[]')}catch{return []}})()),
 });
 
 export async function GET(){
   const owner=await getTfOwner();if(!owner)return json({error:'Não autorizado'},401);
-  const rows=await env.DB.prepare('SELECT au.id,au.name,au.email,au.permissions_json,au.active,au.partner_id,p.name partner_name FROM access_users au LEFT JOIN partners p ON p.id=au.partner_id WHERE au.owner_id=? ORDER BY au.active DESC,lower(au.name)').bind(owner.ownerKey).all();
+  const rows=await env.DB.prepare('SELECT au.id,au.name,au.email,au.permissions_json,au.active,au.partner_id,p.name partner_name FROM access_users au LEFT JOIN partners p ON p.id=au.partner_id WHERE au.owner_id=? ORDER BY au.active DESC,lower(au.name)').bind(owner.ownerKey).all<MemberRow>();
   return json({members:rows.results.map(mapMember),permissionOptions:TF_PERMISSIONS});
 }
 
@@ -41,7 +42,7 @@ export async function PATCH(request:Request){
   const owner=await getTfOwner();if(!owner)return json({error:'Não autorizado'},401);
   const body=await request.json() as Record<string,unknown>,id=Number(body.id);
   if(!id)return json({error:'Usuário inválido.'},400);
-  const current=await env.DB.prepare('SELECT * FROM access_users WHERE id=? AND owner_id=?').bind(id,owner.ownerKey).first<any>();
+  const current=await env.DB.prepare('SELECT * FROM access_users WHERE id=? AND owner_id=?').bind(id,owner.ownerKey).first<MemberRow>();
   if(!current)return json({error:'Usuário não encontrado.'},404);
   const name=String(body.name??current.name).trim(),email=String(body.email??current.email).trim().toLowerCase();
   const permissions=body.permissions===undefined?normalizePermissions(JSON.parse(current.permissions_json||'[]')):normalizePermissions(body.permissions);
@@ -59,9 +60,18 @@ export async function PATCH(request:Request){
   }catch{return json({error:'Não foi possível atualizar este acesso.'},500)}
 }
 
+export async function DELETE(request:Request){
+  const owner=await getTfOwner();if(!owner)return json({error:'Não autorizado.'},401);
+  const id=Number(new URL(request.url).searchParams.get('id'));if(!id)return json({error:'Usuário inválido.'},400);
+  const current=await env.DB.prepare('SELECT id,name,email,permissions_json,partner_id,active FROM access_users WHERE id=? AND owner_id=?').bind(id,owner.ownerKey).first<MemberRow>();
+  if(!current)return json({error:'Usuário não encontrado.'},404);
+  const row=await persistMember(env.DB.prepare('UPDATE access_users SET active=0,updated_at=? WHERE id=? AND owner_id=? RETURNING id,name,email,permissions_json,partner_id,active').bind(Date.now(),id,owner.ownerKey), '');
+  return json({member:mapMember(row)});
+}
+
 async function persistMember(statement: PostgresStatement, password: string) {
   return env.DB.transaction(async client => {
-    const row=(await statement.execute(client)).results[0];
+    const row=(await statement.execute<MemberRow>(client)).results[0];
     await syncMemberAccount(client,mapMember(row),password);
     return row;
   });

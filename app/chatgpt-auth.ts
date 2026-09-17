@@ -15,7 +15,7 @@ export type ChatGPTUser = {
 
 export const TF_PERMISSIONS = [
   'inicio','clientes','atendimento','producao','parceiros','servicos',
-  'comissoes','financeiro','notas','bancos','relatorios',
+  'comissoes','financeiro','notas','bancos','relatorios','posvenda',
 ] as const;
 export type TfPermission = (typeof TF_PERMISSIONS)[number];
 export type TfAccess = ChatGPTUser & {

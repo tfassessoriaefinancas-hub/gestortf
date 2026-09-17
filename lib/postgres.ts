@@ -24,7 +24,7 @@ export function postgresSql(sql: string, schema = 'public') {
     literals.push(literal);
     return `\u0001${literals.length - 1}\u0002`;
   });
-  const tables = new Set(['users','access_users','clients','partners','services','operations','commissions','invoices','institutions','import_batches','audit_log','companies','contacts','deals','activities','products','proposals','automations','client_documents','deal_documents','deal_history','whatsapp_integrations','whatsapp_messages','whatsapp_pending_actions','gestor_tf_audit','partner_settlements','partner_operation_adjustments','stored_files','source_records','migration_runs','auth_credentials','auth_sessions','auth_attempts','app_settings']);
+  const tables = new Set(['users','access_users','clients','partners','services','operations','commissions','invoices','institutions','import_batches','audit_log','companies','contacts','deals','activities','products','proposals','automations','client_documents','deal_documents','deal_history','whatsapp_integrations','whatsapp_messages','whatsapp_pending_actions','gestor_tf_audit','partner_settlements','partner_operation_adjustments','post_sale_tasks','crm_catalog_options','stored_files','source_records','migration_runs','auth_credentials','auth_sessions','auth_attempts','app_settings']);
   return masked
     .replace(/\?/g, () => `$${++parameter}`)
     .replace(/\bAS\s+([a-zA-Z_]\w*)/gi, (match, name: string) => /[A-Z]/.test(name) ? `AS ${quoteIdentifier(name)}` : match)

@@ -1599,3 +1599,6 @@ body,button,input,select{font-family:var(--font-ui),sans-serif}
   }
   .tf-icon-drawer nav button svg{width:20px!important;height:20px!important;stroke-width:2.15!important}
 }
+
+/* Linguagem financeira comum aos dois temas. O gráfico de produção mantém seus tons aprovados. */
+.tf-app { --tf-money:#1d754b; }

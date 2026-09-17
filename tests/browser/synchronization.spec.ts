@@ -47,7 +47,8 @@ test('an imported operation updates the same client, revenues, partner and repor
     const portal = await (await page.request.post('/api/germano-report')).json();
     expect(portal.operations.find((operation: { id: number }) => operation.id === 500)).toMatchObject({ clientName: name, gross: 1706, ilaRate: 26.06, invoiceRate: 2, tfShare: 50 });
     const deal = (await (await page.request.get('/api/deals')).json()).deals.find((item: { id: number }) => item.id === 500);
-    expect(deal).toMatchObject({ name, commissionRate: '4', advisoryFee: 1000 });
+    expect(deal).toBeUndefined();
+    expect(await db.prepare('SELECT stage,status,needs_completion FROM deals WHERE id=500').first()).toEqual({ stage: 'finalizado', status: 'concluido', needs_completion: 0 });
     expect(await db.prepare('SELECT (SELECT COUNT(*) FROM clients) AS clients,(SELECT COUNT(*) FROM operations) AS operations').first()).toEqual(counts);
     expect((await db.prepare('SELECT id,value_cents,received_at,deleted_at FROM commissions WHERE operation_id=500 ORDER BY id').all()).results).toEqual([
       { id: 500, value_cents: 170600, received_at: '2026-08-03', deleted_at: null },
@@ -109,5 +110,102 @@ test('both themes share responsive structure, full menu labels and an unobstruct
     }
     expect(layouts[1]).toEqual(layouts[0]);
     expect(layouts[2]).toEqual(layouts[0]);
+  }
+});
+
+test('finalização, pós-venda e bonificação são reversíveis e idempotentes', async ({ page }) => {
+  test.setTimeout(120000);
+  const db = new PostgresDatabase();
+  const dealId = 601;
+  const clientId = 601;
+  const clientName = 'Cliente fluxo completo Gestão TF';
+  const partnerName = 'Parceiro fluxo restrito';
+  try {
+    await db.batch([
+      db.prepare("INSERT INTO clients (id,owner_id,name,normalized_name,cpf,birth_date,phone,created_at,updated_at) VALUES (?,?,?,?,?,?,?,1,1)").bind(clientId, 'local-test-owner', clientName, 'cliente fluxo completo gestao tf', '44444444444', '1990-01-01', '(85) 98888-7777'),
+      db.prepare("INSERT INTO deals (id,owner_id,title,payload_json,stage,status,needs_completion,created_at,updated_at) VALUES (?,?,?,?, 'contratado','aberto',0,1,1)").bind(dealId, 'local-test-owner', clientName, JSON.stringify({ name: clientName, cpf: '44444444444', birthDate: '1990-01-01', product: 'Financiamento', phone: '(85) 98888-7777' })),
+    ]);
+  } finally { await db.close(); }
+
+  const loginResponse = await page.request.post('/api/auth/login', { headers: { origin: 'http://127.0.0.1:3100' }, data: { email: 'admin@example.com', password: 'test-only-password' } });
+  expect(loginResponse.ok(), await loginResponse.text()).toBeTruthy();
+  const move = await page.request.patch('/api/deals', { data: { id: dealId, stage: 'finalizado' } });
+  expect(move.ok(), await move.text()).toBeTruthy();
+  const details = {
+    name: clientName, cpf: '44444444444', birthDate: '1990-01-01', phone: '(85) 98888-7777',
+    bank: 'Bradesco', product: 'Financiamento', contractType: 'Financiamento', operationType: 'Financiamento',
+    producer: 'Balcão TF', origin: 'TF', value: '10.000,00', installment: '500,00', term: '24', dueDay: '10',
+    contractStatus: 'Finalizado', operationDate: '2026-09-17', paidDate: '2026-09-17',
+    commissionRate: '5', commissionPaid: 'Não', commissionDueDate: '2099-12-31', invoiceRequired: 'Não',
+    postSale: 'Pendente', postSaleNotes: 'Enviar orientação sobre o contrato.',
+  };
+  const completed = await page.request.patch('/api/deals', { data: { id: dealId, stage: 'finalizado', details } });
+  expect(completed.ok(), await completed.text()).toBeTruthy();
+  const first = await completed.json();
+  expect(first).toMatchObject({ status: 'concluido', needsCompletion: false, operationId: expect.any(Number) });
+
+  const activeDeals = await (await page.request.get('/api/deals')).json();
+  expect(activeDeals.deals.some((deal: { id: number }) => deal.id === dealId)).toBe(false);
+  const firstCounts = await dbQuery(first.operationId);
+  expect(firstCounts).toMatchObject({ clients: 1, operations: 1, post_sale_tasks: 1 });
+
+  const repeated = await page.request.patch('/api/deals', { data: { id: dealId, stage: 'finalizado', details } });
+  expect(repeated.ok(), await repeated.text()).toBeTruthy();
+  expect(await repeated.json()).toMatchObject({ alreadyCompleted: true, operationId: first.operationId });
+  expect(await dbQuery(first.operationId)).toEqual(firstCounts);
+
+  const postSales = await (await page.request.get('/api/post-sales')).json();
+  const task = postSales.tasks.find((item: { operationId: number }) => item.operationId === first.operationId);
+  expect(task).toMatchObject({ status: 'pendente', clientName, product: 'Financiamento', bank: 'Bradesco', value: 10000, installment: 500, term: 24 });
+  expect(postSales.googleReviewUrl).toBeDefined();
+  const whatsapp = `https://wa.me/55${'85988887777'}`;
+  expect(`https://wa.me/55${task.phone.replace(/\D/g, '')}`).toBe(whatsapp);
+  const postSaleCompleted = await page.request.patch('/api/post-sales', { data: { id: task.id, status: 'concluido' } });
+  expect(postSaleCompleted.ok(), await postSaleCompleted.text()).toBeTruthy();
+  expect(await postSaleCompleted.json()).toMatchObject({ task: { id: task.id, status: 'concluido', completedAt: expect.any(Number) } });
+  expect((await (await page.request.get('/api/post-sales')).json()).tasks.find((item: { id: number }) => item.id === task.id)).toMatchObject({ status: 'concluido' });
+
+  const partner = await page.request.post('/api/partners', { data: { name: partnerName } });
+  expect(partner.status(), await partner.text()).toBe(201);
+  const partnerId = (await partner.json()).partner.id as number;
+  for (const [bonus, description] of [[500, 'Campanha inicial'], [250, 'Campanha revisada'], [0, '']] as const) {
+    const response = await page.request.patch('/api/partners', { data: { id: partnerId, period: '2026-09', bonus, bonusDescription: description } });
+    expect(response.ok(), await response.text()).toBeTruthy();
+    expect((await response.json()).settlement).toMatchObject({ bonus });
+  }
+  const dbAfterZero = new PostgresDatabase();
+  try {
+    expect(await dbAfterZero.prepare('SELECT bonus_cents,bonus_description FROM partner_settlements WHERE partner_id=? AND period=?').bind(partnerId, '2026-09').first()).toEqual({ bonus_cents: 0, bonus_description: null });
+  } finally { await dbAfterZero.close(); }
+
+  await page.goto('/');
+  await page.locator('.tf-side nav').getByRole('button', { name: 'Parceiros', exact: true }).click();
+  await page.getByLabel('MÊS DO RELATÓRIO').selectOption('2026-09');
+  const partnerCard = page.locator('.tf-partner-executive').filter({ hasText: partnerName });
+  await partnerCard.locator('.tf-partner-expand').click();
+  const visibleBonus = partnerCard.getByLabel('Valor adicional de bônus ou campanha', { exact: true });
+  await visibleBonus.fill('');
+  await visibleBonus.pressSequentially('50000');
+  await visibleBonus.press('Tab');
+  await expect(partnerCard.getByRole('button', { name: 'Remover valor adicional', exact: true })).toBeVisible();
+  const removeResponse = page.waitForResponse(response => response.url().endsWith('/api/partners') && response.request().method() === 'PATCH' && response.request().postDataJSON().bonus === 0);
+  await partnerCard.getByRole('button', { name: 'Remover valor adicional', exact: true }).click();
+  await removeResponse;
+  await expect(partnerCard.getByRole('button', { name: 'Remover valor adicional', exact: true })).toBeHidden();
+  const verifiedZero = new PostgresDatabase();
+  try { expect(await verifiedZero.prepare('SELECT bonus_cents FROM partner_settlements WHERE partner_id=? AND period=?').bind(partnerId, '2026-09').first('bonus_cents')).toBe(0); }
+  finally { await verifiedZero.close(); }
+
+  async function dbQuery(operationId: number) {
+    const connection = new PostgresDatabase();
+    try {
+      const entries = await Promise.all([
+        ['clients', Number(await connection.prepare('SELECT COUNT(*) AS count FROM clients WHERE id=?').bind(clientId).first('count'))],
+        ['operations', Number(await connection.prepare('SELECT COUNT(*) AS count FROM operations WHERE id=? AND client_id=?').bind(operationId, clientId).first('count'))],
+        ['post_sale_tasks', Number(await connection.prepare('SELECT COUNT(*) AS count FROM post_sale_tasks WHERE operation_id=?').bind(operationId).first('count'))],
+        ['deal_history', Number(await connection.prepare('SELECT COUNT(*) AS count FROM deal_history WHERE deal_id=?').bind(dealId).first('count'))],
+      ] as const);
+      return Object.fromEntries(entries) as Record<string, number>;
+    } finally { await connection.close(); }
   }
 });

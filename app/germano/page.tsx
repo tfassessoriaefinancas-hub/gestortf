@@ -35,22 +35,23 @@ export default function GermanoPortal(){
   const [period,setPeriod]=useState('');
   const [error,setError]=useState('');
   const [loading,setLoading]=useState(false);
+  const partnerId=typeof window==='undefined'?0:Number(new URLSearchParams(window.location.search).get('partner')||0);
 
   const enter=async(event?:React.FormEvent,accessPassword=password)=>{
     event?.preventDefault();setLoading(true);setError('');
-    const response=await fetch('/api/germano-report',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({password:accessPassword})});
+    const response=await fetch('/api/germano-report',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({password:accessPassword,partnerId})});
     const payload=await response.json();setLoading(false);
     if(!response.ok){setError(payload.error||'Não foi possível entrar.');return}
     sessionStorage.setItem('tf_germano_access','1');setData(payload);setPeriod(payload.periods[0]||new Date().toISOString().slice(0,7));
   };
-  useEffect(()=>{if(sessionStorage.getItem('tf_germano_access')==='1'){setPassword('GG');void enter(undefined,'GG')}},[]);
+  useEffect(()=>{if(partnerId||sessionStorage.getItem('tf_germano_access')==='1'){setPassword(partnerId?'':'GG');void enter(undefined,partnerId?'':'GG')}},[partnerId]);
   const authenticated = Boolean(data);
   useEffect(() => {
     if (!authenticated) return;
     let disposed = false;
     const refresh = async () => {
       try {
-        const response = await fetch('/api/germano-report', { method: 'POST', cache: 'no-store' });
+        const response = await fetch('/api/germano-report', { method: 'POST', cache: 'no-store', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ partnerId }) });
         if (response.ok) {
           const current = await response.json();
           if (!disposed) setData(current);
@@ -63,7 +64,7 @@ export default function GermanoPortal(){
     window.addEventListener(CRM_CHANGED, refresh);
     window.addEventListener('storage', storage);
     return () => { disposed = true; window.clearInterval(timer); window.removeEventListener('focus', refresh); window.removeEventListener(CRM_CHANGED, refresh); window.removeEventListener('storage', storage); };
-  }, [authenticated]);
+  }, [authenticated, partnerId]);
 
   const report=useMemo(()=>{
     if(!data||!period)return null;

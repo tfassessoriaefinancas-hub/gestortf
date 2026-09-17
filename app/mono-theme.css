@@ -172,3 +172,22 @@
   background:rgba(255,255,255,.09)!important;
   color:#fff!important;
 }
+
+/* Preto Luxo: superfícies neutras; o verde fica reservado aos valores financeiros. */
+.tf-app.theme-mono { --tf-money:#4eaf78; --gold:#d7d9dc; --line:#3f4449; --card:#15171a; --paper:#0b0c0e; }
+.tf-app.theme-mono .tf-primary,
+.tf-app.theme-mono .tf-welcome button:not(.tf-ghost),
+.tf-app.theme-mono .tf-kanban-tools button.active {
+  border-color:#d8dadd!important;
+  background:#e8eaec!important;
+  color:#111315!important;
+  text-shadow:none!important;
+  box-shadow:0 8px 20px rgba(0,0,0,.25)!important;
+}
+.tf-app.theme-mono :is(.tf-access-share,.tf-google-review-settings,.tf-partner-additional,.tf-smart-options) { border-color:rgba(255,255,255,.18)!important; background:#111316!important; }
+.tf-app.theme-mono .tf-finalize-alert { border-color:rgba(255,255,255,.26); background:rgba(255,255,255,.06); color:#eef0f2; animation:none; }
+.tf-app.theme-mono .tf-finalize-alert>span { background:#e2e4e6; color:#111315; }
+.tf-app.theme-mono .tf-finalize-alert small { color:#b9bdc2; }
+.tf-app.theme-mono :is(.tf-smart-options button:hover,.tf-smart-options button[aria-selected="true"]) { background:rgba(255,255,255,.10); color:#fff; }
+.tf-app.theme-mono .tf-remove-additional { color:#d18a8a; border-color:rgba(209,138,138,.45); }
+.tf-app.theme-mono .tf-post-sale-list>article.pending { border-color:rgba(78,175,120,.58); }

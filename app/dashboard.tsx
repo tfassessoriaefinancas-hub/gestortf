@@ -1,9 +1,10 @@
 "use client";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { productionSources, hasGgCode } from "../lib/production-source";
 import { parseMoney as parseMoneyBr, formatMoney as brl, formatMoneyInput, moneyToStorage } from "../lib/money";
 import { partnerAdditionalFinance, partnerFinance } from "../lib/operation-finance";
+import { bankCatalog, bankInfo, bankNames } from "../lib/banks";
 import { CRM_CHANGED, CRM_STORAGE_KEY, notifyCrmChanged } from "../lib/crm-events";
 import type { CanonicalOperation } from "../lib/operations";
 import {
@@ -49,6 +50,7 @@ import {
   Paperclip,
   ScanText,
   Palette,
+  Star,
   type LucideIcon,
 } from "lucide-react";
 
@@ -64,6 +66,7 @@ type View =
   | "notas"
   | "bancos"
   | "relatorios"
+  | "posvenda"
   | "usuarios";
 type Client = {
   id: number;
@@ -148,6 +151,8 @@ type TeamMember={password?:string;id:number;name:string;email:string;active:bool
 type Receivable={id:number;operationId:number;name:string;value:number;dueDate:string;status:string;type:string;product:string};
 type InvoiceRecord={id:number;number:string;clientName:string;partnerName?:string;value:number;issuedAt:string;paidAt?:string;status:string;fileName?:string};
 type DashboardUser={name:string;email:string;role:"admin"|"employee";memberId:number|null;partnerId:number|null;permissions:string[];serverAuthenticated?:boolean};
+type CatalogOption={id:number;kind:"indicator"|"promoter"|"production";label:string};
+type PostSaleTask={id:number;operationId:number;clientId:number;status:"pendente"|"concluido";completedAt:number|null;clientName:string;phone:string;product:string;bank:string;value:number;installment:number;term:number;completionDate:string;partner:string;postSaleNotes?:string;postSale?:string};
 const cpfKey = (cpf?: string) => String(cpf || "").replace(/\D/g, "");
 const formatCpf = (cpf?: string) => {
   const d = cpfKey(cpf);
@@ -197,6 +202,10 @@ const formatDateBr = (value?: string) => {
   const parsed = new Date(v);
   return Number.isNaN(parsed.getTime()) ? v : parsed.toLocaleDateString("pt-BR");
 };
+function BankIdentity({ value, compact = false }: { value?: string | null; compact?: boolean }) {
+  const info = bankInfo(value);
+  return <span className={`tf-bank-identity${compact ? " compact" : ""}`}>{info && <i style={{ background: info.color }}>{info.code}</i>}<span>{value || "Não informado"}</span></span>;
+}
 function CurrencyInput({ value, defaultValue, onChange, ...props }: Omit<React.InputHTMLAttributes<HTMLInputElement>, "value" | "defaultValue" | "onChange"> & { value?: string | number; defaultValue?: string | number; onChange?: (value: string) => void }) {
   const [draft, setDraft] = useState(() => formatMoneyInput(defaultValue));
   const current = value === undefined ? draft : formatMoneyInput(value);
@@ -400,6 +409,7 @@ const operationValueForDetails=(details:Record<string,string>)=>{
   return parseMoneyBr(details.value);
 };
 const finalBankOptions = [
+  ...bankNames,
   "Banco do Brasil","Banco da Amazônia","Banco do Nordeste","Banestes","Santander","Banrisul","Banese","BRB","Banco Inter","Caixa Econômica Federal","Agibank","BTG Pactual","Banco Original","Bradesco","Nubank","PagBank","Banco BMG","Mercado Pago","QI Sociedade de Crédito","Banco Bari","C6 Bank","Itaú","PicPay","Banco Mercantil","Banco Safra","Omni Banco","Banco PAN","Banco Sofisa","Banco BV","Banco Daycoval","Citibank","Sicredi","Sicoob","Banco Ágil","Creditas","Facta Financeira","Lotus","Volkswagen Financial Services",
   "Allianz","Azul Seguros","Bradesco Seguros","HDI Seguros","Itaú Seguros","MAPFRE","Mitsui Sumitomo","Porto Seguro","Sompo Seguros","Suhai Seguradora","Tokio Marine","Zurich","Evogard",
   "Ademicon","Âncora Consórcios","BB Consórcios","Bradesco Consórcios","Caixa Consórcio","Canopus","Embracon","Honda Consórcios","Itaú Consórcios","Magalu Consórcios","MAPFRE Consórcios","Nacional Gazin","Porto Seguro Consórcio","Rodobens","Santander Consórcio","Servopa","Sicoob Consórcios","Sicredi Consórcios","Unifisa","Volkswagen Consórcio","Yamaha Consórcio",
@@ -416,6 +426,7 @@ const menu: [View, LucideIcon, string][] = [
   ["producao", FileChartColumn, "Produção"],
   ["relatorios", ChartSpline, "Relatórios"],
   ["servicos", BriefcaseBusiness, "Serviços"],
+  ["posvenda", MessageCircle, "Pós-venda"],
 ];
 
 export default function Dashboard({
@@ -433,6 +444,9 @@ export default function Dashboard({
     [liveClients, setLiveClients] = useState<Client[]>([]),
     [liveOps, setLiveOps] = useState<Operation[]>([]),
     [teamMembers,setTeamMembers]=useState<TeamMember[]>([]),
+    [catalogOptions,setCatalogOptions]=useState<CatalogOption[]>([]),
+    [postSales,setPostSales]=useState<PostSaleTask[]>([]),
+    [googleReviewUrl,setGoogleReviewUrl]=useState(""),
     [receivables,setReceivables]=useState<Receivable[]>([]),
     [invoices,setInvoices]=useState<InvoiceRecord[]>([]),
     [partners,setPartners]=useState<PartnerRecord[]>([{id:0,name:"GG Veículos"}]),
@@ -444,7 +458,7 @@ export default function Dashboard({
     [locked, setLocked] = useState(true),
     [gateReady, setGateReady] = useState(false),
     [visualTheme,setVisualTheme]=useState<"classic"|"mono">("classic");
-  const refreshData = useCallback(() => notifyCrmChanged(), []);
+  const refreshData = useCallback(() => { notifyCrmChanged(); setDataRevision((value) => value + 1); }, []);
   useEffect(() => {
     const refresh = () => setDataRevision(value => value + 1);
     const storage = (event: StorageEvent) => { if (event.key === CRM_STORAGE_KEY) refresh(); };
@@ -544,9 +558,9 @@ export default function Dashboard({
     let loading=false;
     const load = async () => {
       if(loading)return;loading=true;
-      const [dealsData,crmData,teamData,partnerData,invoiceData]=await Promise.all([
-        (user.role==="admin"||user.permissions.includes("atendimento"))?readJson("/api/deals"):Promise.resolve(null),readCrm(),user.role==="admin"?readJson("/api/access-users"):Promise.resolve(null),(user.role==="admin"||user.permissions.includes("parceiros"))?readJson("/api/partners"):Promise.resolve(null),(user.role==="admin"||user.permissions.includes("notas"))?readJson("/api/invoices"):Promise.resolve(null),
-      ]).catch(()=>{if(!disposed)setNotice("Falha ao carregar os dados. Verifique sua conexão e tente novamente.");return [null,null,null,null,null]});
+      const [dealsData,crmData,teamData,partnerData,invoiceData,catalogData,postSaleData]=await Promise.all([
+        (user.role==="admin"||user.permissions.includes("atendimento"))?readJson("/api/deals"):Promise.resolve(null),readCrm(),user.role==="admin"?readJson("/api/access-users"):Promise.resolve(null),(user.role==="admin"||user.permissions.includes("parceiros"))?readJson("/api/partners"):Promise.resolve(null),(user.role==="admin"||user.permissions.includes("notas"))?readJson("/api/invoices"):Promise.resolve(null),(user.role==="admin"||user.permissions.includes("atendimento"))?readJson("/api/catalog-options"):Promise.resolve(null),(user.role==="admin"||user.permissions.includes("posvenda"))?readJson("/api/post-sales"):Promise.resolve(null),
+      ]).catch(()=>{if(!disposed)setNotice("Falha ao carregar os dados. Verifique sua conexão e tente novamente.");return [null,null,null,null,null,null,null]});
       if(disposed)return;
       if(dealsData?.deals)setDeals(dealsData.deals);
       const x=crmData;
@@ -565,6 +579,9 @@ export default function Dashboard({
       if(teamData?.members)setTeamMembers(teamData.members);
       if(partnerData?.partners){const loaded=partnerData.partners as PartnerRecord[];setPartners(loaded.some(partner=>partner.name.localeCompare("GG Veículos","pt-BR",{sensitivity:"base"})===0)?loaded:[{id:0,name:"GG Veículos",taxRate:0,invoiceRate:0,tfShare:50},...loaded]);}
       if(invoiceData?.invoices)setInvoices(invoiceData.invoices);
+      if(catalogData?.options)setCatalogOptions(catalogData.options);
+      if(postSaleData?.tasks)setPostSales(postSaleData.tasks);
+      if(postSaleData?.googleReviewUrl!==undefined)setGoogleReviewUrl(postSaleData.googleReviewUrl);
       loading=false;
     };
     load();
@@ -667,6 +684,7 @@ export default function Dashboard({
               </i>
               <span>{label}</span>
               {id === "clientes" && <b>{allClients.length}</b>}
+              {id === "posvenda" && postSales.filter((task) => task.status === "pendente").length > 0 && <b className="tf-menu-alert-count">{postSales.filter((task) => task.status === "pendente").length}</b>}
             </button>
           ))}
           {user.role==="admin"&&<button
@@ -757,12 +775,12 @@ export default function Dashboard({
             <ClientsFiltered data={found} operations={allOps} open={setSelected} />
           )}{" "}
           {view === "atendimento" && (
-            <Kanban deals={deals} setDeals={setDeals} user={user} members={teamMembers} partnerNames={partners.map(partner=>partner.name)} receivables={receivables} newDealRequest={newDealRequest} onMarkReceived={markCommissionReceived} onReceivableCreated={(item)=>setReceivables(items=>[item,...items.filter(existing=>existing.id!==item.id)])} onDataChanged={refreshData} />
+            <Kanban deals={deals} setDeals={setDeals} user={user} members={teamMembers} partnerNames={partners.map(partner=>partner.name)} receivables={receivables} catalogOptions={catalogOptions} onCatalogChange={(option)=>setCatalogOptions(current=>option.label?[option,...current.filter(item=>item.id!==option.id)]:current.filter(item=>item.id!==option.id))} newDealRequest={newDealRequest} onMarkReceived={markCommissionReceived} onReceivableCreated={(item)=>setReceivables(items=>[item,...items.filter(existing=>existing.id!==item.id)])} onDataChanged={refreshData} />
           )}{" "}
           {view === "producao" && (
             <Production rows={allOps} clientsData={allClients} initialPeriod={productionPeriod} openClient={setSelected} />
           )}{" "}
-          {view === "parceiros" && <Partners rows={allOps} clientsData={allClients} partners={partners} onPartnerCreated={(partner)=>setPartners(current=>current.some(item=>item.name.localeCompare(partner.name,"pt-BR",{sensitivity:"base"})===0)?current:[...current,partner].sort((a,b)=>a.name.localeCompare(b.name,"pt-BR",{sensitivity:"base"})))} onPartnerUpdated={(partner)=>{setPartners(current=>current.map(item=>item.id===partner.id?partner:item));refreshData()}} />}{" "}
+          {view === "parceiros" && <Partners rows={allOps} clientsData={allClients} partners={partners} onPartnerCreated={(partner)=>setPartners(current=>current.some(item=>item.name.localeCompare(partner.name,"pt-BR",{sensitivity:"base"})===0)?current:[...current,partner].sort((a,b)=>a.name.localeCompare(b.name,"pt-BR",{sensitivity:"base"})))} onPartnerUpdated={(partner)=>{setPartners(current=>{const withoutPlaceholder=current.filter(item=>!(item.id===0&&item.name.localeCompare(partner.name,"pt-BR",{sensitivity:"base"})===0));return withoutPlaceholder.some(item=>item.id===partner.id)?withoutPlaceholder.map(item=>item.id===partner.id?partner:item):[...withoutPlaceholder,partner]});refreshData()}} />} {" "}
           {view === "servicos" && <Services rows={allOps} />}{" "}
           {view === "comissoes" && (
             <Commissions total={commission} rows={currentMonthOps} clientsData={allClients} />
@@ -774,6 +792,7 @@ export default function Dashboard({
           {view === "relatorios" && (
             <ReportsFiltered rows={allOps} clientsData={allClients} />
           )}{" "}
+          {view === "posvenda" && <PostSales tasks={postSales} setTasks={setPostSales} googleReviewUrl={googleReviewUrl} />}
           {view==="usuarios"&&user.role==="admin"&&<AccessManagement members={teamMembers} setMembers={setTeamMembers} partners={partners}/>} {" "}
         </div>
       </section>
@@ -1649,11 +1668,22 @@ function Production({ rows, clientsData, initialPeriod="2026-09", openClient }: 
   );
 }
 
-function SmartChoice({label,value,onChange,options,required=true,helper}: {label:string;value:string;onChange:(value:string)=>void;options:string[];required?:boolean;helper?:string}){
+function SmartChoice({label,value,onChange,options,required=true,helper,catalogKind,catalogOptions,onCatalogChange}: {label:string;value:string;onChange:(value:string)=>void;options:string[];required?:boolean;helper?:string;catalogKind?:CatalogOption["kind"];catalogOptions?:CatalogOption[];onCatalogChange?:(option:CatalogOption)=>void}){
   const [open,setOpen]=useState(false);
   const normalized=value.trim().toLocaleLowerCase("pt-BR");
   const filtered=options.filter(option=>!normalized||option.toLocaleLowerCase("pt-BR").includes(normalized)).sort((a,b)=>a.localeCompare(b,"pt-BR",{sensitivity:"base"}));
-  return <label className="tf-smart-choice">{label}<span><input required={required} value={value} onFocus={()=>setOpen(true)} onBlur={()=>window.setTimeout(()=>setOpen(false),120)} onChange={event=>{onChange(event.target.value);setOpen(true)}} onKeyDown={event=>{if(event.key==="Escape")setOpen(false)}} placeholder="Digite ou selecione" autoComplete="off"/>{open&&<div className="tf-smart-options" role="listbox">{filtered.length?filtered.map(option=><button type="button" role="option" aria-selected={option===value} key={option} onMouseDown={event=>event.preventDefault()} onClick={()=>{onChange(option);setOpen(false)}}>{option}</button>):<small>Nenhum nome encontrado. Você pode cadastrar este nome.</small>}</div>}</span>{helper&&<small>{helper}</small>}</label>;
+  const catalog= catalogOptions?.filter(option=>option.kind===catalogKind && option.label.toLocaleLowerCase("pt-BR").includes(normalized)) || [];
+  const saveOption=async()=>{
+    if(!catalogKind||!value.trim()||filtered.some(option=>option.toLocaleLowerCase("pt-BR")===normalized))return;
+    const response=await fetch('/api/catalog-options',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({kind:catalogKind,label:value.trim()})});
+    const data=await response.json();
+    if(response.ok&&data.option){onCatalogChange?.(data.option);onChange(data.option.label);setOpen(false);}else alert(data.error||'Não foi possível cadastrar esta opção.');
+  };
+  const removeOption=async(option:CatalogOption)=>{
+    const response=await fetch(`/api/catalog-options?id=${option.id}`,{method:'DELETE'});
+    if(response.ok){onCatalogChange?.({...option,label:''});if(option.label===value)onChange('');}else{const data=await response.json().catch(()=>({}));alert(data.error||'Não foi possível remover esta opção.');}
+  };
+  return <label className="tf-smart-choice">{label}<span><input required={required} value={value} onFocus={()=>setOpen(true)} onBlur={()=>window.setTimeout(()=>setOpen(false),160)} onChange={event=>{onChange(event.target.value);setOpen(true)}} onKeyDown={event=>{if(event.key==="Escape")setOpen(false);if(event.key==="Enter"&&catalogKind){event.preventDefault();void saveOption();}}} placeholder="Digite ou selecione" autoComplete="off"/>{open&&<div className="tf-smart-options" role="listbox">{filtered.length?filtered.map(option=>{const custom=catalog.find(item=>item.label===option);return <span className="tf-smart-option" key={option}><button type="button" role="option" aria-selected={option===value} onMouseDown={event=>event.preventDefault()} onClick={()=>{onChange(option);setOpen(false)}}>{option}</button>{custom&&<button type="button" className="tf-smart-option-remove" aria-label={`Excluir ${option}`} onMouseDown={event=>event.preventDefault()} onClick={event=>{event.stopPropagation();void removeOption(custom)}}>×</button>}</span>}):<small>Nenhum nome encontrado.</small>}{catalogKind&&value.trim()&&!filtered.some(option=>option.toLocaleLowerCase("pt-BR")===normalized)&&<button type="button" className="tf-smart-add" onMouseDown={event=>event.preventDefault()} onClick={()=>void saveOption()}>＋ Cadastrar “{value.trim()}”</button>}</div>}</span>{helper&&<small>{helper}</small>}</label>;
 }
 
 function FinalChoice({label,field,details,setDetails,options,required=true}:{label:string;field:string;details:Record<string,string>;setDetails:React.Dispatch<React.SetStateAction<Record<string,string>>>;options:string[];required?:boolean}){
@@ -1672,6 +1702,8 @@ function Kanban({
   members,
   partnerNames,
   receivables,
+  catalogOptions,
+  onCatalogChange,
   newDealRequest,
   onMarkReceived,
   onReceivableCreated,
@@ -1683,6 +1715,8 @@ function Kanban({
   members:TeamMember[];
   partnerNames:string[];
   receivables:Receivable[];
+  catalogOptions:CatalogOption[];
+  onCatalogChange:(option:CatalogOption)=>void;
   newDealRequest:number;
   onMarkReceived:(id:number)=>void;
   onReceivableCreated:(item:Receivable)=>void;
@@ -1699,6 +1733,7 @@ function Kanban({
   ];
   const [columnLabels,setColumnLabels]=useState<Record<string,string>>(()=>{try{return typeof window==="undefined"?{}:JSON.parse(localStorage.getItem("tf_kanban_columns")||"{}")}catch{return {}}});
   const columns=baseColumns.map(([stage,name,sub])=>[stage,columnLabels[stage]||name,sub]);
+  const managedOptions=(kind:CatalogOption["kind"],base:string[])=>Array.from(new Set([...base,...catalogOptions.filter(option=>option.kind===kind).map(option=>option.label)].filter(option=>option&&option.toLocaleLowerCase("pt-BR")!=="teste 3"))).sort((a,b)=>a.localeCompare(b,"pt-BR",{sensitivity:"base"}));
   const [form, setForm] = useState(false),
     [formStep, setFormStep] = useState<1 | 2>(1),
     [selectedProduct, setSelectedProduct] = useState("Financiamento"),
@@ -1714,6 +1749,7 @@ function Kanban({
     [showReturns, setShowReturns] = useState(false),
     [resumeStages,setResumeStages]=useState<Record<number,string>>({}),
     [clock,setClock]=useState(()=>Date.now()),
+    [finalizing,setFinalizing]=useState(false),
     [kanbanOwner,setKanbanOwner]=useState<string>(user.role==="employee"?String(user.memberId):"owner"),
     [confirmAction, setConfirmAction] = useState<{
       deal: Deal;
@@ -1941,44 +1977,51 @@ function Kanban({
   };
   const finalize = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!active) return;
-    const operationValue=operationValueForDetails(details);
-    const normalizedDetails = {
-      ...details,
-      bank:details.bank==="__other"?details.bankOther:details.bank,
-      product:details.contractType||(details.product==="__other"?details.productOther:details.product),
-      contractType:details.contractType||(details.product==="__other"?details.productOther:details.product),
-      operationType:details.operationType==="__other"?details.operationTypeOther:details.operationType,
-      promoter:details.promoter==="__other"?details.promoterOther:details.promoter,
-      producer:details.producer==="__other"?details.producerOther:details.producer,
-      origin:details.origin==="__other"?details.originOther:details.origin,
-      cpf: cpfKey(details.cpf),
-      birthDate: dateToIso(details.birthDate),
-      phone: maskPhone(details.phone || ""),
-      value: moneyToStorage(operationValue),
-      quotaQuantity:details.quotaQuantity||"1",
-      quotaUnitValue:moneyToStorage(details.quotaUnitValue),
-      fipeValue:moneyToStorage(details.fipeValue),
-      installment: moneyToStorage(details.installment),
-      adhesionFee:moneyToStorage(details.adhesionFee),
-      advisoryFee:moneyToStorage(details.advisoryFee),
-      bonus:moneyToStorage(details.bonus),
-      operationDate: dateToIso(details.operationDate),
-      paidDate:dateToIso(details.paidDate),
-    };
-    const r = await fetch("/api/deals", {
-      method: "PATCH",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ id: active.id, stage: "finalizado", details: normalizedDetails }),
-    });
-    const x = await r.json();
-    if (r.ok) {
-      setDeals((xs) => xs.map((d) => d.id===active.id?{...d,...normalizedDetails,stage:"finalizado",status:"concluido",needsCompletion:false}:d));
-      if(Array.isArray(x.receivables))x.receivables.forEach((item:Receivable)=>onReceivableCreated(item));
-      else if(x.receivable)onReceivableCreated(x.receivable);
-      onDataChanged();
-      setActive(null);
-    } else alert(x.error || "Revise os campos.");
+    if (!active || finalizing) return;
+    setFinalizing(true);
+    try {
+      const operationValue=operationValueForDetails(details);
+      const normalizedDetails = {
+        ...details,
+        bank:details.bank==="__other"?details.bankOther:details.bank,
+        product:details.contractType||(details.product==="__other"?details.productOther:details.product),
+        contractType:details.contractType||(details.product==="__other"?details.productOther:details.product),
+        operationType:details.operationType==="__other"?details.operationTypeOther:details.operationType,
+        promoter:details.promoter==="__other"?details.promoterOther:details.promoter,
+        producer:details.producer==="__other"?details.producerOther:details.producer,
+        origin:details.origin==="__other"?details.originOther:details.origin,
+        cpf: cpfKey(details.cpf),
+        birthDate: dateToIso(details.birthDate),
+        phone: maskPhone(details.phone || ""),
+        value: moneyToStorage(operationValue),
+        quotaQuantity:details.quotaQuantity||"1",
+        quotaUnitValue:moneyToStorage(details.quotaUnitValue),
+        fipeValue:moneyToStorage(details.fipeValue),
+        installment: moneyToStorage(details.installment),
+        adhesionFee:moneyToStorage(details.adhesionFee),
+        advisoryFee:moneyToStorage(details.advisoryFee),
+        bonus:moneyToStorage(details.bonus),
+        operationDate: dateToIso(details.operationDate),
+        paidDate:dateToIso(details.paidDate),
+      };
+      const r = await fetch("/api/deals", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ id: active.id, stage: "finalizado", details: normalizedDetails }),
+      });
+      const x = await r.json();
+      if (r.ok) {
+        setDeals((xs) => xs.filter((d) => d.id !== active.id));
+        if(Array.isArray(x.receivables))x.receivables.forEach((item:Receivable)=>onReceivableCreated(item));
+        else if(x.receivable)onReceivableCreated(x.receivable);
+        onDataChanged();
+        setActive(null);
+      } else alert(x.error || "Revise os campos.");
+    } catch {
+      alert("Não foi possível salvar o cadastro. Tente novamente.");
+    } finally {
+      setFinalizing(false);
+    }
   };
   return (
     <>
@@ -2273,7 +2316,9 @@ function Kanban({
               </div>
             </div>
             <small>FINALIZAÇÃO DO CADASTRO</small>
-            <h2>Complete todas as informações</h2>
+            <h2 className="tf-finalize-title">FINALIZAÇÃO DO CADASTRO</h2>
+            <span className="tf-finalize-status"><CheckCircle2/> Finalizado</span>
+            <h3>Complete todas as informações</h3>
             <p>
               Ao concluir, o cliente e a operação serão registrados na base TF.
             </p>
@@ -2331,9 +2376,10 @@ function Kanban({
                   {/consórcio/i.test(resolvedProduct(details))&&<><label>Quantidade de cotas<input type="number" min="1" max="999" value={details.quotaQuantity||"1"} onChange={e=>setDetails(x=>({...x,quotaQuantity:e.target.value}))}/></label><label>Valor por cota<CurrencyInput inputMode="decimal" value={details.quotaUnitValue||""} onChange={nextValue=>setDetails(x=>({...x,quotaUnitValue:nextValue}))}  placeholder="R$ 0,00"/><output>Total das cotas: {brl(parseMoneyBr(details.quotaUnitValue)*Math.max(1,Number(details.quotaQuantity||1)))}</output></label></>}
                   <label>Prazo do contrato<input type="number" min="1" value={details.term||""} onChange={e=>setDetails(x=>({...x,term:e.target.value}))} placeholder="Ex.: 84"/></label>
                   <label>Dia do vencimento<input inputMode="numeric" maxLength={2} value={details.dueDay||""} onChange={e=>setDetails(x=>({...x,dueDay:e.target.value.replace(/\D/g,"").slice(0,2)}))} placeholder="Ex.: 10"/></label>
-                  <SmartChoice label="Indicador" required={false} value={details.productionIndicator||""} options={["Balcão TF","Indicação direta","Parceiro","Prospecção","WhatsApp",...members.map(member=>member.name)]} onChange={value=>setDetails(current=>({...current,productionIndicator:value}))} helper="Informe quem indicou a produção, quando houver."/>
-                  <FinalChoice label="Promotora" field="promoter" details={details} setDetails={setDetails} options={finalPromoterOptions} required={false}/>
-                  <label>Produção<select required value={details.producer||"Balcão TF"} onChange={e=>setDetails(x=>({...x,producer:e.target.value,origin:hasGgCode(e.target.value)?"GG Veículos":"TF"}))}>{[...new Set([...productionSources,details.producer].filter(Boolean))].map(source=><option key={source}>{source}</option>)}</select></label>
+                  <SmartChoice label="Indicador / parceiro" required={false} value={details.productionIndicator||""} options={managedOptions("indicator",["Balcão TF","Indicação direta","Parceiro","Prospecção","WhatsApp",...members.map(member=>member.name)])} catalogKind="indicator" catalogOptions={catalogOptions} onCatalogChange={onCatalogChange} onChange={value=>setDetails(current=>({...current,productionIndicator:value}))} helper="Digite um nome e pressione Enter para cadastrar."/>
+                  <SmartChoice label="Promotora" required={false} value={details.promoter==="__other"?details.promoterOther||"":details.promoter||""} options={managedOptions("promoter",finalPromoterOptions)} catalogKind="promoter" catalogOptions={catalogOptions} onCatalogChange={onCatalogChange} onChange={value=>setDetails(current=>({...current,promoter:value,promoterOther:""}))} helper="Digite um nome e pressione Enter para cadastrar."/>
+                  <SmartChoice label="Produção / origem / digitação" required value={details.producer||"Balcão TF"} options={managedOptions("production",[...productionSources,user.name,...members.map(member=>member.name)])} catalogKind="production" catalogOptions={catalogOptions} onCatalogChange={onCatalogChange} onChange={value=>setDetails(current=>({...current,producer:value,origin:hasGgCode(value)?"GG Veículos":current.origin||"TF"}))} helper="Código GG mantém o espelhamento do parceiro."/>
+                  <SmartChoice label="Parceiro / origem" required value={details.origin||"TF"} options={managedOptions("production",["TF","GG Veículos",...partnerNames])} catalogKind="production" catalogOptions={catalogOptions} onCatalogChange={onCatalogChange} onChange={value=>setDetails(current=>({...current,origin:value}))} helper="Não se aplica quando não houver parceiro."/>
                 </div>
               </section>
               <section className="tf-final-section">
@@ -2347,8 +2393,7 @@ function Kanban({
                   <label>Comissão e demais receitas recebidas?<select value={details.commissionPaid||"Não"} onChange={e=>setDetails(x=>({...x,commissionPaid:e.target.value}))}><option>Não</option><option>Sim</option></select></label>
                   <label>{details.commissionPaid==="Sim"?"Data do recebimento":"Agendar recebimento para cobrança"}<input required={Boolean(details.commissionRate||details.commissionCustomRate||details.adhesionFee||details.advisoryFee||details.bonus)} type="date" value={details.commissionDueDate||""} onChange={e=>setDetails(x=>({...x,commissionDueDate:e.target.value}))}/>{details.commissionPaid!=="Sim"&&<small className="tf-field-note">O sistema exibirá um lembrete no dia agendado.</small>}</label>
                   {/consórcio/i.test(resolvedProduct(details))&&<label>Parcelas da comissão<input type="number" min="1" max="120" value={details.commissionInstallments||"1"} onChange={e=>setDetails(x=>({...x,commissionInstallments:e.target.value}))}/><output>Valor por parcela: {brl((operationValueForDetails(details)*(Number(String(details.commissionCustomRate||details.commissionRate||0).replace(",","."))/100))/Math.max(1,Number(details.commissionInstallments||1)))}</output></label>}
-                  <label>Possui nota fiscal?<select value={details.invoiceRequired||"Não"} onChange={e=>setDetails(x=>({...x,invoiceRequired:e.target.value}))}><option>Não</option><option>Sim</option></select></label>
-                  {details.invoiceRequired==="Sim"&&<><label>Número da nota fiscal<input required value={details.invoiceNumber||""} onChange={e=>setDetails(x=>({...x,invoiceNumber:e.target.value}))} placeholder="Ex.: 000123"/></label><label>Valor da nota fiscal<CurrencyInput required inputMode="decimal" value={details.invoiceValue||""} onChange={nextValue=>setDetails(x=>({...x,invoiceValue:nextValue}))}  placeholder="R$ 0,00"/></label><label>Data de emissão<input required type="date" value={details.invoiceIssuedAt||""} onChange={e=>setDetails(x=>({...x,invoiceIssuedAt:e.target.value}))}/></label><label>Nota fiscal paga?<select value={details.invoicePaid||"Não"} onChange={e=>setDetails(x=>({...x,invoicePaid:e.target.value}))}><option>Não</option><option>Sim</option></select></label></>}
+                  <label>POSSUI NOTA FISCAL?<select value={details.invoiceRequired||"Não"} onChange={e=>setDetails(x=>({...x,invoiceRequired:e.target.value}))}><option>Sim</option><option>Não</option></select><small className="tf-field-note">A nota será anexada posteriormente no módulo de Notas fiscais.</small></label>
                 </div>
               </section>
               <section className="tf-final-section tf-final-status">
@@ -2359,8 +2404,8 @@ function Kanban({
                 </div>
               </section>
             </div>
-            <button className="tf-primary">
-              Concluir cadastro e finalizar
+            <button className="tf-primary" disabled={finalizing}>
+              {finalizing ? "Salvando cadastro…" : "Concluir cadastro e finalizar"}
             </button>
           </form>
         </div>
@@ -2490,19 +2535,27 @@ function PartnerOperationRow({row,client,partner,onUpdated}:{row:Operation;clien
   return <div className="tf-partner-operation-row"><span>{client?.name||'Cliente'}</span><span>{formatCpf(client?.cpf||'')}</span><span>{row.bank}</span><span>{row.product}</span><b>{brl(row.value)}</b><b>{brl(calculation.gross)}</b><label><input aria-label={`ILA de ${client?.name||'cliente'}`} inputMode="decimal" value={ilaRate} onChange={event=>{setIlaRate(event.target.value.replace(/[^\d,.]/g,''));setSaved(false)}}/><small>{brl(calculation.ilaValue)}</small></label><b>{brl(calculation.afterIla)}</b><label><input aria-label={`Taxa da nota de ${client?.name||'cliente'}`} inputMode="decimal" value={invoiceRate} onChange={event=>{setInvoiceRate(event.target.value.replace(/[^\d,.]/g,''));setSaved(false)}}/><small>{brl(calculation.invoiceFee)}</small></label><b>{brl(calculation.net)}</b><strong>{brl(calculation.thiagoShare)}</strong><button type="button" onClick={save} disabled={saving||!initial.operationId}>{saving?'Salvando':saved?'Salvo ✓':'Salvar taxas'}</button></div>;
 }
 function PartnerSettlement({partner,gross,period,rows,previousRows,clientsData,onUpdated}:{partner:PartnerRecord;gross:number;period:string;rows:Operation[];previousRows:Operation[];clientsData:Client[];onUpdated:(partner:PartnerRecord)=>void}){
-  const calculations=rows.map(row=>partnerOperationCalculation(row,partner)),calculatedGross=calculations.reduce((sum,item)=>sum+item.gross,0),ilaTotal=calculations.reduce((sum,item)=>sum+item.ilaValue,0),afterIlaTotal=calculations.reduce((sum,item)=>sum+item.afterIla,0),invoiceFeeTotal=calculations.reduce((sum,item)=>sum+item.invoiceFee,0),baseNet=calculations.reduce((sum,item)=>sum+item.net,0),bonus=partner.bonuses?.filter(item=>item.period===period).reduce((sum,item)=>sum+item.value,0)||0,bonusCalculation=partnerAdditionalFinance(bonus),net=baseNet+bonusCalculation.net,tfValue=calculations.reduce((sum,item)=>sum+item.thiagoShare,0)+bonusCalculation.thiagoShare,partnerValue=calculations.reduce((sum,item)=>sum+item.partnerShare,0)+bonusCalculation.partnerShare,saved=partner.settlements?.find(item=>item.period===period),status=saved?.status||'em_aberto',production=rows.reduce((sum,row)=>sum+row.value,0),previousProduction=previousRows.reduce((sum,row)=>sum+row.value,0),difference=production-previousProduction,variation=previousProduction?difference/previousProduction*100:production?100:0;
+  const saved=partner.settlements?.find(item=>item.period===period),status=saved?.status||'em_aberto';
   const [saving,setSaving]=useState(false),[bonusSaving,setBonusSaving]=useState(false),[reportOpen,setReportOpen]=useState(false),[bonusDraft,setBonusDraft]=useState(formatMoneyInput(saved?.bonus??0)),[bonusDescription,setBonusDescription]=useState(saved?.bonusDescription||'');
+  const bonusTimer=useRef<number|null>(null),draftBonusValue=Math.max(0,parseMoneyBr(bonusDraft)),legacyBonus=partner.bonuses?.filter(item=>item.period===period&&item.source!=='manual').reduce((sum,item)=>sum+item.value,0)||0;
+  const calculations=rows.map(row=>partnerOperationCalculation(row,partner)),calculatedGross=calculations.reduce((sum,item)=>sum+item.gross,0),ilaTotal=calculations.reduce((sum,item)=>sum+item.ilaValue,0),afterIlaTotal=calculations.reduce((sum,item)=>sum+item.afterIla,0),invoiceFeeTotal=calculations.reduce((sum,item)=>sum+item.invoiceFee,0),baseNet=calculations.reduce((sum,item)=>sum+item.net,0),bonus=legacyBonus+draftBonusValue,bonusCalculation=partnerAdditionalFinance(bonus),net=baseNet+bonusCalculation.net,tfValue=calculations.reduce((sum,item)=>sum+item.thiagoShare,0)+bonusCalculation.thiagoShare,partnerValue=calculations.reduce((sum,item)=>sum+item.partnerShare,0)+bonusCalculation.partnerShare,production=rows.reduce((sum,row)=>sum+row.value,0),previousProduction=previousRows.reduce((sum,row)=>sum+row.value,0),difference=production-previousProduction,variation=previousProduction?difference/previousProduction*100:production?100:0;
   useEffect(()=>{setBonusDraft(formatMoneyInput(saved?.bonus??0));setBonusDescription(saved?.bonusDescription||'');},[partner.id,period,saved?.bonus,saved?.bonusDescription]);
+  useEffect(()=>()=>{if(bonusTimer.current)window.clearTimeout(bonusTimer.current)},[]);
   const formatPartnerMonth=(value:string)=>{const label=new Intl.DateTimeFormat('pt-BR',{month:'long',year:'numeric',timeZone:'UTC'}).format(new Date(`${value}-01T00:00:00Z`));return label.charAt(0).toUpperCase()+label.slice(1)},monthLabel=formatPartnerMonth(period),[reportYear,reportMonth]=period.split('-').map(Number),previousDate=new Date(Date.UTC(reportYear,reportMonth-2,1)),previousPeriod=`${previousDate.getUTCFullYear()}-${String(previousDate.getUTCMonth()+1).padStart(2,'0')}`,previousMonthLabel=formatPartnerMonth(previousPeriod),combinedProduction=production+previousProduction,previousShare=combinedProduction?Math.round(previousProduction/combinedProduction*100):0,currentShare=Math.max(0,100-previousShare),variationLabel=`${variation>=0?'+':'−'}${Math.abs(variation).toLocaleString('pt-BR',{maximumFractionDigits:1})}%`,analysis=difference>=0?`A produção aumentou ${brl(Math.abs(difference))} (${Math.abs(variation).toLocaleString('pt-BR',{maximumFractionDigits:1})}%) em relação ao mês anterior. Mantenha o ritmo e priorize os produtos com melhor conversão.`:`A produção caiu ${brl(Math.abs(difference))} (${Math.abs(variation).toLocaleString('pt-BR',{maximumFractionDigits:1})}%) em relação ao mês anterior. Reforce a oferta de financiamento e acompanhe os clientes em negociação.`;
   const trendDays=[1,5,10,15,20,25,31],cumulativeAt=(items:Operation[],day:number)=>items.filter(item=>Number(item.date.slice(8,10))<=day).reduce((sum,item)=>sum+item.value,0),previousTrend=trendDays.map(day=>cumulativeAt(previousRows,day)),currentTrend=trendDays.map(day=>cumulativeAt(rows,day)),trendMax=Math.max(1,...previousTrend,...currentTrend),trendPoint=(value:number,index:number)=>({x:48+index*(624/(trendDays.length-1)),y:222-(value/trendMax)*172}),previousTrendPoints=previousTrend.map(trendPoint),currentTrendPoints=currentTrend.map(trendPoint),trendLine=(points:{x:number;y:number}[])=>points.map((point,index)=>`${index?'L':'M'} ${point.x} ${point.y}`).join(' '),trendArea=(points:{x:number;y:number}[])=>`${trendLine(points)} L ${points.at(-1)!.x} 224 L ${points[0].x} 224 Z`,currentTicket=rows.length?production/rows.length:0,previousTicket=previousRows.length?previousProduction/previousRows.length:0;
-  const updateStatus=async(nextStatus:string)=>{setSaving(true);let id=partner.id;if(!id){const created=await fetch('/api/partners',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({name:partner.name})}),createdData=await created.json();if(!created.ok){setSaving(false);return alert(createdData.error||'Não foi possível preparar o parceiro.')}id=createdData.partner.id;}const response=await fetch('/api/partners',{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({id,period,status:nextStatus,grossCommission:calculatedGross})}),data=await response.json();setSaving(false);if(response.ok)onUpdated({...partner,id,settlements:[{...data.settlement,bonus:saved?.bonus||0,bonusDescription:saved?.bonusDescription||''},...(partner.settlements||[]).filter(item=>item.period!==period)]});else alert(data.error||'Não foi possível atualizar o relatório.');};
-  const saveBonus=async()=>{setBonusSaving(true);let id=partner.id;if(!id){const created=await fetch('/api/partners',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({name:partner.name})}),createdData=await created.json();if(!created.ok){setBonusSaving(false);return alert(createdData.error||'Não foi possível preparar o parceiro.')}id=createdData.partner.id;}const value=Math.max(0,parseMoneyBr(bonusDraft)),description=bonusDescription.trim(),response=await fetch('/api/partners',{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({id,period,bonus:value,bonusDescription:description,grossCommission:calculatedGross})}),data=await response.json();setBonusSaving(false);if(!response.ok)return alert(data.error||'Não foi possível salvar o adicional.');const manualBonus=value>0?{period,value,description:description||'Bônus / campanha adicional',source:'manual' as const}:null;onUpdated({...partner,id,settlements:[data.settlement,...(partner.settlements||[]).filter(item=>item.period!==period)],bonuses:[...(manualBonus?[manualBonus]:[]),...(partner.bonuses||[]).filter(item=>!(item.source==='manual'&&item.period===period))]});setBonusDraft(formatMoneyInput(value));setBonusDescription(description);notifyCrmChanged();};
+  const updateStatus=async(nextStatus:string)=>{setSaving(true);let id=partner.id;if(!id){const created=await fetch('/api/partners',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({name:partner.name})}),createdData=await created.json();if(!created.ok){setSaving(false);return alert(createdData.error||'Não foi possível preparar o parceiro.')}id=createdData.partner.id;}const response=await fetch('/api/partners',{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({id,period,status:nextStatus,grossCommission:calculatedGross})}),data=await response.json();setSaving(false);if(response.ok)onUpdated({...partner,id,settlements:[{...data.settlement,bonus:draftBonusValue,bonusDescription:bonusDescription.trim()},...(partner.settlements||[]).filter(item=>item.period!==period)]});else alert(data.error||'Não foi possível atualizar o relatório.');};
+  const persistBonus=async(value:number,description:string)=>{if(bonusTimer.current)window.clearTimeout(bonusTimer.current);setBonusSaving(true);let id=partner.id;if(!id){const created=await fetch('/api/partners',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({name:partner.name})}),createdData=await created.json();if(!created.ok){setBonusSaving(false);alert(createdData.error||'Não foi possível preparar o parceiro.');return false}id=createdData.partner.id;}const response=await fetch('/api/partners',{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({id,period,bonus:Math.max(0,value),bonusDescription:description,grossCommission:calculatedGross})}),data=await response.json();setBonusSaving(false);if(!response.ok){alert(data.error||'Não foi possível salvar o adicional.');return false}const manualBonus=value>0?{period,value,description:description||'Bônus / campanha adicional',source:'manual' as const}:null;onUpdated({...partner,id,settlements:[data.settlement,...(partner.settlements||[]).filter(item=>item.period!==period)],bonuses:[...(manualBonus?[manualBonus]:[]),...(partner.bonuses||[]).filter(item=>!(item.source==='manual'&&item.period===period))]});setBonusDraft(formatMoneyInput(value));setBonusDescription(description);notifyCrmChanged();return true;};
+  const scheduleBonusSave=(value:string,description=bonusDescription)=>{if(bonusTimer.current)window.clearTimeout(bonusTimer.current);bonusTimer.current=window.setTimeout(()=>void persistBonus(Math.max(0,parseMoneyBr(value)),description.trim()),650)};
+  const saveBonus=async()=>{await persistBonus(draftBonusValue,bonusDescription.trim())};
+  const removeBonus=async()=>{if(status==='pago'&&!window.confirm('Este acerto já está pago. Remover o valor adicional e recalcular o rateio?'))return;setBonusDraft('');setBonusDescription('');await persistBonus(0,'');};
   const exportReport=()=>setReportOpen(true);
-  return <><section className="tf-partner-settlement"><header><span><small>ACERTO DA PARCERIA · {period}</small><h3>Comissão líquida e repasse</h3></span><strong>{brl(tfValue)}<small> repasse do Thiago · 50%</small></strong></header><section className="tf-partner-additional"><header><span><small>ADICIONAL DO PERÍODO</small><h4>Bônus ou campanha</h4></span><small>Entra no fechamento e segue o rateio vigente.</small></header><div><label>Valor adicional<CurrencyInput aria-label="Valor adicional de bônus ou campanha" value={bonusDraft} onChange={value=>setBonusDraft(value)}/></label><label>Descrição<input value={bonusDescription} onChange={event=>setBonusDescription(event.target.value)} maxLength={160} placeholder="Ex.: Campanha de seguro"/></label><button type="button" className="tf-primary" onClick={saveBonus} disabled={bonusSaving}>{bonusSaving?'Salvando…':'Salvar adicional'}</button></div></section><div className="tf-partner-settlement-values"><span><small>COMISSÃO BRUTA</small><b>{brl(calculatedGross)}</b></span><span><small>ILA DESCONTADO</small><b>{brl(ilaTotal)}</b></span><span><small>APÓS ILA</small><b>{brl(afterIlaTotal)}</b></span>{bonus>0&&<span><small>BÔNUS / CAMPANHA</small><b>{brl(bonus)}</b></span>}<span><small>TAXA DA NOTA</small><b>{brl(invoiceFeeTotal)}</b></span><span><small>COMISSÃO LÍQUIDA</small><b>{brl(net)}</b></span><span><small>PARTE DO PARCEIRO</small><b>{brl(partnerValue)}</b></span></div><footer><em className={status==='pago'?'done':'pending'}>{status==='pago'?'Relatório pago':'Em aberto'}</em><button type="button" className="tf-partner-export" onClick={exportReport}>Abrir relatório</button><button type="button" className="tf-primary" onClick={()=>updateStatus(status==='pago'?'em_aberto':'pago')} disabled={saving}>{saving?'Salvando…':status==='pago'?'Reabrir mês':'Marcar mês como pago'}</button></footer></section>{reportOpen&&createPortal(<div className="tf-partner-report-overlay" onMouseDown={()=>setReportOpen(false)}><section className="tf-partner-report" onMouseDown={event=>event.stopPropagation()}><header><div><small>RELATÓRIO DE PARCEIRO</small><h2>{partner.name}</h2><p>{monthLabel}</p></div><span className={status==='pago'?'done':'pending'}>{status==='pago'?'RELATÓRIO PAGO':'EM ABERTO'}</span><button type="button" aria-label="Fechar relatório" onClick={()=>setReportOpen(false)}><X/></button></header><div className="tf-partner-report-cards"><article><small>VALOR FINANCIADO</small><b>{brl(production)}</b></article><article><small>COMISSÃO BRUTA</small><b>{brl(calculatedGross)}</b></article><article><small>COMISSÃO LÍQUIDA</small><b>{brl(net)}</b></article><article><small>REPASSE THIAGO · 50%</small><b>{brl(tfValue)}</b></article></div><section className="tf-partner-report-comparison tf-partner-trend-comparison"><header><div><small>COMPARATIVO MENSAL</small><h3>Produção total</h3></div><b className={difference>=0?"up":"down"}>{variationLabel}</b></header><div className="tf-partner-trend-cards"><article><small>{previousMonthLabel}</small><strong>{brl(previousProduction)}</strong><span><b>{previousRows.length}</b> contratos</span><span><b>{brl(previousTicket)}</b> ticket médio</span></article><article className="current"><small>{monthLabel}</small><strong>{brl(production)}</strong><span><b>{rows.length}</b> contratos</span><span><b>{brl(currentTicket)}</b> ticket médio</span></article><aside><small>{difference>=0?"CRESCIMENTO":"REDUÇÃO"}</small><strong>{variationLabel}</strong><span>{difference>=0?"+":"−"} {brl(Math.abs(difference))} de diferença</span></aside></div><div className="tf-partner-trend-chart"><svg viewBox="0 0 720 270" role="img" aria-label={"Evolução da produção de "+previousMonthLabel+" e "+monthLabel}><defs><linearGradient id="tf-partner-current-area" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#e7b94f" stopOpacity=".62"/><stop offset="1" stopColor="#e7b94f" stopOpacity="0"/></linearGradient><linearGradient id="tf-partner-previous-area" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#d7d9d6" stopOpacity=".34"/><stop offset="1" stopColor="#d7d9d6" stopOpacity="0"/></linearGradient><filter id="tf-partner-line-glow"><feGaussianBlur stdDeviation="2" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>{[50,93,136,179,222].map(y=><line key={y} className="tf-partner-trend-grid" x1="48" x2="672" y1={y} y2={y}/>)}{trendDays.map((day,index)=><g key={day}><line className="tf-partner-trend-grid vertical" x1={trendPoint(0,index).x} x2={trendPoint(0,index).x} y1="50" y2="224"/><text className="tf-partner-trend-day" x={trendPoint(0,index).x} y="250">{String(day).padStart(2,"0")}</text></g>)}<path className="tf-partner-trend-area previous" d={trendArea(previousTrendPoints)}/><path className="tf-partner-trend-area current" d={trendArea(currentTrendPoints)}/><path className="tf-partner-trend-line previous" d={trendLine(previousTrendPoints)}/><path className="tf-partner-trend-line current" d={trendLine(currentTrendPoints)}/><circle className="tf-partner-trend-dot previous" cx={previousTrendPoints.at(-1)!.x} cy={previousTrendPoints.at(-1)!.y} r="6"/><circle className="tf-partner-trend-dot current" cx={currentTrendPoints.at(-1)!.x} cy={currentTrendPoints.at(-1)!.y} r="7"/></svg><div className="tf-partner-trend-legend"><span><i className="current"/>{monthLabel}<b>{brl(production)}</b></span><span><i className="previous"/>{previousMonthLabel}<b>{brl(previousProduction)}</b></span></div></div></section><article className="tf-partner-report-analysis"><b>Análise do período</b><p>{analysis}</p></article><div className="tf-partner-report-table"><table><thead><tr><th>Cliente</th><th>CPF</th><th>Banco</th><th>Produto</th><th>Valor financiado</th><th>Comissão bruta</th><th>ILA aplicado</th><th>Após ILA</th><th>Taxa da nota</th><th>Líquida</th><th>Repasse Thiago</th></tr></thead><tbody>{rows.map((row,index)=>{const client=clientsData.find(item=>item.id===row.clientId),calculation=partnerOperationCalculation(row,partner);return <tr className={`tone-${index%5}`} key={row.id}><td>{client?.name||'Cliente'}</td><td>{formatCpf(client?.cpf||'')}</td><td>{row.bank}</td><td>{row.product}</td><td>{brl(row.value)}</td><td>{brl(calculation.gross)}</td><td>{calculation.ilaRate.toLocaleString('pt-BR')}% · {brl(calculation.ilaValue)}</td><td>{brl(calculation.afterIla)}</td><td>{calculation.invoiceRate.toLocaleString('pt-BR')}% · {brl(calculation.invoiceFee)}</td><td>{brl(calculation.net)}</td><td>{brl(calculation.thiagoShare)}</td></tr>})}{bonus>0&&<tr className="tone-4"><td>Campanha GG Veículos</td><td>—</td><td>Adicional</td><td>{partner.bonuses?.filter(item=>item.period===period).map(item=>item.description).filter(Boolean).join(' · ')||'Bônus / campanha'}</td><td>—</td><td>—</td><td>0%</td><td>—</td><td>0%</td><td>{brl(bonus)}</td><td>{brl(bonusCalculation.thiagoShare)}</td></tr>}{!rows.length&&<tr><td colSpan={11}>Nenhuma operação no período.</td></tr>}</tbody></table></div><footer><button type="button" onClick={()=>setReportOpen(false)}>Fechar</button><button type="button" className="tf-primary" onClick={()=>downloadPartnerReportPdf({partnerName:partner.name,monthLabel,status,production,calculatedGross,net,tfValue,previousMonthLabel,previousProduction,previousCount:previousRows.length,currentCount:rows.length,previousTicket,currentTicket,variationLabel,analysis,rows,clientsData,partner,bonus})}>Gerar PDF</button></footer></section></div>,document.body)}</>;
+  return <><section className="tf-partner-settlement"><header><span><small>ACERTO DA PARCERIA · {period}</small><h3>Comissão líquida e repasse</h3></span><strong>{brl(tfValue)}<small> repasse do Thiago · 50%</small></strong></header><section className="tf-partner-additional"><header><span><small>ADICIONAL DO PERÍODO</small><h4>Valor adicional / bonificação de campanha</h4></span><small>Digite, altere ou apague. O rateio acompanha o valor atual.</small></header><div><label>Valor adicional<CurrencyInput aria-label="Valor adicional de bônus ou campanha" value={bonusDraft} onChange={value=>{if(status==='pago'&&draftBonusValue>0&&parseMoneyBr(value)===0&&!window.confirm('Este acerto já está pago. Remover o valor adicional e recalcular o rateio?')){setBonusDraft(formatMoneyInput(draftBonusValue));return}setBonusDraft(value);scheduleBonusSave(value)}}/></label><label>Descrição<input value={bonusDescription} onChange={event=>{setBonusDescription(event.target.value);scheduleBonusSave(bonusDraft,event.target.value)}} onBlur={()=>scheduleBonusSave(bonusDraft,bonusDescription)} maxLength={160} placeholder="Ex.: Campanha de seguro"/></label><button type="button" className="tf-primary" onClick={saveBonus} disabled={bonusSaving}>{bonusSaving?'Salvando…':'Salvar adicional'}</button>{draftBonusValue>0&&<button type="button" className="tf-remove-additional" onClick={removeBonus} disabled={bonusSaving}>Remover valor adicional</button>}</div></section><div className="tf-partner-settlement-values"><span><small>COMISSÃO BRUTA</small><b>{brl(calculatedGross)}</b></span><span><small>ILA DESCONTADO</small><b>{brl(ilaTotal)}</b></span><span><small>APÓS ILA</small><b>{brl(afterIlaTotal)}</b></span>{bonus>0&&<span><small>BÔNUS / CAMPANHA</small><b>{brl(bonus)}</b></span>}<span><small>TAXA DA NOTA</small><b>{brl(invoiceFeeTotal)}</b></span><span><small>COMISSÃO LÍQUIDA</small><b>{brl(net)}</b></span><span><small>PARTE DO PARCEIRO</small><b>{brl(partnerValue)}</b></span></div><footer><em className={status==='pago'?'done':'pending'}>{status==='pago'?'Relatório pago':'Em aberto'}</em><button type="button" className="tf-partner-export" onClick={exportReport}>Abrir relatório</button><button type="button" className="tf-primary" onClick={()=>updateStatus(status==='pago'?'em_aberto':'pago')} disabled={saving}>{saving?'Salvando…':status==='pago'?'Reabrir mês':'Marcar mês como pago'}</button></footer></section>{reportOpen&&createPortal(<div className="tf-partner-report-overlay" onMouseDown={()=>setReportOpen(false)}><section className="tf-partner-report" onMouseDown={event=>event.stopPropagation()}><header><div><small>RELATÓRIO DE PARCEIRO</small><h2>{partner.name}</h2><p>{monthLabel}</p></div><span className={status==='pago'?'done':'pending'}>{status==='pago'?'RELATÓRIO PAGO':'EM ABERTO'}</span><button type="button" aria-label="Fechar relatório" onClick={()=>setReportOpen(false)}><X/></button></header><div className="tf-partner-report-cards"><article><small>VALOR FINANCIADO</small><b>{brl(production)}</b></article><article><small>COMISSÃO BRUTA</small><b>{brl(calculatedGross)}</b></article><article><small>COMISSÃO LÍQUIDA</small><b>{brl(net)}</b></article><article><small>REPASSE THIAGO · 50%</small><b>{brl(tfValue)}</b></article></div><section className="tf-partner-report-comparison tf-partner-trend-comparison"><header><div><small>COMPARATIVO MENSAL</small><h3>Produção total</h3></div><b className={difference>=0?"up":"down"}>{variationLabel}</b></header><div className="tf-partner-trend-cards"><article><small>{previousMonthLabel}</small><strong>{brl(previousProduction)}</strong><span><b>{previousRows.length}</b> contratos</span><span><b>{brl(previousTicket)}</b> ticket médio</span></article><article className="current"><small>{monthLabel}</small><strong>{brl(production)}</strong><span><b>{rows.length}</b> contratos</span><span><b>{brl(currentTicket)}</b> ticket médio</span></article><aside><small>{difference>=0?"CRESCIMENTO":"REDUÇÃO"}</small><strong>{variationLabel}</strong><span>{difference>=0?"+":"−"} {brl(Math.abs(difference))} de diferença</span></aside></div><div className="tf-partner-trend-chart"><svg viewBox="0 0 720 270" role="img" aria-label={"Evolução da produção de "+previousMonthLabel+" e "+monthLabel}><defs><linearGradient id="tf-partner-current-area" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#e7b94f" stopOpacity=".62"/><stop offset="1" stopColor="#e7b94f" stopOpacity="0"/></linearGradient><linearGradient id="tf-partner-previous-area" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#d7d9d6" stopOpacity=".34"/><stop offset="1" stopColor="#d7d9d6" stopOpacity="0"/></linearGradient><filter id="tf-partner-line-glow"><feGaussianBlur stdDeviation="2" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>{[50,93,136,179,222].map(y=><line key={y} className="tf-partner-trend-grid" x1="48" x2="672" y1={y} y2={y}/>)}{trendDays.map((day,index)=><g key={day}><line className="tf-partner-trend-grid vertical" x1={trendPoint(0,index).x} x2={trendPoint(0,index).x} y1="50" y2="224"/><text className="tf-partner-trend-day" x={trendPoint(0,index).x} y="250">{String(day).padStart(2,"0")}</text></g>)}<path className="tf-partner-trend-area previous" d={trendArea(previousTrendPoints)}/><path className="tf-partner-trend-area current" d={trendArea(currentTrendPoints)}/><path className="tf-partner-trend-line previous" d={trendLine(previousTrendPoints)}/><path className="tf-partner-trend-line current" d={trendLine(currentTrendPoints)}/><circle className="tf-partner-trend-dot previous" cx={previousTrendPoints.at(-1)!.x} cy={previousTrendPoints.at(-1)!.y} r="6"/><circle className="tf-partner-trend-dot current" cx={currentTrendPoints.at(-1)!.x} cy={currentTrendPoints.at(-1)!.y} r="7"/></svg><div className="tf-partner-trend-legend"><span><i className="current"/>{monthLabel}<b>{brl(production)}</b></span><span><i className="previous"/>{previousMonthLabel}<b>{brl(previousProduction)}</b></span></div></div></section><article className="tf-partner-report-analysis"><b>Análise do período</b><p>{analysis}</p></article><div className="tf-partner-report-table"><table><thead><tr><th>Cliente</th><th>CPF</th><th>Banco</th><th>Produto</th><th>Valor financiado</th><th>Comissão bruta</th><th>ILA aplicado</th><th>Após ILA</th><th>Taxa da nota</th><th>Líquida</th><th>Repasse Thiago</th></tr></thead><tbody>{rows.map((row,index)=>{const client=clientsData.find(item=>item.id===row.clientId),calculation=partnerOperationCalculation(row,partner);return <tr className={`tone-${index%5}`} key={row.id}><td>{client?.name||'Cliente'}</td><td>{formatCpf(client?.cpf||'')}</td><td>{row.bank}</td><td>{row.product}</td><td>{brl(row.value)}</td><td>{brl(calculation.gross)}</td><td>{calculation.ilaRate.toLocaleString('pt-BR')}% · {brl(calculation.ilaValue)}</td><td>{brl(calculation.afterIla)}</td><td>{calculation.invoiceRate.toLocaleString('pt-BR')}% · {brl(calculation.invoiceFee)}</td><td>{brl(calculation.net)}</td><td>{brl(calculation.thiagoShare)}</td></tr>})}{bonus>0&&<tr className="tone-4"><td>Campanha GG Veículos</td><td>—</td><td>Adicional</td><td>{bonusDescription||partner.bonuses?.filter(item=>item.period===period).map(item=>item.description).filter(Boolean).join(' · ')||'Bônus / campanha'}</td><td>—</td><td>—</td><td>0%</td><td>—</td><td>0%</td><td>{brl(bonus)}</td><td>{brl(bonusCalculation.thiagoShare)}</td></tr>}{!rows.length&&<tr><td colSpan={11}>Nenhuma operação no período.</td></tr>}</tbody></table></div><footer><button type="button" onClick={()=>setReportOpen(false)}>Fechar</button><button type="button" className="tf-primary" onClick={()=>downloadPartnerReportPdf({partnerName:partner.name,monthLabel,status,production,calculatedGross,net,tfValue,previousMonthLabel,previousProduction,previousCount:previousRows.length,currentCount:rows.length,previousTicket,currentTicket,variationLabel,analysis,rows,clientsData,partner,bonus})}>Gerar PDF</button></footer></section></div>,document.body)}</>;
 }
 
 function Partners({rows,clientsData,partners,onPartnerCreated,onPartnerUpdated}:{rows:Operation[];clientsData:Client[];partners:PartnerRecord[];onPartnerCreated:(partner:PartnerRecord)=>void;onPartnerUpdated:(partner:PartnerRecord)=>void}) {
   const [adding,setAdding]=useState(false),[partnerName,setPartnerName]=useState(""),[expandedPartner,setExpandedPartner]=useState<number|null>(null),[selectedMonth,setSelectedMonth]=useState("2026-09");
+  const partnerAccessLink=(id:number)=>typeof window==='undefined'?`/signin-with-chatgpt?return_to=%2Fgermano%3Fpartner%3D${id}`:`${window.location.origin}/signin-with-chatgpt?return_to=${encodeURIComponent(`/germano?partner=${id}`)}`;
+  const copyPartnerLink=async(id:number)=>{const link=partnerAccessLink(id);try{await navigator.clipboard.writeText(link);alert('Link do parceiro copiado.')}catch{alert(link)}};
   const savePartner=async(event:React.FormEvent)=>{event.preventDefault();const response=await fetch('/api/partners',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({name:partnerName})}),data=await response.json();if(response.ok){onPartnerCreated(data.partner);notifyCrmChanged();setPartnerName("");setAdding(false)}else alert(data.error||'Não foi possível cadastrar o parceiro.');};
   const storedPeriods=partners.flatMap(partner=>[...(partner.settlements||[]).map(item=>item.period),...(partner.bonuses||[]).map(item=>item.period)]),monthOptions=Array.from(new Set([...rows.map(row=>row.date.slice(0,7)).filter(value=>/^\d{4}-\d{2}$/.test(value)),...storedPeriods,"2026-09"])).sort((a,b)=>b.localeCompare(a)),monthLabel=(period:string)=>{const label=new Intl.DateTimeFormat("pt-BR",{month:"long",year:"numeric",timeZone:"UTC"}).format(new Date(`${period}-01T00:00:00Z`));return label.charAt(0).toUpperCase()+label.slice(1)},previousMonth=(()=>{const [year,month]=selectedMonth.split('-').map(Number),date=new Date(Date.UTC(year,month-2,1));return `${date.getUTCFullYear()}-${String(date.getUTCMonth()+1).padStart(2,'0')}`})();
   return (
@@ -2518,7 +2571,7 @@ function Partners({rows,clientsData,partners,onPartnerCreated,onPartnerUpdated}:
       <div className="tf-partner-list">{partners.map(partner=>{const partnerName=partner.name;
         const partnerRows=rows.filter(row=>row.partnerId===partner.id||row.origin?.localeCompare(partnerName,"pt-BR",{sensitivity:"base"})===0),currentRows=partnerRows.filter(row=>row.date.startsWith(selectedMonth)),previousRows=partnerRows.filter(row=>row.date.startsWith(previousMonth));
         const clientIds=Array.from(new Set(currentRows.map(row=>row.clientId))),partnerClients=clientIds.map(id=>clientsData.find(client=>client.id===id)).filter(Boolean) as Client[],currentValue=currentRows.reduce((sum,row)=>sum+row.value,0),currentCommission=currentRows.reduce((sum,row)=>sum+row.grossCommission,0),initials=partnerName.split(/\s+/).slice(0,2).map(word=>word[0]).join("").toUpperCase(),expanded=expandedPartner===partner.id;
-        return <article className={`tf-partner-executive${expanded?' expanded':''}`} key={partnerName}><header><span><i className={/GG Veículos/i.test(partnerName)?"tf-partner-logo":""}>{/GG Veículos/i.test(partnerName)?<img src="/gg-veiculos-logo.png" alt="GG Veículos"/>:initials}</i><span><h2>{partnerName}</h2><small>Parceiro comercial · {monthLabel(selectedMonth)}</small></span></span><button type="button" className="tf-partner-expand" aria-expanded={expanded} onClick={()=>setExpandedPartner(expanded?null:partner.id)}><span>{partnerClients.length} clientes · {brl(currentValue)}</span><ChevronRight/></button></header>{expanded&&<><div className="tf-partner-body"><section className="tf-partner-metrics"><div><small>CLIENTES NO MÊS</small><strong>{partnerClients.length}</strong></div><div><small>VALOR FINANCIADO</small><strong>{brl(currentValue)}</strong></div><div><small>COMISSÃO BRUTA</small><strong>{brl(currentCommission)}</strong></div><div className="tf-partner-detail-table"><header><span>Cliente</span><span>CPF</span><span>Banco</span><span>Produto</span><span>Valor financiado</span><span>Comissão bruta</span><span>ILA % / desconto</span><span>Após ILA</span><span>Nota % / desconto</span><span>Líquida</span><span>Repasse Thiago</span><span>Ação</span></header>{currentRows.map(row=><PartnerOperationRow key={`${row.id}:${partner.adjustments?.find(item=>item.operationId===row.dbId)?.ilaRate}:${partner.adjustments?.find(item=>item.operationId===row.dbId)?.invoiceRate}`} row={row} client={clientsData.find(item=>item.id===row.clientId)} partner={partner} onUpdated={onPartnerUpdated}/>) }{!currentRows.length&&<p>Nenhuma operação vinculada neste mês.</p>}</div></section></div><PartnerSettlement partner={partner} gross={currentCommission} period={selectedMonth} rows={currentRows} previousRows={previousRows} clientsData={clientsData} onUpdated={onPartnerUpdated}/></>}</article>;
+        return <article className={`tf-partner-executive${expanded?' expanded':''}`} key={partnerName}><header><span><i className={/GG Veículos/i.test(partnerName)?"tf-partner-logo":""}>{/GG Veículos/i.test(partnerName)?<img src="/gg-veiculos-logo.png" alt="GG Veículos"/>:initials}</i><span><h2>{partnerName}</h2><small>Parceiro comercial · {monthLabel(selectedMonth)}</small></span></span><button type="button" className="tf-partner-expand" aria-expanded={expanded} onClick={()=>setExpandedPartner(expanded?null:partner.id)}><span>{partnerClients.length} clientes · {brl(currentValue)}</span><ChevronRight/></button><div className="tf-partner-access-actions">{partner.id>0?<><button type="button" onClick={()=>copyPartnerLink(partner.id)}><Copy/> Copiar link</button><a href={partnerAccessLink(partner.id)} target="_blank" rel="noreferrer"><ExternalLink/> Abrir acesso</a></>:<small>Link disponível após o cadastro</small>}</div></header>{expanded&&<><div className="tf-partner-body"><section className="tf-partner-metrics"><div><small>CLIENTES NO MÊS</small><strong>{partnerClients.length}</strong></div><div><small>VALOR FINANCIADO</small><strong>{brl(currentValue)}</strong></div><div><small>COMISSÃO BRUTA</small><strong>{brl(currentCommission)}</strong></div><div className="tf-partner-detail-table"><header><span>Cliente</span><span>CPF</span><span>Banco</span><span>Produto</span><span>Valor financiado</span><span>Comissão bruta</span><span>ILA % / desconto</span><span>Após ILA</span><span>Nota % / desconto</span><span>Líquida</span><span>Repasse Thiago</span><span>Ação</span></header>{currentRows.map(row=><PartnerOperationRow key={`${row.id}:${partner.adjustments?.find(item=>item.operationId===row.dbId)?.ilaRate}:${partner.adjustments?.find(item=>item.operationId===row.dbId)?.invoiceRate}`} row={row} client={clientsData.find(item=>item.id===row.clientId)} partner={partner} onUpdated={onPartnerUpdated}/>) }{!currentRows.length&&<p>Nenhuma operação vinculada neste mês.</p>}</div></section></div><PartnerSettlement partner={partner} gross={currentCommission} period={selectedMonth} rows={currentRows} previousRows={previousRows} clientsData={clientsData} onUpdated={onPartnerUpdated}/></>}</article>;
       })}</div>
       {adding&&<div className="tf-modal-back"><form className="tf-modal tf-partner-modal" onSubmit={savePartner}><button type="button" className="tf-modal-close" onClick={()=>setAdding(false)}>×</button><small>NOVO PARCEIRO</small><h2>Cadastrar parceiro</h2><p>Informe o nome que deverá aparecer nos relatórios e nas operações.</p><label>Nome do parceiro<input autoFocus required value={partnerName} onChange={event=>setPartnerName(event.target.value)} placeholder="Ex.: Nome da empresa"/></label><div className="tf-modal-actions"><button type="button" className="tf-secondary" onClick={()=>setAdding(false)}>Cancelar</button><button className="tf-primary">Cadastrar parceiro</button></div></form></div>}
     </>
@@ -2723,36 +2776,59 @@ function Banks() {
           ))}
         </section>
         <section className="tf-banks">
-          {[
-            "C6 Bank",
-            "Banco BV",
-            "Banco PAN",
-            "Creditas",
-            "Omni",
-            "Porto Seguro",
-            "Safra",
-            "Santander",
-          ].map((b) => (
-            <article key={b}>
-              <i>
-                {b
-                  .split(" ")
-                  .map((x) => x[0])
-                  .join("")
-                  .slice(0, 2)}
-              </i>
+          <header className="tf-bank-catalog-heading"><span><small>CÓDIGO COMPE</small><b>CÓDIGO — BANCO</b></span><small>Centrais mantidas em fonte oficial</small></header>
+          {bankCatalog.map((bank) => (
+            <article key={bank.code}>
+              <i style={{ background: bank.color }}>{bank.code}</i>
               <span>
-                <b>{b}</b>
-                <small>Banco / plataforma</small>
+                <b>{bank.code} — {bank.name}</b>
+                <small>{bank.service || "Instituição financeira"}{bank.phone ? ` · ${bank.phone}` : " · Central no site oficial"}</small>
               </span>
               <em>Ativo</em>
-              <button>↗</button>
+              <a href={bank.officialUrl} target="_blank" rel="noreferrer" aria-label={`Abrir atendimento oficial de ${bank.name}`}><ExternalLink /></a>
             </article>
           ))}
         </section>
       </div>
     </>
   );
+}
+
+function postSaleMessage(task: PostSaleTask, googleReviewUrl: string) {
+  const name = task.clientName.split(/\s+/)[0] || task.clientName;
+  const bank = bankInfo(task.bank);
+  const central = bank?.phone ? `Central oficial ${task.bank}: ${bank.phone}` : `Canal oficial ${task.bank}: ${bank?.officialUrl || "consulte o site oficial da instituição"}`;
+  const details = `${task.product} · ${task.bank}\nValor: ${brl(task.value)}${task.installment > 0 ? `\nParcela: ${brl(task.installment)}` : ""}${task.term > 0 ? `\nPrazo: ${task.term} meses` : ""}`;
+  let guidance = "Se precisar de alguma orientação sobre a operação, continuo à disposição.";
+  if (/financiamento/i.test(task.product)) guidance = "Parabéns pela conquista do seu veículo ou bem! Guarde o contrato e acompanhe as parcelas pelos canais oficiais.";
+  else if (/garantia/i.test(task.product)) guidance = "Guarde o contrato e acompanhe as condições da operação pelos canais oficiais da instituição.";
+  else if (/consignado|inss|clt/i.test(task.product)) guidance = "Acompanhe o desconto no contracheque ou benefício e procure a central oficial em caso de dúvida.";
+  else if (/consórcio/i.test(task.product)) guidance = "Acompanhe sua cota e as assembleias pelos canais oficiais da administradora.";
+  else if (/juríd/i.test(task.product)) guidance = task.postSaleNotes || "O escritório responsável poderá orientar você sobre os próximos passos.";
+  else if (task.postSaleNotes) guidance = task.postSaleNotes;
+  return `Olá, ${name}! Aqui é o Thiago, responsável pelo seu atendimento na TF Assessoria & Finanças.\n\nPassando para agradecer pela confiança e informar que sua operação foi concluída com sucesso. 🎉\n\n${details}\n\n${guidance}\n\n${central}\n\nCaso precise de alguma orientação, continuo à disposição.${googleReviewUrl ? `\n\nSe puder, avalie também como foi o meu atendimento:\n${googleReviewUrl}` : ""}\n\nMuito obrigado pela confiança!\nThiago Oliveira\nTF Assessoria & Finanças`;
+}
+
+function PostSales({ tasks, setTasks, googleReviewUrl }: { tasks: PostSaleTask[]; setTasks: React.Dispatch<React.SetStateAction<PostSaleTask[]>>; googleReviewUrl: string }) {
+  const [filter, setFilter] = useState<"pendente" | "todos">("pendente");
+  const pending = tasks.filter((task) => task.status === "pendente");
+  const visible = filter === "pendente" ? pending : tasks;
+  const complete = async (task: PostSaleTask) => {
+    const response = await fetch('/api/post-sales', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: task.id, status: 'concluido' }) });
+    const data = await response.json();
+    if (response.ok) setTasks((current) => current.map((item) => item.id === task.id ? { ...item, status: 'concluido', completedAt: data.task?.completedAt || Date.now() } : item));
+    else alert(data.error || 'Não foi possível concluir o pós-venda.');
+  };
+  return <>
+    <Title over="RELACIONAMENTO APÓS A VENDA" title="Pós-venda" text="Acompanhe os contatos que precisam ser feitos depois da conclusão." />
+    <section className="tf-post-sale-summary"><article><small>PENDÊNCIAS</small><strong>{pending.length}</strong><span>contatos aguardando</span></article><article><small>HISTÓRICO</small><strong>{tasks.length}</strong><span>operações acompanhadas</span></article><div><button className={filter === "pendente" ? "active" : ""} onClick={() => setFilter("pendente")}>Pendentes · {pending.length}</button><button className={filter === "todos" ? "active" : ""} onClick={() => setFilter("todos")}>Histórico · {tasks.length}</button></div></section>
+    <section className="tf-post-sale-list">{visible.map((task) => <article key={task.id} className={task.status === "concluido" ? "completed" : "pending"}>
+      <header><span><i><MessageCircle /></i><div><b>{task.clientName}</b><small>{formatPhone(task.phone)} · {task.partner}</small></div></span><em>{task.status === "pendente" ? "Pendente" : "Concluído"}</em></header>
+      <div className="tf-post-sale-details"><span><small>PRODUTO</small><b>{task.product}</b></span><span><small>BANCO / INSTITUIÇÃO</small><BankIdentity value={task.bank} compact /></span><span><small>VALOR</small><b>{brl(task.value)}</b></span><span><small>PARCELA</small><b>{task.installment > 0 ? brl(task.installment) : "—"}</b></span><span><small>PRAZO</small><b>{task.term > 0 ? `${task.term} meses` : "—"}</b></span><span><small>CONCLUSÃO</small><b>{formatDateBr(task.completionDate)}</b></span></div>
+      {task.postSaleNotes && <p className="tf-post-sale-note">{task.postSaleNotes}</p>}
+      <footer><a className="tf-post-sale-whatsapp" href={task.phone ? `https://wa.me/55${phoneKey(task.phone)}?text=${encodeURIComponent(postSaleMessage(task, googleReviewUrl))}` : undefined} target="_blank" rel="noreferrer" aria-disabled={!task.phone}><MessageCircle /> WhatsApp</a>{task.status === "pendente" ? <button className="tf-primary" onClick={() => complete(task)}><CheckCircle2 /> Pós-venda concluído com sucesso</button> : <span className="tf-post-sale-completed"><CheckCircle2 /> Concluído em {task.completedAt ? new Date(task.completedAt).toLocaleString("pt-BR") : "—"}</span>}</footer>
+    </article>)}{!visible.length && <div className="tf-table-empty"><CheckCircle2 /><h2>{filter === "pendente" ? "Nenhum pós-venda pendente" : "Nenhum pós-venda registrado"}</h2><p>Quando uma operação for concluída, ela aparecerá nesta fila.</p></div>}</section>
+  </>;
 }
 function ReportsFiltered({
   rows: operations,
@@ -2907,16 +2983,17 @@ function ReportsFiltered({
     </>
   );
 }
-const permissionLabels:Record<string,string>={inicio:'Início',clientes:'Clientes',atendimento:'Atendimento / Kanban',producao:'Produção',parceiros:'Parceiros',servicos:'Serviços',financeiro:'Financeiro / Comissões',notas:'Notas fiscais',bancos:'Bancos e financiamentos',relatorios:'Relatórios'};
+const permissionLabels:Record<string,string>={inicio:'Início',clientes:'Clientes',atendimento:'Atendimento / Kanban',producao:'Produção',parceiros:'Parceiros',servicos:'Serviços',financeiro:'Financeiro / Comissões',notas:'Notas fiscais',bancos:'Bancos e financiamentos',relatorios:'Relatórios',posvenda:'Pós-venda'};
 function AccessManagement({members,setMembers,partners}:{members:TeamMember[];setMembers:React.Dispatch<React.SetStateAction<TeamMember[]>>;partners:PartnerRecord[]}){
- const accessUrl='https://nexo-crm-gestao.thiagon-oliveira.chatgpt.site';
+ const accessUrl=typeof window==='undefined'?'/signin-with-chatgpt':`${window.location.origin}/signin-with-chatgpt`;
  const empty={id:0,name:'',email:'',password:'',active:true,permissions:['inicio','atendimento'] as View[],partnerId:null as number|null};
  const [form,setForm]=useState<TeamMember>(empty),[saving,setSaving]=useState(false),[message,setMessage]=useState(''),[copied,setCopied]=useState(false),[lastInvite,setLastInvite]=useState<TeamMember|null>(null);
  const save=async(e:React.FormEvent)=>{e.preventDefault();setSaving(true);setMessage('');const editing=Boolean(form.id);const r=await fetch('/api/access-users',{method:editing?'PATCH':'POST',headers:{'content-type':'application/json'},body:JSON.stringify(form)});const x=await r.json();setSaving(false);if(!r.ok){setMessage(x.error||'Não foi possível salvar.');return}setMembers(xs=>editing?xs.map(m=>m.id===x.member.id?x.member:m):[x.member,...xs]);setLastInvite(x.member);setForm(empty);setMessage('Acesso salvo. Compartilhe o link e a senha com o usuário.')};
  const toggleActive=async(member:TeamMember)=>{const r=await fetch('/api/access-users',{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({...member,active:!member.active})});const x=await r.json();if(r.ok)setMembers(xs=>xs.map(m=>m.id===x.member.id?x.member:m))};
+ const deleteMember=async(member:TeamMember)=>{if(!window.confirm(`Excluir o acesso de ${member.name}? O histórico será preservado e o login será revogado.`))return;const r=await fetch(`/api/access-users?id=${member.id}`,{method:'DELETE'}),x=await r.json();if(r.ok)setMembers(xs=>xs.map(m=>m.id===x.member.id?x.member:m));else setMessage(x.error||'Não foi possível excluir o usuário.')};
  const copyAccessLink=async()=>{try{await navigator.clipboard.writeText(accessUrl);setCopied(true);setTimeout(()=>setCopied(false),2200)}catch{setMessage(`Link de acesso: ${accessUrl}`)}};
  const visiblePermissions=(member:TeamMember)=>member.permissions.filter(p=>p!=='inicio').map(p=>permissionLabels[p]).filter(Boolean).sort((a,b)=>a.localeCompare(b,'pt-BR',{sensitivity:'base'}));
- return <><Title over="EQUIPE E SEGURANÇA" title="Usuários e acessos" text="Cadastre funcionários ou parceiros e envie o link do sistema." action="Novo acesso" onAction={()=>setForm(empty)}/><section className="tf-access-layout"><div className="tf-access-list"><header><div><small>USUÁRIOS CADASTRADOS</small><h2>Equipe e parceiros</h2></div><b>{members.filter(m=>m.active).length} ativos</b></header>{[...members].sort((a,b)=>a.name.localeCompare(b.name,'pt-BR',{sensitivity:'base'})).map((member,index)=>{const permissions=visiblePermissions(member),partnerName=partners.find(partner=>partner.id===member.partnerId)?.name||member.partnerName;return <article key={member.id} className={`${!member.active?'inactive ':''}member-tone-${index%6}`}><i>{member.name.split(/\s+/).slice(0,2).map(n=>n[0]).join('').toUpperCase()}</i><div><b>{member.name}</b><small>{member.email}</small><p>{partnerName?`Parceiro · ${partnerName}`:permissions.length?permissions.join(' · '):'Somente acesso básico'}</p></div><em>{member.active?'Ativo':'Pausado'}</em><button onClick={()=>setForm({...member,password:''})}>Editar</button><button onClick={()=>toggleActive(member)}>{member.active?'Pausar':'Reativar'}</button></article>})}{!members.length&&<div className="tf-access-empty"><UserRoundCog/><b>Nenhum subacesso criado</b><small>Cadastre o primeiro acesso ao lado.</small></div>}</div><form className="tf-access-form" onSubmit={save}><small>{form.id?'EDITAR ACESSO':'NOVO ACESSO'}</small><h2>{form.id?form.name:'Cadastrar usuário'}</h2><p>Use qualquer e-mail válido. Selecione um parceiro para limitar o acesso somente à produção dele.</p><div className="tf-access-share"><span><b>Link para entrar no Gestão TF</b><small>Depois de salvar, envie o convite diretamente por e-mail ou copie o link.</small></span><code>{accessUrl}</code><button type="button" onClick={copyAccessLink}><Copy/>{copied?'Link copiado':'Copiar link'}</button>{lastInvite&&<a href={`mailto:${lastInvite.email}?subject=${encodeURIComponent('Seu acesso ao Gestão TF')}&body=${encodeURIComponent(`Olá, ${lastInvite.name}! Seu acesso ao Gestão TF está pronto. Entre por este link: ${accessUrl}`)}`}><Send/>Enviar por e-mail</a>}</div><label>Nome<input required value={form.name} onChange={e=>setForm(x=>({...x,name:e.target.value}))} placeholder="Nome do usuário"/></label><label>E-mail de acesso<input required type="email" value={form.email} onChange={e=>setForm(x=>({...x,email:e.target.value}))} placeholder="nome@empresa.com"/></label><label>{form.id?"Nova senha (opcional)":"Senha de acesso"}<input type="password" autoComplete="new-password" minLength={8} maxLength={256} required={!form.id} value={form.password||''} onChange={e=>setForm(x=>({...x,password:e.target.value}))}/></label><label>Vincular a parceiro<select value={form.partnerId||''} onChange={event=>setForm(current=>({...current,partnerId:event.target.value?Number(event.target.value):null}))}><option value="">Equipe TF · acesso interno</option>{partners.filter(partner=>partner.id>0).map(partner=><option key={partner.id} value={partner.id}>{partner.name}</option>)}</select></label>{form.partnerId?<div className="tf-partner-access-note"><ShieldCheck/><span><b>Acesso restrito ao parceiro</b><small>Este usuário verá somente clientes, produção, relatórios e acertos desse parceiro.</small></span></div>:<fieldset><legend>Áreas autorizadas</legend>{Object.entries(permissionLabels).filter(([id])=>id!=='inicio').sort(([,a],[,b])=>a.localeCompare(b,'pt-BR',{sensitivity:'base'})).map(([id,label])=><label key={id}><input type="checkbox" checked={form.permissions.includes(id as View)} onChange={e=>setForm(x=>({...x,permissions:e.target.checked?[...x.permissions,id as View]:x.permissions.filter(p=>p!==id)}))}/><span><b>{label}</b>{id==='atendimento'&&<small>Kanban individual, sem visualizar o seu.</small>}</span></label>)}</fieldset>}{message&&<em>{message}</em>}<footer>{form.id&&<button type="button" onClick={()=>setForm(empty)}>Cancelar</button>}<button className="tf-primary" disabled={saving}>{saving?'Salvando...':'Salvar acesso'}</button></footer></form></section></>;
+ return <><Title over="EQUIPE E SEGURANÇA" title="Usuários e acessos" text="Cadastre funcionários ou parceiros e envie o link do sistema." action="Novo acesso" onAction={()=>setForm(empty)}/><section className="tf-access-layout"><div className="tf-access-list"><header><div><small>USUÁRIOS CADASTRADOS</small><h2>Equipe e parceiros</h2></div><b>{members.filter(m=>m.active).length} ativos</b></header>{[...members].sort((a,b)=>a.name.localeCompare(b.name,'pt-BR',{sensitivity:'base'})).map((member,index)=>{const permissions=visiblePermissions(member),partnerName=partners.find(partner=>partner.id===member.partnerId)?.name||member.partnerName;return <article key={member.id} className={`${!member.active?'inactive ':''}member-tone-${index%6}`}><i>{member.name.split(/\s+/).slice(0,2).map(n=>n[0]).join('').toUpperCase()}</i><div><b>{member.name}</b><small>{member.email}</small><p>{partnerName?`Parceiro · ${partnerName}`:permissions.length?permissions.join(' · '):'Somente acesso básico'}</p></div><em>{member.active?'Ativo':'Pausado'}</em><button onClick={()=>setForm({...member,password:''})}>Editar</button><button onClick={()=>toggleActive(member)}>{member.active?'Pausar':'Reativar'}</button><button className="danger" onClick={()=>deleteMember(member)}>Excluir usuário</button></article>})}{!members.length&&<div className="tf-access-empty"><UserRoundCog/><b>Nenhum subacesso criado</b><small>Cadastre o primeiro acesso ao lado.</small></div>}</div><form className="tf-access-form" onSubmit={save}><small>{form.id?'EDITAR ACESSO':'NOVO ACESSO'}</small><h2>{form.id?form.name:'Cadastrar usuário'}</h2><p>Use qualquer e-mail válido. Selecione um parceiro para limitar o acesso somente à produção dele.</p><div className="tf-access-share"><span><b>Link para entrar no Gestão TF</b><small>Depois de salvar, envie o convite diretamente por e-mail ou copie o link.</small></span><code>{accessUrl}</code><button type="button" onClick={copyAccessLink}><Copy/>{copied?'Link copiado':'Copiar link'}</button>{lastInvite&&<a href={`mailto:${lastInvite.email}?subject=${encodeURIComponent('Seu acesso ao Gestão TF')}&body=${encodeURIComponent(`Olá, ${lastInvite.name}! Seu acesso ao Gestão TF está pronto. Entre por este link: ${accessUrl}`)}`}><Send/>Enviar por e-mail</a>}</div><label>Nome<input required value={form.name} onChange={e=>setForm(x=>({...x,name:e.target.value}))} placeholder="Nome do usuário"/></label><label>E-mail de acesso<input required type="email" value={form.email} onChange={e=>setForm(x=>({...x,email:e.target.value}))} placeholder="nome@empresa.com"/></label><label>{form.id?"Nova senha (opcional)":"Senha de acesso"}<input type="password" autoComplete="new-password" minLength={8} maxLength={256} required={!form.id} value={form.password||''} onChange={e=>setForm(x=>({...x,password:e.target.value}))}/></label><label>Vincular a parceiro<select value={form.partnerId||''} onChange={event=>setForm(current=>({...current,partnerId:event.target.value?Number(event.target.value):null}))}><option value="">Equipe TF · acesso interno</option>{partners.filter(partner=>partner.id>0).map(partner=><option key={partner.id} value={partner.id}>{partner.name}</option>)}</select></label>{form.partnerId?<div className="tf-partner-access-note"><ShieldCheck/><span><b>Acesso restrito ao parceiro</b><small>Este usuário verá somente clientes, produção, relatórios e acertos desse parceiro.</small></span></div>:<fieldset><legend>Áreas autorizadas</legend>{Object.entries(permissionLabels).filter(([id])=>id!=='inicio').sort(([,a],[,b])=>a.localeCompare(b,'pt-BR',{sensitivity:'base'})).map(([id,label])=><label key={id}><input type="checkbox" checked={form.permissions.includes(id as View)} onChange={e=>setForm(x=>({...x,permissions:e.target.checked?[...x.permissions,id as View]:x.permissions.filter(p=>p!==id)}))}/><span><b>{label}</b>{id==='atendimento'&&<small>Kanban individual, sem visualizar o seu.</small>}</span></label>)}</fieldset>}{message&&<em>{message}</em>}<footer>{form.id&&<button type="button" onClick={()=>setForm(empty)}>Cancelar</button>}<button className="tf-primary" disabled={saving}>{saving?'Salvando...':'Salvar acesso'}</button></footer></form></section></>;
 }
 
 function SettingsPanel({ close, serverAuthenticated }: { close: () => void; serverAuthenticated?: boolean }) {
@@ -2927,7 +3004,9 @@ function SettingsPanel({ close, serverAuthenticated }: { close: () => void; serv
     [phoneNumberId, setPhoneNumberId] = useState(""),
     [displayPhone, setDisplayPhone] = useState(""),
     [waBusy, setWaBusy] = useState(false),
-    [waMessage, setWaMessage] = useState("");
+    [waMessage, setWaMessage] = useState(""),
+    [googleReviewUrl, setGoogleReviewUrl] = useState(""),
+    [googleMessage, setGoogleMessage] = useState("");
   useEffect(() => {
     setNewTab(localStorage.getItem("tf_open_new_tab") !== "0");
     fetch("/api/whatsapp/settings", { cache: "no-store" })
@@ -2939,6 +3018,10 @@ function SettingsPanel({ close, serverAuthenticated }: { close: () => void; serv
         setPhoneNumberId(x.integration?.phoneNumberId || "");
         setDisplayPhone(x.integration?.displayPhone || "");
       })
+      .catch(() => {});
+    fetch("/api/settings", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((x) => { if (x) setGoogleReviewUrl(x.googleReviewUrl || ""); })
       .catch(() => {});
     const previous = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -2988,6 +3071,12 @@ function SettingsPanel({ close, serverAuthenticated }: { close: () => void; serv
       setWaMessage("Número administrador salvo com segurança.");
     } else setWaMessage(x.error || "Não foi possível salvar.");
   };
+  const saveGoogleReview = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const response = await fetch('/api/settings', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ googleReviewUrl }) });
+    const data = await response.json();
+    setGoogleMessage(response.ok ? 'Link de avaliação salvo.' : (data.error || 'Não foi possível salvar o link.'));
+  };
   const dismiss = (e: React.SyntheticEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -3033,6 +3122,12 @@ function SettingsPanel({ close, serverAuthenticated }: { close: () => void; serv
             <i />
           </button>
         </div>
+        <form className="tf-google-review-settings" onSubmit={saveGoogleReview}>
+          <header><span><b>Link de avaliação Google</b><small>Será incluído automaticamente nas mensagens de pós-venda.</small></span><Star /></header>
+          <input type="url" value={googleReviewUrl} onChange={(event) => setGoogleReviewUrl(event.target.value)} placeholder="https://g.page/r/.../review" />
+          {googleMessage && <p>{googleMessage}</p>}
+          <button className="tf-primary">Salvar link</button>
+        </form>
         <form className="tf-password-settings" onSubmit={changePassword}>
           <header><KeyRound/><span><b>Alterar senha de acesso</b><small>Atualiza a senha usada nesta tela de entrada.</small></span></header>
           <div><label>Senha atual<input type="password" value={currentPassword} onChange={e=>setCurrentPassword(e.target.value)} required/></label><label>Nova senha<input type="password" value={newPassword} onChange={e=>setNewPassword(e.target.value)} minLength={8} required/></label></div>
