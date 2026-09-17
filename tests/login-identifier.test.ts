@@ -10,6 +10,7 @@ test('CPF login preserves leading zeroes and normalizes punctuation', () => {
 
 test('email login remains supported and invalid identifiers cannot become a CPF', () => {
   assert.deepEqual(loginIdentifier(' ADMIN@EXAMPLE.COM '), { kind: 'email', value: 'admin@example.com' });
+  assert.deepEqual(loginIdentifier(' G Veiculos '), { kind: 'login', value: 'g veiculos' });
   for (const input of ['', '0123456789', '012345678901', 'user01234567890', 'not-an-email', 1234567890, null]) {
     assert.equal(loginIdentifier(input), null);
   }

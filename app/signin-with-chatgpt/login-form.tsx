@@ -16,9 +16,9 @@ export default function LoginForm() {
   }
   return <main className="tf-gate"><section className="tf-gate-card">
     <div className="tf-gate-brand" aria-label="TF Assessoria e Finanças"><img src="/tf-emblem.png" alt="TF"/><strong>Assessoria &amp; Finanças</strong></div><small>ASSESSORIA E FINANÇAS</small>
-    <h1>Gestão</h1><p>Entre com seu CPF ou e-mail e senha.</p>
+    <h1>Gestão</h1><p>Entre com CPF, e-mail ou login e senha.</p>
     <form onSubmit={submit}>
-      <label>CPF ou e-mail<input type="text" autoComplete="username" autoCapitalize="none" spellCheck={false} maxLength={254} required value={login} onChange={e => setLogin(e.target.value)} /></label>
+      <label>CPF, e-mail ou login<input type="text" autoComplete="username" autoCapitalize="none" spellCheck={false} maxLength={254} required value={login} onChange={e => setLogin(e.target.value)} /></label>
       <label>Senha<input type="password" autoComplete="current-password" required value={password} onChange={e => setPassword(e.target.value)} /></label>
       {error && <p role="alert">{error}</p>}
       <button className="tf-primary" type="submit" disabled={busy}>{busy ? 'Entrando…' : 'Entrar'}</button>

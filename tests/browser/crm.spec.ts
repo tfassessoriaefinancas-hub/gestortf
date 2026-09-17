@@ -64,7 +64,7 @@ test('hosted login, all navigation sections and mobile layout work', async ({ pa
   page.on('pageerror', (error) => errors.push(error.message));
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Gestão', exact: true })).toBeVisible();
-  await page.getByLabel('CPF ou e-mail', { exact: true }).fill('012.345.678-90');
+  await page.getByLabel('CPF, e-mail ou login', { exact: true }).fill('012.345.678-90');
   await page.getByLabel('Senha', { exact: true }).fill('test-only-password');
   await page.locator('.tf-gate form button[type="submit"]').click();
   await expect(page.locator('.tf-sidebar, .tf-side').first()).toBeVisible();
@@ -153,13 +153,13 @@ test('server authentication rejects anonymous access and manages employee sessio
   expect((await request.post('/api/auth/login',{headers:{origin:'https://outside.example'},data:{email:'admin@example.com',password:'test-only-password'}})).status()).toBe(403);
   expect((await request.post('/api/auth/login',{headers:{origin},data:{email:'admin@example.com',password:'incorrect'}})).status()).toBe(401);
   await login(request);
-  const create=await request.post('/api/access-users',{data:{name:'Funcionário teste',email:'employee@example.com',password:'employee-test-password',permissions:['inicio','clientes','atendimento','producao']}});
+  const create=await request.post('/api/access-users',{data:{name:'Funcionário teste',login:'Funcionário teste',email:'employee@example.com',password:'employee-test-password',permissions:['inicio','clientes','atendimento','producao']}});
   expect(create.status(),await create.text()).toBe(201);
   const member=(await create.json()).member;
   const employee=await playwright.request.newContext({baseURL:origin});
   const secondSession=await playwright.request.newContext({baseURL:origin});
   try{
-    await login(employee,'employee@example.com','employee-test-password');
+    await login(employee,'Funcionário teste','employee-test-password');
     await login(secondSession,'employee@example.com','employee-test-password');
     expect((await employee.get('/api/access-users')).status()).toBe(401);
     const scoped=await employee.get('/api/crm/data');

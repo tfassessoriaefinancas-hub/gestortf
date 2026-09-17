@@ -147,7 +147,7 @@ type Deal = {
   assignedUserId?: number | null;
   assignedName?: string;
 };
-type TeamMember={password?:string;id:number;name:string;email:string;active:boolean;permissions:View[];partnerId:number|null;partnerName?:string};
+type TeamMember={password?:string;id:number;name:string;email:string;login?:string;active:boolean;permissions:View[];partnerId:number|null;partnerName?:string};
 type Receivable={id:number;operationId:number;name:string;value:number;dueDate:string;status:string;type:string;product:string};
 type InvoiceRecord={id:number;number:string;clientName:string;partnerName?:string;value:number;issuedAt:string;paidAt?:string;status:string;fileName?:string};
 type DashboardUser={name:string;email:string;role:"admin"|"employee";memberId:number|null;partnerId:number|null;permissions:string[];serverAuthenticated?:boolean};
@@ -2986,7 +2986,7 @@ function ReportsFiltered({
 const permissionLabels:Record<string,string>={inicio:'Início',clientes:'Clientes',atendimento:'Atendimento / Kanban',producao:'Produção',parceiros:'Parceiros',servicos:'Serviços',financeiro:'Financeiro / Comissões',notas:'Notas fiscais',bancos:'Bancos e financiamentos',relatorios:'Relatórios',posvenda:'Pós-venda'};
 function AccessManagement({members,setMembers,partners}:{members:TeamMember[];setMembers:React.Dispatch<React.SetStateAction<TeamMember[]>>;partners:PartnerRecord[]}){
  const accessUrl=typeof window==='undefined'?'/signin-with-chatgpt':`${window.location.origin}/signin-with-chatgpt`;
- const empty={id:0,name:'',email:'',password:'',active:true,permissions:['inicio','atendimento'] as View[],partnerId:null as number|null};
+ const empty={id:0,name:'',email:'',login:'',password:'',active:true,permissions:['inicio','atendimento'] as View[],partnerId:null as number|null};
  const [form,setForm]=useState<TeamMember>(empty),[saving,setSaving]=useState(false),[message,setMessage]=useState(''),[copied,setCopied]=useState(false),[lastInvite,setLastInvite]=useState<TeamMember|null>(null);
  const save=async(e:React.FormEvent)=>{e.preventDefault();setSaving(true);setMessage('');const editing=Boolean(form.id);const r=await fetch('/api/access-users',{method:editing?'PATCH':'POST',headers:{'content-type':'application/json'},body:JSON.stringify(form)});const x=await r.json();setSaving(false);if(!r.ok){setMessage(x.error||'Não foi possível salvar.');return}setMembers(xs=>editing?xs.map(m=>m.id===x.member.id?x.member:m):[x.member,...xs]);setLastInvite(x.member);setForm(empty);setMessage('Acesso salvo. Compartilhe o link e a senha com o usuário.')};
  const toggleActive=async(member:TeamMember)=>{const r=await fetch('/api/access-users',{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({...member,active:!member.active})});const x=await r.json();if(r.ok)setMembers(xs=>xs.map(m=>m.id===x.member.id?x.member:m))};
