@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { formatMoney, parseMoney, toCents } from '../lib/money.ts';
-import { operationFinance, partnerFinance, revenueAmounts, type CommissionRow } from '../lib/operation-finance.ts';
+import { operationFinance, partnerAdditionalFinance, partnerFinance, revenueAmounts, type CommissionRow } from '../lib/operation-finance.ts';
 
 test('reais keep cents in Brazilian and numeric input', () => {
   for (const [input, expected] of [['R$ 469,38', 469.38], ['1.261,59', 1261.59], ['17.900,00', 17900], ['42650.00', 42650]] as const) {
@@ -43,4 +43,9 @@ test('partial receipts and imported amounts survive without a new distribution r
   const partnerLegacy = operationFinance(1000000, {}, [{ id: 4, rate_bps: null, value_cents: 73400, status: 'recebida', notes: 'Base após ILA parceiro GG' }], 26.6);
   assert.equal(partnerLegacy.grossCents, 100000);
   assert.equal(partnerLegacy.receivedCents, 100000);
+});
+
+test('partner campaign additions use the existing share rule', () => {
+  assert.deepEqual(partnerAdditionalFinance(100, 50), { net: 100, tfShare: 50, thiagoShare: 50, partnerShare: 50 });
+  assert.deepEqual(partnerAdditionalFinance(125.5, 40), { net: 125.5, tfShare: 40, thiagoShare: 50.2, partnerShare: 75.3 });
 });

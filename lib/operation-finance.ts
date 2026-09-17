@@ -82,3 +82,10 @@ export function partnerFinance(gross: number, ilaRate: number, invoiceRate: numb
   const thiagoShare = net * tfShare / 100;
   return { gross, ilaRate, ilaValue, afterIla, invoiceRate, invoiceFee, net, tfShare, thiagoShare, partnerShare: Math.max(0, net - thiagoShare) };
 }
+
+/** Additional campaign amounts are already net and follow the existing share rule. */
+export function partnerAdditionalFinance(value: number, tfShare = 50) {
+  const net = Math.max(0, Number(value) || 0);
+  const thiagoShare = net * tfShare / 100;
+  return { net, tfShare, thiagoShare, partnerShare: Math.max(0, net - thiagoShare) };
+}
