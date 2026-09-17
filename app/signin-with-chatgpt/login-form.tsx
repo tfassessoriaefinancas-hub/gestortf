@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 
-export default function LoginForm() {
+export default function LoginForm({returnTo='/'}:{returnTo?:string}) {
   const [login, setLogin] = useState(''), [password, setPassword] = useState('');
   const [error, setError] = useState(''), [busy, setBusy] = useState(false);
   async function submit(event: React.FormEvent) {
@@ -10,7 +10,7 @@ export default function LoginForm() {
       const response = await fetch('/api/auth/login', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ login, password }) });
       const data = await response.json();
       if (!response.ok) { setError(data.error || 'Não foi possível entrar.'); return; }
-      window.location.replace('/');
+      window.location.replace(returnTo);
     } catch { setError('Não foi possível conectar. Tente novamente.'); }
     finally { setBusy(false); }
   }
