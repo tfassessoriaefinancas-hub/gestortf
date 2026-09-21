@@ -74,7 +74,10 @@ export class PostgresDatabase {
     // Retain certificate validation and SCRAM channel binding on Neon.
     if (url.hostname.endsWith('.neon.tech')) url.searchParams.set('sslmode', 'verify-full');
     this.schema = schema;
-    this.pool = new pg.Pool({ connectionString: url.toString(), enableChannelBinding: true, max: 5, idleTimeoutMillis: 10_000, connectionTimeoutMillis: 15_000, application_name: 'gestortf-nextjs' });
+    // Vercel can keep several serverless instances warm at once. Keep one
+    // connection per instance so traffic cannot multiply the pool against
+    // Neon project limits; the pooler still handles concurrent clients.
+    this.pool = new pg.Pool({ connectionString: url.toString(), enableChannelBinding: true, max: 1, maxUses: 100, idleTimeoutMillis: 5_000, connectionTimeoutMillis: 15_000, application_name: 'gestortf-nextjs' });
     this.pool.on('error', () => console.error('PostgreSQL: conexão ociosa encerrada; uma nova conexão será aberta.'));
   }
   prepare(sql: string) { return new PostgresStatement(this, sql); }
