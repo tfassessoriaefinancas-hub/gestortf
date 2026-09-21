@@ -11,11 +11,18 @@ export const tokenHash = (token: string) => createHash('sha256').update(token).d
 export async function getSessionUser() {
   const token = (await cookies()).get(SESSION_COOKIE)?.value;
   if (!token || !/^[a-f0-9]{64}$/.test(token)) return null;
-  const row = await env.DB.prepare(`SELECT u.id,u.email,u.name,u.role FROM auth_sessions s
-    JOIN users u ON u.id=s.user_id WHERE s.token_hash=? AND s.expires_at>?
-    AND u.active=1 AND u.deleted_at IS NULL`).bind(tokenHash(token), Date.now())
-    .first<{ id: string; email: string; name: string | null; role: 'admin' | 'employee' }>();
-  return row ? { userId: row.id, email: row.email, displayName: row.name || row.email, fullName: row.name, role: row.role, serverAuthenticated: true } : null;
+  try {
+    const row = await env.DB.prepare(`SELECT u.id,u.email,u.name,u.role FROM auth_sessions s
+      JOIN users u ON u.id=s.user_id WHERE s.token_hash=? AND s.expires_at>?
+      AND u.active=1 AND u.deleted_at IS NULL`).bind(tokenHash(token), Date.now())
+      .first<{ id: string; email: string; name: string | null; role: 'admin' | 'employee' }>();
+    return row ? { userId: row.id, email: row.email, displayName: row.name || row.email, fullName: row.name, role: row.role, serverAuthenticated: true } : null;
+  } catch (error) {
+    // An unavailable database must not take down every page. Authentication
+    // remains fail-closed and the login endpoint will report the outage.
+    console.error('Sessão indisponível:', error);
+    return null;
+  }
 }
 
 export async function createSession(userId: string, request: Request) {
