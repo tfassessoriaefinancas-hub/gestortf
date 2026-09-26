@@ -38,13 +38,14 @@ async function updateClient(client: PoolClient, id: number, ownerKeys: string[],
   await client.query('UPDATE clients SET name=$1,normalized_name=$2,cpf=$3,benefit_number=$4,birth_date=$5,phone=$6,updated_at=$7 WHERE id=$8', [name, norm(name), cpf, benefit, has(patch, 'birthDate') ? date(patch.birthDate) : row.birth_date, has(patch, 'phone') ? String(patch.phone || '').trim() || null : row.phone, now, id]);
 }
 
-export async function updateClientRecord(db: PostgresDatabase, access: OperationAccess, id: number, patch: Record<string, unknown>) {
-  return db.transaction(client => updateClient(client, id, access.ownerKeys, patch, Date.now()));
+export async function updateClientRecord(db: PostgresDatabase, access: OperationAccess, id: number, patch: Record<string, unknown>, transactionClient?: PoolClient) {
+  const action = (client: PoolClient) => updateClient(client, id, access.ownerKeys, patch, Date.now());
+  return transactionClient ? action(transactionClient) : db.transaction(action);
 }
 
 /** Update the original operation and its existing revenue rows atomically. */
-export async function updateOperationRecord(db: PostgresDatabase, access: OperationAccess, id: number, patch: Record<string, unknown>) {
-  return db.transaction(async client => {
+export async function updateOperationRecord(db: PostgresDatabase, access: OperationAccess, id: number, patch: Record<string, unknown>, transactionClient?: PoolClient) {
+  const action = async (client: PoolClient) => {
     const found = await client.query<OperationRow>(`${operationSelect} WHERE o.id=$1 AND o.owner_id=ANY($2::text[]) AND o.deleted_at IS NULL AND c.deleted_at IS NULL FOR UPDATE OF o,c`, [id, access.ownerKeys]);
     const row = found.rows[0];
     if (!row || (access.role === 'employee' && (access.partnerId ? Number(row.partner_id) !== access.partnerId : Number(row.assigned_user_id) !== access.memberId))) throw new RecordUpdateError('Operação não encontrada.', 404);
@@ -60,7 +61,7 @@ export async function updateOperationRecord(db: PostgresDatabase, access: Operat
     }
     for (const [key, column] of Object.entries({ term: 'term', vehicleYear: 'vehicle_year' })) if (has(patch, key)) next[column] = Number(patch[key]) || null;
     for (const [key, column] of Object.entries({ operationDate: 'operation_date', paidAt: 'paid_at', paidDate: 'paid_at', completedAt: 'completed_at' })) if (has(patch, key)) next[column] = date(patch[key]);
-    for (const key of ['agreement', 'contractType', 'dueDay', 'productionIndicator', 'postSale', 'postSaleNotes', 'observations', 'groupQuota']) if (has(patch, key)) extra[key] = String(patch[key] ?? '');
+    for (const key of ['agreement', 'guaranteeType', 'contractType', 'dueDay', 'productionIndicator', 'postSale', 'postSaleNotes', 'observations', 'groupQuota']) if (has(patch, key)) extra[key] = String(patch[key] ?? '');
     for (const key of ['adhesionFee', 'advisoryFee', 'bonus', 'quotaUnitValue', 'fipeValue']) if (has(patch, key)) extra[`${key}Cents`] = toCents(patch[key]);
     for (const key of ['quotaQuantity', 'commissionInstallments']) if (has(patch, key)) extra[key] = Math.max(key === 'commissionInstallments' ? 1 : 0, Number(patch[key]) || 0);
     if (has(patch, 'commissionRate')) extra.commissionRate = parseRate(patch.commissionRate);
@@ -117,5 +118,6 @@ export async function updateOperationRecord(db: PostgresDatabase, access: Operat
     }
     const updated = await client.query<OperationRow>(`${operationSelect} WHERE o.id=$1`, [id]);
     return operationFromRow(updated.rows[0]);
-  });
+  };
+  return transactionClient ? action(transactionClient) : db.transaction(action);
 }

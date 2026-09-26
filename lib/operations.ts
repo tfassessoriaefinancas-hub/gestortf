@@ -34,7 +34,7 @@ export function operationFromRow(row: OperationRow) {
     clientName: text('client_name'), clientCpf: text('client_cpf'), clientBenefit: text('client_benefit'),
     clientBirthDate: text('client_birth_date'), clientPhone: text('client_phone'),
     partnerId: row.partner_id, partnerName: text('partner_name'), product: text('original_product') || 'Operação',
-    operationType: text('category'), agreement: note('agreement'), contractType: note('contractType') || text('original_product'),
+    operationType: text('category'), agreement: note('agreement'), guaranteeType: note('guaranteeType'), contractType: note('contractType') || text('original_product'),
     dueDay: note('dueDay'), bank: text('bank') || 'Não informado', promoter: text('promoter'),
     producer: text('producer') || 'TF', productionIndicator: note('productionIndicator'), origin: text('origin') || 'TF',
     value: Number(row.value_cents || 0) / 100, installment: Number(row.installment_cents || 0) / 100,

@@ -141,6 +141,8 @@ type Deal = {
   history?: Array<{at:number;type:string;conversation?:string;returnAt?:string;reason?:string}>;
   vehiclePlate?: string;
   vehicleValue?: string | number;
+  downPayment?: string | number;
+  guaranteeType?: string;
   financedValue?: string | number;
   desiredCredit?: string | number;
   loanValue?: string | number;
@@ -458,7 +460,12 @@ export default function Dashboard({
     [locked, setLocked] = useState(true),
     [gateReady, setGateReady] = useState(false),
     [visualTheme,setVisualTheme]=useState<"classic"|"mono">("classic");
-  const refreshData = useCallback(() => { notifyCrmChanged(); setDataRevision((value) => value + 1); }, []);
+  const dealsMutationVersion = useRef(0);
+  const updateDeals = useCallback<React.Dispatch<React.SetStateAction<Deal[]>>>((update) => {
+    dealsMutationVersion.current += 1;
+    setDeals(update);
+  }, []);
+  const refreshData = useCallback(() => { dealsMutationVersion.current += 1; notifyCrmChanged(); setDataRevision((value) => value + 1); }, []);
   useEffect(() => {
     const refresh = () => setDataRevision(value => value + 1);
     const storage = (event: StorageEvent) => { if (event.key === CRM_STORAGE_KEY) refresh(); };
@@ -473,28 +480,8 @@ export default function Dashboard({
     return next;
   });
   useEffect(() => {
-    const forwarded = new WeakSet<Event>();
     const onClick = (e: Event) => {
       const t = e.target as HTMLElement;
-      const footer = t.closest(
-        ".tf-kanban article footer button",
-      ) as HTMLButtonElement | null;
-      const first = document.querySelector(
-        ".tf-kanban article footer button",
-      ) as HTMLButtonElement | null;
-      if (
-        footer &&
-        first &&
-        footer !== first &&
-        !t.closest(".tf-upload-kanban") &&
-        !forwarded.has(e)
-      ) {
-        e.preventDefault();
-        e.stopImmediatePropagation();
-        const ev = new MouseEvent("click", { bubbles: true, cancelable: true });
-        forwarded.add(ev);
-        first.dispatchEvent(ev);
-      }
       if (t.closest(".tf-mobile-logo")) setView("inicio");
     };
     document.addEventListener("click", onClick, true);
@@ -558,11 +545,12 @@ export default function Dashboard({
     let loading=false;
     const load = async () => {
       if(loading)return;loading=true;
+      const dealsVersionAtStart=dealsMutationVersion.current;
       const [dealsData,crmData,teamData,partnerData,invoiceData,catalogData,postSaleData]=await Promise.all([
         (user.role==="admin"||user.permissions.includes("atendimento"))?readJson("/api/deals"):Promise.resolve(null),readCrm(),user.role==="admin"?readJson("/api/access-users"):Promise.resolve(null),(user.role==="admin"||user.permissions.includes("parceiros"))?readJson("/api/partners"):Promise.resolve(null),(user.role==="admin"||user.permissions.includes("notas"))?readJson("/api/invoices"):Promise.resolve(null),(user.role==="admin"||user.permissions.includes("atendimento"))?readJson("/api/catalog-options"):Promise.resolve(null),(user.role==="admin"||user.permissions.includes("posvenda"))?readJson("/api/post-sales"):Promise.resolve(null),
       ]).catch(()=>{if(!disposed)setNotice("Falha ao carregar os dados. Verifique sua conexão e tente novamente.");return [null,null,null,null,null,null,null]});
       if(disposed)return;
-      if(dealsData?.deals)setDeals(dealsData.deals);
+      if(dealsData?.deals&&dealsVersionAtStart===dealsMutationVersion.current)setDeals(dealsData.deals);
       const x=crmData;
       if(x){
           if (x?.clients)
@@ -775,7 +763,7 @@ export default function Dashboard({
             <ClientsFiltered data={found} operations={allOps} open={setSelected} />
           )}{" "}
           {view === "atendimento" && (
-            <Kanban deals={deals} setDeals={setDeals} user={user} members={teamMembers} partnerNames={partners.map(partner=>partner.name)} receivables={receivables} catalogOptions={catalogOptions} onCatalogChange={(option)=>setCatalogOptions(current=>option.label?[option,...current.filter(item=>item.id!==option.id)]:current.filter(item=>item.id!==option.id))} newDealRequest={newDealRequest} onMarkReceived={markCommissionReceived} onReceivableCreated={(item)=>setReceivables(items=>[item,...items.filter(existing=>existing.id!==item.id)])} onDataChanged={refreshData} />
+            <Kanban deals={deals} setDeals={updateDeals} user={user} members={teamMembers} partnerNames={partners.map(partner=>partner.name)} receivables={receivables} catalogOptions={catalogOptions} onCatalogChange={(option)=>setCatalogOptions(current=>option.label?[option,...current.filter(item=>item.id!==option.id)]:current.filter(item=>item.id!==option.id))} newDealRequest={newDealRequest} onMarkReceived={markCommissionReceived} onReceivableCreated={(item)=>setReceivables(items=>[item,...items.filter(existing=>existing.id!==item.id)])} onDataChanged={refreshData} />
           )}{" "}
           {view === "producao" && (
             <Production rows={allOps} clientsData={allClients} initialPeriod={productionPeriod} openClient={setSelected} />
@@ -921,7 +909,6 @@ function Title({
         <h1>{title}</h1>
         <p>{text}</p>
       </div>
-      {title === "Atendimento" && <QuickDocumentUploadInStage />}
       {action && (
         <button className="tf-primary" onClick={onAction}>
           ＋ {action}
@@ -1739,6 +1726,7 @@ function Kanban({
     [selectedProduct, setSelectedProduct] = useState("Financiamento"),
     [active, setActive] = useState<Deal | null>(null),
     [documentsDeal, setDocumentsDeal] = useState<Deal | null>(null),
+    [documentUploadOpen,setDocumentUploadOpen]=useState(false),
     [details, setDetails] = useState<Record<string, string>>({}),
     [menuId, setMenuId] = useState<number | null>(null),
     [returnDeal, setReturnDeal] = useState<Deal | null>(null),
@@ -1755,7 +1743,14 @@ function Kanban({
       deal: Deal;
       permanent: boolean;
     } | null>(null);
-  useEffect(()=>{if(newDealRequest>0){setFormStep(1);setSelectedProduct("Financiamento");setForm(true)}},[newDealRequest]);
+  const emptyCreateForm={name:"",cpf:"",birthDate:"",phone:"",operationType:"",guaranteeType:"Veículo",vehicleValue:"",downPayment:"",financedValue:"",desiredCredit:""};
+  const [createForm,setCreateForm]=useState(emptyCreateForm);
+  const [creating,setCreating]=useState(false),[editing,setEditing]=useState(false);
+  const creatingRef=useRef(false),editingRef=useRef(false),movingRef=useRef(new Set<number>());
+  const [movingIds,setMovingIds]=useState(new Set<number>());
+  const [kanbanError,setKanbanError]=useState(""),[createError,setCreateError]=useState(""),[editError,setEditError]=useState("");
+  const openCreate=()=>{setCreateForm({...emptyCreateForm});setCreateError("");setFormStep(1);setSelectedProduct("Financiamento");setForm(true)};
+  useEffect(()=>{if(newDealRequest>0)openCreate()},[newDealRequest]);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -1778,38 +1773,23 @@ function Kanban({
   useEffect(()=>{const timer=window.setInterval(()=>setClock(Date.now()),30000);return()=>window.clearInterval(timer)},[]);
   const create = async (e: React.FormEvent) => {
     e.preventDefault();
-    const f = new FormData(e.currentTarget as HTMLFormElement);
-    if (formStep === 1) {
-      setFormStep(2);
-      return;
-    }
-    const body = {
-      name: String(f.get("name")),
-      cpf: String(f.get("cpf")),
-      birthDate: dateToIso(String(f.get("birthDate"))),
-      product: String(f.get("product")),
-      operationType: String(f.get("operationType")||""),
-      phone: maskPhone(String(f.get("phone") || "")),
-      vehiclePlate: String(f.get("vehiclePlate") || ""),
-      vehicleValue: moneyToStorage(String(f.get("vehicleValue") || "")),
-      financedValue: moneyToStorage(String(f.get("financedValue") || "")),
-      desiredCredit: moneyToStorage(String(f.get("desiredCredit") || "")),
-      loanValue: moneyToStorage(String(f.get("loanValue") || "")),
-      assignedUserId:kanbanOwner==="owner"?null:Number(kanbanOwner),
-    };
-    const r = await fetch("/api/deals", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    const x = await r.json();
-    if (r.ok) {
-      setDeals((d) => [x.deal, ...d]);
-      setForm(false);
-      setFormStep(1);
-      setSelectedProduct("Financiamento");
-      onDataChanged();
-    } else alert(x.error || "Não foi possível iniciar o atendimento.");
+    if(formStep===1){setFormStep(2);return;}
+    if(creatingRef.current)return;
+    creatingRef.current=true;setCreating(true);setCreateError("");
+    try {
+      const financing=selectedProduct==="Financiamento",secured=selectedProduct==="Crédito com garantia";
+      const body={name:createForm.name.trim(),cpf:cpfKey(createForm.cpf),birthDate:dateToIso(createForm.birthDate),phone:maskPhone(createForm.phone),product:selectedProduct,
+        operationType:secured?(createForm.guaranteeType==="Imobiliário"?"Garantia de imóvel":"Garantia de veículo"):createForm.operationType||operationOptionsFor(selectedProduct)[0],
+        ...(secured?{guaranteeType:createForm.guaranteeType}:{}),
+        ...(financing?{vehicleValue:moneyToStorage(createForm.vehicleValue),downPayment:moneyToStorage(createForm.downPayment),financedValue:moneyToStorage(createForm.financedValue)}:{desiredCredit:moneyToStorage(createForm.desiredCredit)}),
+        assignedUserId:kanbanOwner==="owner"?null:Number(kanbanOwner)};
+      const r=await fetch("/api/deals",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(body)});
+      const x=await r.json();
+      if(!r.ok)throw new Error(x.error||"Não foi possível iniciar o atendimento.");
+      setDeals(rows=>[x.deal,...rows.filter(row=>row.id!==x.deal.id)]);
+      setForm(false);setFormStep(1);setCreateForm({...emptyCreateForm});setSelectedProduct("Financiamento");onDataChanged();
+    }catch(error){setCreateError(error instanceof Error?error.message:"Não foi possível salvar. Tente novamente.");}
+    finally{creatingRef.current=false;setCreating(false);}
   };
   const nowDate=new Date(clock);
   const nowIso = new Date(clock-nowDate.getTimezoneOffset()*60000).toISOString().slice(0,16);
@@ -1832,40 +1812,37 @@ function Kanban({
   };
   const completeReturn = async (d:Deal) => {
     const r=await fetch('/api/deals',{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({id:d.id,action:'complete_return'})});
-    const x=await r.json(); if(r.ok)setDeals(xs=>xs.map(v=>v.id===d.id?{...v,...x.deal}:v));
+    const x=await r.json(); if(r.ok){setDeals(xs=>xs.map(v=>v.id===d.id?{...v,...x.deal}:v));onDataChanged();}
   };
   const resumeFlow=async(d:Deal)=>{
     const resumeStage=resumeStages[d.id]||'atendimento';
     const r=await fetch('/api/deals',{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({id:d.id,action:'resume_flow',resumeStage})});
     const x=await r.json();
-    if(r.ok){setDeals(xs=>xs.map(v=>v.id===d.id?{...v,...x.deal}:v));setResumeStages(s=>{const next={...s};delete next[d.id];return next});if(todayReturns.length===1)setShowReturns(false)}else alert(x.error||'Não foi possível reiniciar o fluxo.');
+    if(r.ok){setDeals(xs=>xs.map(v=>v.id===d.id?{...v,...x.deal}:v));setResumeStages(s=>{const next={...s};delete next[d.id];return next});if(todayReturns.length===1)setShowReturns(false);onDataChanged()}else alert(x.error||'Não foi possível reiniciar o fluxo.');
   };
   const openEdit = (d:Deal) => {
-    setEditDeal(d);
+    setEditDeal(d);setEditError("");
     setEditForm({
       name:d.name||"",cpf:formatCpf(d.cpf),birthDate:formatDateBr(d.birthDate),phone:formatPhone(d.phone)==="Não informado"?"":formatPhone(d.phone),
       product:d.product||"",vehiclePlate:d.vehiclePlate||"",vehicleValue:formatMoneyInput(d.vehicleValue),
-      financedValue:formatMoneyInput(d.financedValue),desiredCredit:formatMoneyInput(d.desiredCredit),loanValue:formatMoneyInput(d.loanValue),
+      financedValue:formatMoneyInput(d.financedValue),downPayment:formatMoneyInput(d.downPayment),desiredCredit:formatMoneyInput(d.desiredCredit||d.loanValue||d.value),guaranteeType:d.guaranteeType||(/imóvel|imobili|home equity/i.test(d.operationType||d.agreement||"")?"Imobiliário":"Veículo"),
     });
     setMenuId(null);
   };
   const saveEdit = async (e:React.FormEvent) => {
-    e.preventDefault();
-    if(!editDeal)return;
-    const normalizedEdit={
-      ...editForm,
-      cpf:cpfKey(editForm.cpf),
-      birthDate:dateToIso(editForm.birthDate),
-      phone:maskPhone(editForm.phone||""),
-      vehicleValue:moneyToStorage(editForm.vehicleValue),
-      financedValue:moneyToStorage(editForm.financedValue),
-      desiredCredit:moneyToStorage(editForm.desiredCredit),
-      loanValue:moneyToStorage(editForm.loanValue),
-    };
-    const r=await fetch('/api/deals',{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({id:editDeal.id,action:'edit',details:normalizedEdit})});
-    const x=await r.json();
-    if(r.ok){setDeals(xs=>xs.map(d=>d.id===editDeal.id?{...d,...x.deal}:d));setEditDeal(null);onDataChanged()}
-    else alert(x.error||'Não foi possível editar o atendimento.');
+    e.preventDefault();if(!editDeal||editingRef.current)return;
+    const id=editDeal.id;
+    editingRef.current=true;setEditing(true);setEditError("");
+    try {
+      const normalizedEdit={name:editForm.name,cpf:cpfKey(editForm.cpf),birthDate:dateToIso(editForm.birthDate),phone:maskPhone(editForm.phone||""),product:editForm.product,
+        ...(editForm.product==="Crédito com garantia"?{guaranteeType:editForm.guaranteeType}:{}),
+        ...(editForm.product==="Financiamento"?{vehicleValue:moneyToStorage(editForm.vehicleValue),downPayment:moneyToStorage(editForm.downPayment),financedValue:moneyToStorage(editForm.financedValue)}:{desiredCredit:moneyToStorage(editForm.desiredCredit)})};
+      const r=await fetch('/api/deals',{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({id,action:'edit',details:normalizedEdit})});
+      const x=await r.json();
+      if(!r.ok)throw new Error(x.error||'Não foi possível editar o atendimento.');
+      setDeals(rows=>rows.map(row=>row.id===id?{...row,...x.deal}:row));setEditDeal(null);onDataChanged();
+    }catch(error){setEditError(error instanceof Error?error.message:'Não foi possível salvar. Tente novamente.');}
+    finally{editingRef.current=false;setEditing(false);}
   };
   const digits=(v='')=>v.replace(/\D/g,'');
   const calendarUrl=(d:Deal)=>{
@@ -1929,34 +1906,16 @@ function Kanban({
       });
       return;
     }
-    if (stage === "finalizado") {
-      const r = await fetch("/api/deals", {
-        method: "PATCH",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ id: d.id, stage: "finalizado" }),
-      });
-      const x = await r.json();
-      if (r.ok)
-        setDeals((xs) =>
-          xs.map((item) =>
-            item.id === d.id
-              ? { ...item, stage: "finalizado", status: x.status, needsCompletion: true }
-              : item,
-          ),
-        );
-      return;
-    }
-    const r = await fetch("/api/deals", {
-      method: "PATCH",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ id: d.id, stage }),
-    });
-    if (r.ok)
-      setDeals((xs) =>
-        xs.map((x) =>
-          x.id === d.id ? { ...x, stage, status: "aberto", needsCompletion: false } : x,
-        ),
-      );
+    if(movingRef.current.has(d.id))return;
+    movingRef.current.add(d.id);setMovingIds(new Set(movingRef.current));setKanbanError("");
+    try {
+      const r=await fetch("/api/deals",{method:"PATCH",headers:{"content-type":"application/json"},body:JSON.stringify({id:d.id,stage})});
+      const result=await r.json();
+      if(!r.ok)throw new Error(result.error||"Não foi possível mudar a etapa.");
+      setDeals(rows=>result.status==='concluido'?rows.filter(row=>row.id!==d.id):rows.map(row=>row.id===d.id?{...row,stage:result.stage,status:result.status,needsCompletion:result.needsCompletion,updatedAt:result.updatedAt}:row));
+      onDataChanged();
+    }catch(error){setKanbanError(error instanceof Error?error.message:"Não foi possível salvar a etapa. Tente novamente.");}
+    finally{movingRef.current.delete(d.id);setMovingIds(new Set(movingRef.current));}
   };
   const remove = async (d: Deal, permanent = false) => {
     const r = permanent
@@ -1969,7 +1928,7 @@ function Kanban({
     if (r.ok) {
       setDeals((xs) => xs.filter((x) => x.id !== d.id));
       setMenuId(null);
-      setConfirmAction(null);
+      setConfirmAction(null);onDataChanged();
     } else {
       const x = await r.json();
       alert(x.error || "Não foi possível concluir a ação.");
@@ -2030,7 +1989,7 @@ function Kanban({
         title="Atendimento"
         text="Acompanhe cada cliente da entrada até a contratação."
         action="Novo atendimento"
-        onAction={() => setForm(true)}
+        onAction={openCreate}
       />
       {todayReturns.length>0&&<button className="tf-return-alert" onClick={()=>setShowReturns(true)}><Clock3/><span><b>{todayReturns.length===1?'Há 1 cliente para atender hoje':`Há ${todayReturns.length} clientes para atender hoje`}</b><small>Abra a lista e escolha em qual etapa cada atendimento deve recomeçar.</small></span></button>}
       <div className="tf-kanban-owner">
@@ -2042,12 +2001,14 @@ function Kanban({
         </select>
         <small>{user.role==="admin"?"Você pode acompanhar a agenda e o funil de cada responsável.":"Este espaço contém somente seus atendimentos."}</small>
       </div>
+      {kanbanError&&<p className="tf-kanban-error" role="alert">{kanbanError}</p>}
       <section className="tf-kanban">
         {columns.map(([stage, name, sub], i) => {
           const rows = pipelineDeals.filter((d) => d.stage === stage);
           return (
             <article
               key={stage}
+              data-stage={stage}
               className={`stage-${i}`}
               onDragOver={(e) => e.preventDefault()}
               onDrop={(e) => {
@@ -2074,12 +2035,14 @@ function Kanban({
                 {rows.map((d) => (
                   <div
                     key={d.id}
-                    draggable
+                    data-deal-id={d.id}
+                    aria-busy={movingIds.has(d.id)}
+                    draggable={!movingIds.has(d.id)}
                     onDragStart={(e) => {
                       e.dataTransfer.setData("text/plain", String(d.id));
                       e.dataTransfer.effectAllowed = "move";
                     }}
-                    className={`tf-deal-card deal-stage-${i} ${d.returnAt&&d.returnStatus!=="concluido"&&d.returnAt<=nowIso?'return-due':''} ${stage === "finalizado" && (d.needsCompletion || d.status !== "concluido") ? "needs-completion" : ""}`}
+                    className={`tf-deal-card deal-stage-${i} deal-tone-${(d.clientId||d.id)%6} ${d.returnAt&&d.returnStatus!=="concluido"&&d.returnAt<=nowIso?'return-due':''} ${stage === "finalizado" && (d.needsCompletion || d.status !== "concluido") ? "needs-completion" : ""}`}
                   >
                     <button
                       type="button"
@@ -2115,7 +2078,9 @@ function Kanban({
                         </button>
                       </div>
                     )}
-                    <div className="tf-card-heading"><strong>{d.name}</strong><span className="tf-card-product">{d.product||"Produto não informado"}</span></div>
+                    <div className="tf-card-heading"><span className="tf-card-product">{d.product||"Serviço não informado"}</span><strong>{d.name}</strong></div>
+                    {d.product==="Crédito com garantia"&&d.guaranteeType&&<small className="tf-card-detail"><b>Garantia:</b> {d.guaranteeType}</small>}
+                    {movingIds.has(d.id)&&<span role="status">Salvando etapa…</span>}
                     <small className="tf-card-detail"><b>CPF:</b> {formatCpf(d.cpf)}</small>
                     <small className="tf-card-detail"><b>Nascimento:</b> {formatDateBr(d.birthDate)}</small>
                     <span className="tf-card-phone tf-card-detail"><b>Telefone:</b> {formatPhone(d.phone)}</span>
@@ -2131,6 +2096,7 @@ function Kanban({
                         <button
                           type="button"
                           className="tf-card-next"
+                          disabled={movingIds.has(d.id)}
                           title="Avançar para a próxima etapa"
                           aria-label={`Avançar atendimento de ${d.name}`}
                           onClick={() =>
@@ -2158,7 +2124,7 @@ function Kanban({
                     <button
                       type="button"
                       aria-label="Adicionar negócio"
-                      onClick={() => setForm(true)}
+                      onClick={openCreate}
                     >
                       <Plus />
                     </button>
@@ -2167,12 +2133,13 @@ function Kanban({
                 )}
               </div>
               <footer>
-                <button onClick={() => setForm(true)}>
+                <button onClick={openCreate}>
                   <Plus />{" "}
                   {stage === "atendimento"
                     ? "Novo atendimento"
                     : "Adicionar negócio"}
                 </button>
+                {stage==="atendimento"&&<button type="button" className="tf-upload-kanban" aria-label="Upload de documento" title="Upload de documento" onClick={()=>setDocumentUploadOpen(true)}><FileUp/></button>}
               </footer>
             </article>
           );
@@ -2182,116 +2149,54 @@ function Kanban({
         <header><div><small>AGENDA DE ATENDIMENTOS E COBRANÇAS</small><h2>Próximos contatos</h2><p>Retornos de clientes e receitas a cobrar ficam reunidos aqui pela data marcada.</p></div><b>{futureDeals.length+scheduledReceivables.length}</b></header>
         <div>{scheduledReceivables.map(item=><article className="tf-revenue-contact" key={`revenue-${item.id}`}><span><BadgeDollarSign/><small>{new Date(`${item.dueDate}T12:00:00`).toLocaleDateString('pt-BR',{day:'2-digit',month:'short'})}</small><b>{item.dueDate<new Date().toISOString().slice(0,10)?'ATRASADO':'COBRAR'}</b></span><div><b>{item.name}</b><small>{item.product} · {item.type}</small><p>Receita prevista de {brl(item.value)}</p></div><footer><button onClick={()=>onMarkReceived(item.id)}><CheckCircle2/> Marcar recebido</button></footer></article>)}{futureDeals.map(d=><article key={d.id}><span><Clock3/><small>{new Date(d.returnAt!).toLocaleDateString('pt-BR',{day:'2-digit',month:'short'})}</small><b>{new Date(d.returnAt!).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</b></span><div><b>{d.name}</b><small>{formatCpf(d.cpf)} · {d.product}</small><p>{d.returnReason}</p></div><footer><a href={calendarUrl(d)} target="_blank" rel="noreferrer"><CalendarDays/> Google Agenda <ExternalLink/></a><button onClick={()=>openReturn(d)}><Clock3/> Reagendar</button></footer></article>)}{!futureDeals.length&&!scheduledReceivables.length&&<div className="tf-scheduled-empty"><CalendarDays/><span><b>Nenhum contato futuro</b><small>Retornos e cobranças agendadas aparecerão aqui.</small></span></div>}</div>
       </section>
+      <QuickDocumentUploadInStage open={documentUploadOpen} onClose={()=>setDocumentUploadOpen(false)}/>
       {documentsDeal && <DealDocuments deal={documentsDeal} close={() => setDocumentsDeal(null)} />}
       {form && (
         <div className="tf-modal-back">
-          <form className="tf-modal" onSubmit={create}>
-            <button
-              type="button"
-              className="tf-modal-close"
-              onClick={() => {
-                setForm(false);
-                setFormStep(1);
-              }}
-            >
-              ×
-            </button>
-            <small>{formStep === 1 ? "INÍCIO DO ATENDIMENTO" : "DADOS DO ATENDIMENTO"}</small>
-            <h2>{formStep === 1 ? "Novo atendimento" : "Especificações da operação"}</h2>
-            <p>{formStep === 1 ? "Escolha primeiro o produto do cliente." : "Preencha os dados para criar o cartão completo no Kanban."}</p>
-            {formStep === 1 ? (
-              <>
-                <label>
-                  Produto
-                  <select name="product" value={selectedProduct} onChange={(e) => setSelectedProduct(e.target.value)} autoFocus>
-                    {productOptions.map((option)=><option key={option}>{option}</option>)}
-                  </select>
-                </label>
-                <button className="tf-primary">Continuar</button>
-              </>
-            ) : (
-              <>
-                <label>
-                  Produto
-                  <select name="product" value={selectedProduct} onChange={(e) => setSelectedProduct(e.target.value)}>
-                    {productOptions.map((option)=><option key={option}>{option}</option>)}
-                  </select>
-                </label>
-                <label>
-                  Nome completo
-                  <input name="name" required autoFocus />
-                </label>
-                <label>
-                  Tipo de operação
-                  <select name="operationType" key={selectedProduct} defaultValue={operationOptionsFor(selectedProduct)[0]}>
-                    {operationOptionsFor(selectedProduct).map((option)=><option key={option}>{option}</option>)}
-                  </select>
-                </label>
-                <label>
-                  CPF
-                  <input
-                    name="cpf"
-                    required
-                    inputMode="numeric"
-                    maxLength={14}
-                    placeholder="000.000.000-00"
-                    onInput={(e) => {
-                      e.currentTarget.value = maskCpf(e.currentTarget.value);
-                    }}
-                  />
-                </label>
-                <label>
-                  Data de nascimento
-                  <input name="birthDate" inputMode="numeric" maxLength={10} placeholder="DD/MM/AAAA" onInput={(e)=>{e.currentTarget.value=maskDate(e.currentTarget.value)}} required />
-                </label>
-                <label>
-                  Telefone / WhatsApp
-                  <input name="phone" inputMode="tel" maxLength={15} placeholder="(88) 99999-9999" onInput={(e)=>{e.currentTarget.value=maskPhone(e.currentTarget.value)}} required />
-                </label>
-                <div className="tf-form-divider">Dados da operação</div>
-                {(selectedProduct === "Financiamento" || selectedProduct === "Crédito com garantia") && (
-                  <>
-                    <label>Placa do veículo<input name="vehiclePlate" placeholder="ABC1D23" required /></label>
-                    <label>Valor total do veículo<CurrencyInput name="vehicleValue" inputMode="decimal" placeholder="R$ 95.000,00"  required /></label>
-                    <label>{selectedProduct === "Financiamento" ? "Valor do financiamento" : "Valor desejado com garantia"}<CurrencyInput name="financedValue" inputMode="decimal" placeholder="R$ 65.000,00"  required /></label>
-                  </>
-                )}
-                {selectedProduct === "Consórcio" && (
-                  <label>Crédito / carta desejada<CurrencyInput name="desiredCredit" inputMode="decimal" placeholder="R$ 50.000,00"  required /></label>
-                )}
-                {/^Consignado\b/i.test(selectedProduct) && (
-                  <label>Valor do consignado<CurrencyInput name="loanValue" inputMode="decimal" placeholder="R$ 20.000,00"  required /></label>
-                )}
-                {(["Seguros","Proteção Auto","FGTS","Assessoria Financeira"].includes(selectedProduct)) && (
-                  <p className="tf-form-hint">Para este produto, somente os dados básicos são necessários neste primeiro atendimento.</p>
-                )}
-                <div className="tf-modal-actions">
-                  <button type="button" className="tf-secondary" onClick={() => setFormStep(1)}>Voltar</button>
-                  <button className="tf-primary">Iniciar atendimento</button>
-                </div>
-              </>
-            )}
+          <form className="tf-modal tf-create-deal-modal" onSubmit={create} autoComplete="off">
+            <button type="button" className="tf-modal-close" disabled={creating} onClick={()=>{setForm(false);setFormStep(1)}}>×</button>
+            <small>{formStep===1?"INÍCIO DO ATENDIMENTO":"DADOS DO ATENDIMENTO"}</small>
+            <h2>{formStep===1?"Novo atendimento":"Especificações da operação"}</h2>
+            <p>{formStep===1?"Escolha o serviço do cliente.":"Informe o nome. Os demais dados podem ser preenchidos depois."}</p>
+            <label>Serviço<select name="product" value={selectedProduct} disabled={creating} onChange={e=>{setSelectedProduct(e.target.value);setCreateForm(current=>({...current,operationType:""}))}}>{productOptions.map(option=><option key={option}>{option}</option>)}</select></label>
+            {formStep===1?<button className="tf-primary">Continuar</button>:<>
+              <label>Nome completo<input name="name" required autoFocus value={createForm.name} onChange={e=>setCreateForm(current=>({...current,name:e.target.value}))}/></label>
+              {selectedProduct==="Crédito com garantia"?<label>Tipo de garantia<select name="guaranteeType" value={createForm.guaranteeType} onChange={e=>setCreateForm(current=>({...current,guaranteeType:e.target.value}))}><option>Veículo</option><option>Imobiliário</option></select></label>:<label>Tipo de operação<select name="operationType" value={createForm.operationType||operationOptionsFor(selectedProduct)[0]} onChange={e=>setCreateForm(current=>({...current,operationType:e.target.value}))}>{operationOptionsFor(selectedProduct).map(option=><option key={option}>{option}</option>)}</select></label>}
+              <label>CPF<input name="cpf" inputMode="numeric" maxLength={14} placeholder="Opcional" value={createForm.cpf} onChange={e=>setCreateForm(current=>({...current,cpf:maskCpf(e.target.value)}))}/></label>
+              <label>Data de nascimento<input name="birthDate" inputMode="numeric" maxLength={10} placeholder="DD/MM/AAAA · opcional" value={createForm.birthDate} onChange={e=>setCreateForm(current=>({...current,birthDate:maskDate(e.target.value)}))}/></label>
+              <label>Telefone / WhatsApp<input name="phone" inputMode="tel" maxLength={15} placeholder="Opcional" value={createForm.phone} onChange={e=>setCreateForm(current=>({...current,phone:maskPhone(e.target.value)}))}/></label>
+              <div className="tf-form-divider">Valores da operação · opcionais</div>
+              {selectedProduct==="Financiamento"?<>
+                <label>Valor total do veículo<CurrencyInput name="vehicleValue" value={createForm.vehicleValue} onChange={value=>setCreateForm(current=>({...current,vehicleValue:value}))}/></label>
+                <label>Entrada<CurrencyInput name="downPayment" value={createForm.downPayment} onChange={value=>setCreateForm(current=>({...current,downPayment:value}))}/></label>
+                <label>Valor do financiamento<CurrencyInput name="financedValue" value={createForm.financedValue} onChange={value=>setCreateForm(current=>({...current,financedValue:value}))}/></label>
+              </>:<label>Valor desejado<CurrencyInput name="desiredCredit" value={createForm.desiredCredit} onChange={value=>setCreateForm(current=>({...current,desiredCredit:value}))}/></label>}
+              {createError&&<p className="tf-kanban-error" role="alert">{createError}</p>}
+              <div className="tf-modal-actions"><button type="button" className="tf-secondary" disabled={creating} onClick={()=>setFormStep(1)}>Voltar</button><button className="tf-primary" disabled={creating}>{creating?"Salvando…":"Iniciar atendimento"}</button></div>
+            </>}
           </form>
         </div>
       )}
       {editDeal && (
         <div className="tf-modal-back">
-          <form className="tf-modal tf-edit-deal-modal" onSubmit={saveEdit}>
-            <button type="button" className="tf-modal-close" onClick={()=>setEditDeal(null)}>×</button>
-            <small>EDITAR ATENDIMENTO</small>
-            <h2>Dados do lead</h2>
-            <p>Atualize as informações exibidas no cartão.</p>
+          <form key={editDeal.id} className="tf-modal tf-edit-deal-modal" onSubmit={saveEdit} autoComplete="off">
+            <button type="button" className="tf-modal-close" disabled={editing} onClick={()=>setEditDeal(null)}>×</button>
+            <small>EDITAR ATENDIMENTO</small><h2>Dados do cliente</h2><p>Os dados complementares são opcionais.</p>
             <div className="tf-form-grid">
               <label>Nome completo<input required autoFocus value={editForm.name||""} onChange={e=>setEditForm(x=>({...x,name:e.target.value}))}/></label>
-              <label>CPF<input required inputMode="numeric" maxLength={14} value={editForm.cpf||""} onChange={e=>setEditForm(x=>({...x,cpf:maskCpf(e.target.value)}))}/></label>
-              <label>Data de nascimento<input required inputMode="numeric" maxLength={10} placeholder="DD/MM/AAAA" value={editForm.birthDate||""} onChange={e=>setEditForm(x=>({...x,birthDate:maskDate(e.target.value)}))}/></label>
+              <label>CPF<input inputMode="numeric" maxLength={14} value={editForm.cpf||""} onChange={e=>setEditForm(x=>({...x,cpf:maskCpf(e.target.value)}))}/></label>
+              <label>Data de nascimento<input inputMode="numeric" maxLength={10} placeholder="DD/MM/AAAA" value={editForm.birthDate||""} onChange={e=>setEditForm(x=>({...x,birthDate:maskDate(e.target.value)}))}/></label>
               <label>Telefone / WhatsApp<input inputMode="tel" maxLength={15} value={editForm.phone||""} onChange={e=>setEditForm(x=>({...x,phone:maskPhone(e.target.value)}))}/></label>
-              <label>Produto<select value={editForm.product||"Financiamento"} onChange={e=>setEditForm(x=>({...x,product:e.target.value}))}>{productOptions.map((option)=><option key={option}>{option}</option>)}</select></label>
-              <label>Placa do veículo<input value={editForm.vehiclePlate||""} onChange={e=>setEditForm(x=>({...x,vehiclePlate:e.target.value.toUpperCase()}))}/></label>
-              <label>Valor do veículo<CurrencyInput inputMode="decimal" value={editForm.vehicleValue||""} onChange={nextValue=>setEditForm(x=>({...x,vehicleValue:nextValue}))} /></label>
-              <label>Valor financiado / desejado<CurrencyInput inputMode="decimal" value={editForm.financedValue||editForm.desiredCredit||editForm.loanValue||""} onChange={nextValue=>setEditForm(x=>({...x,financedValue:nextValue,desiredCredit:nextValue,loanValue:nextValue}))} /></label>
+              <label>Serviço<select value={editForm.product||"Financiamento"} onChange={e=>setEditForm(x=>({...x,product:e.target.value}))}>{productOptions.map(option=><option key={option}>{option}</option>)}</select></label>
+              {editForm.product==="Crédito com garantia"&&<label>Tipo de garantia<select value={editForm.guaranteeType||"Veículo"} onChange={e=>setEditForm(x=>({...x,guaranteeType:e.target.value}))}><option>Veículo</option><option>Imobiliário</option></select></label>}
+              {editForm.product==="Financiamento"?<>
+                <label>Valor total do veículo<CurrencyInput value={editForm.vehicleValue||""} onChange={value=>setEditForm(x=>({...x,vehicleValue:value}))}/></label>
+                <label>Entrada<CurrencyInput value={editForm.downPayment||""} onChange={value=>setEditForm(x=>({...x,downPayment:value}))}/></label>
+                <label>Valor do financiamento<CurrencyInput value={editForm.financedValue||""} onChange={value=>setEditForm(x=>({...x,financedValue:value}))}/></label>
+              </>:<label>Valor desejado<CurrencyInput value={editForm.desiredCredit||""} onChange={value=>setEditForm(x=>({...x,desiredCredit:value}))}/></label>}
             </div>
-            <div className="tf-modal-actions"><button type="button" className="tf-secondary" onClick={()=>setEditDeal(null)}>Cancelar</button><button className="tf-primary">Salvar alterações</button></div>
+            {editError&&<p className="tf-kanban-error" role="alert">{editError}</p>}
+            <div className="tf-modal-actions"><button type="button" className="tf-secondary" disabled={editing} onClick={()=>setEditDeal(null)}>Cancelar</button><button className="tf-primary" disabled={editing}>{editing?"Salvando…":"Salvar alterações"}</button></div>
           </form>
         </div>
       )}
@@ -3548,10 +3453,8 @@ function QuickDocumentUpload() {
   );
 }
 
-function QuickDocumentUploadInStage() {
-  const [target, setTarget] = useState<HTMLElement | null>(null),
-    [open, setOpen] = useState(false),
-    [name, setName] = useState(""),
+function QuickDocumentUploadInStage({open,onClose}:{open:boolean;onClose:()=>void}) {
+  const [name, setName] = useState(""),
     [cpf, setCpf] = useState(""),
     [birthDate, setBirthDate] = useState(""),
     [product, setProduct] = useState("Financiamento"),
@@ -3575,18 +3478,12 @@ function QuickDocumentUploadInStage() {
   };
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
+      if (e.key === "Escape") onClose();
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, []);
-  useEffect(() => {
-    const find = () =>
-      setTarget(document.querySelector<HTMLElement>(".tf-kanban article.stage-0 footer"));
-    find();
-    const id = window.setTimeout(find, 80);
-    return () => window.clearTimeout(id);
-  }, []);
+  }, [onClose]);
+  useEffect(()=>{if(open){setName("");setCpf("");setBirthDate("");setProduct("Financiamento");setFile(null);setReadMessage("")}},[open]);
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setBusy(true);
@@ -3605,31 +3502,17 @@ function QuickDocumentUploadInStage() {
     }
     setBusy(false);
     if (r.ok) {
-      setOpen(false);
+      onClose();
       window.location.reload();
     } else alert(x.error || "Confira os dados extraídos.");
   };
-  const button = (
-    <button
-      type="button"
-      className="tf-upload-kanban"
-      onClick={() => setOpen(true)}
-      aria-label="Upload de documento"
-      title="Upload de documento"
-    >
-      <FileUp />
-    </button>
-  );
-  return (
-    <>
-      {target ? createPortal(button, target) : null}
-      {open && (
+  return open ? (
         <div className="tf-modal-back">
           <form className="tf-modal" onSubmit={submit}>
             <button
               type="button"
               className="tf-modal-close"
-              onClick={() => setOpen(false)}
+              onClick={onClose}
             >
               ×
             </button>
@@ -3665,7 +3548,6 @@ function QuickDocumentUploadInStage() {
                 onChange={(e) => setCpf(maskCpf(e.target.value))}
                 inputMode="numeric"
                 maxLength={14}
-                required
                 placeholder="000.000.000-00"
               />
             </label>
@@ -3677,7 +3559,6 @@ function QuickDocumentUploadInStage() {
                 value={birthDate}
                 onChange={(e) => setBirthDate(maskDate(e.target.value))}
                 placeholder="DD/MM/AAAA"
-                required
               />
             </label>
             <label>
@@ -3694,9 +3575,7 @@ function QuickDocumentUploadInStage() {
             </button>
           </form>
         </div>
-      )}
-    </>
-  );
+  ) : null;
 }
 
 function DealDocuments({deal,close}:{deal:Deal;close:()=>void}){

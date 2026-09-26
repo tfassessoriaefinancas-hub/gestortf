@@ -1,3 +1,38 @@
+/* The service leads the card; the same readable structure is used by both themes. */
+.tf-app .tf-deal-card .tf-card-heading {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+  padding-right: 24px;
+}
+.tf-app .tf-deal-card .tf-card-heading > .tf-card-product {
+  flex: initial;
+  width: auto;
+  max-width: 100%;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  font-size: 12px !important;
+  line-height: 1.35;
+  font-weight: 850;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.tf-app .tf-deal-card .tf-card-heading > strong {
+  max-width: 100%;
+  font-size: 11px !important;
+  line-height: 1.4;
+  font-weight: 650 !important;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.tf-deal-card[aria-busy="true"] { cursor: progress; }
+.tf-app .tf-deal-card .tf-card-actions { flex-wrap: wrap; }
+.tf-kanban-error { padding: 10px 12px; border: 1px solid currentColor; border-radius: 8px; }
+
 /* One structural layout for both themes. Theme files only supply visual identity. */
 .tf-app:is(.theme-classic,.theme-mono) {
   --navigation-width: 76px;

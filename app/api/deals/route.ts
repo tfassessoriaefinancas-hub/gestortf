@@ -14,7 +14,6 @@ const parse=(v:unknown)=>{try{return JSON.parse(String(v||'{}'))}catch{return {n
 
 export async function GET(){
  const user=await getTfAccess();if(!user||!hasTfPermission(user,'atendimento'))return json({error:'Não autorizado'},401);
- await reconcileImportedCompletions(user);
  const employeeClause=user.role==='employee'?' AND d.assigned_user_id=?':'';
  const statement=env.DB.prepare(`SELECT d.id,d.title,d.payload_json,d.stage,d.status,d.needs_completion,d.created_at,d.updated_at,d.client_id,d.operation_id,d.source,d.assigned_user_id,a.name assigned_name FROM deals d LEFT JOIN access_users a ON a.id=d.assigned_user_id WHERE d.owner_id IN (?,?) AND d.stage!='cancelado' AND d.status NOT IN ('excluido','concluido')${employeeClause} ORDER BY d.updated_at DESC`);
  const rows=await (user.role==='employee'?statement.bind(user.ownerKeys[0],user.ownerKeys[1],user.memberId):statement.bind(user.ownerKeys[0],user.ownerKeys[1])).all();
@@ -24,10 +23,10 @@ export async function GET(){
   const base=parse(r.payload_json||r.title),operation=operations.get(Number(r.operation_id));
   const canonical=operation?{name:operation.clientName,cpf:operation.clientCpf,birthDate:operation.clientBirthDate,phone:operation.clientPhone,benefit:operation.clientBenefit,
    product:operation.product,bank:operation.bank,producer:operation.producer,origin:operation.origin,promoter:operation.promoter,operationType:operation.operationType,
-   agreement:operation.agreement,contractType:operation.contractType,dueDay:operation.dueDay,productionIndicator:operation.productionIndicator,
+   agreement:operation.agreement,guaranteeType:operation.guaranteeType,contractType:operation.contractType,dueDay:operation.dueDay,productionIndicator:operation.productionIndicator,
    value:operation.value,installment:operation.installment,term:String(operation.term||''),commissionRate:String(operation.commissionRate),commissionCustomRate:'',commissionPaid:operation.commissionPaid?'Sim':'Não',commissionInstallments:String(operation.commissionInstallments),commissionDueDate:operation.revenueDueDate,
    adhesionFee:operation.adhesionFee,advisoryFee:operation.advisoryFee,bonus:operation.bonus,quotaQuantity:String(operation.quotaQuantity||1),quotaUnitValue:operation.quotaUnitValue,fipeValue:operation.fipeValue,postSale:operation.postSale,postSaleNotes:operation.postSaleNotes,
-   vehiclePlate:operation.vehiclePlate,vehicleValue:operation.vehicleValue,financedValue:operation.financedValue,desiredCredit:operation.desiredCredit,loanValue:operation.value,
+   vehiclePlate:operation.vehiclePlate,vehicleValue:operation.vehicleValue,downPayment:operation.downPayment,financedValue:operation.financedValue,desiredCredit:operation.desiredCredit,loanValue:operation.value,
    ...(operation.completedAt?{operationDate:operation.date,paidDate:operation.paidDate,contractStatus:operation.status}:{})}:{};
   return {...base,...canonical,id:r.id,stage:r.stage,status:r.status,needsCompletion:Boolean(r.needs_completion),createdAt:r.created_at||r.updated_at,updatedAt:r.updated_at,clientId:r.client_id,operationId:r.operation_id,source:r.source,assignedUserId:r.assigned_user_id,assignedName:r.assigned_name};
  })});
@@ -35,26 +34,35 @@ export async function GET(){
 
 export async function POST(request:Request){
  const user=await getTfAccess();if(!user||!hasTfPermission(user,'atendimento'))return json({error:'Não autorizado'},401);
- const body=await request.json() as Record<string,string>,cpf=cleanCpf(body.cpf||'');
- if(!body.name?.trim()||cpf.length!==11||!body.birthDate||!body.product)return json({error:'Preencha nome, CPF, nascimento e produto.'},400);
- const now=Date.now(),name=body.name.trim(),birthDate=isoDate(body.birthDate);
- let client=await env.DB.prepare('SELECT id FROM clients WHERE owner_id IN (?,?) AND cpf=? AND deleted_at IS NULL').bind(user.ownerKeys[0],user.ownerKeys[1],cpf).first<{id:number}>();
- if(client)await env.DB.prepare('UPDATE clients SET updated_at=? WHERE id=?').bind(now,client.id).run();
- else client=await env.DB.prepare('INSERT INTO clients (owner_id,name,normalized_name,cpf,birth_date,notes,source_row,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?) RETURNING id').bind(user.ownerKey,name,norm(name),cpf,birthDate,'Criado pelo Kanban','Kanban',now,now).first<{id:number}>();
- if(!client)return json({error:'Não foi possível criar o cliente.'},500);
+ const body=await request.json() as Record<string,string>,cpf=cleanCpf(String(body.cpf||''));
+ const name=String(body.name||'').trim(),product=String(body.product||'').trim();
+ if(!name||!product)return json({error:'Informe o nome do cliente e o serviço.'},400);
+ if(cpf&&cpf.length!==11)return json({error:'Confira o CPF ou deixe o campo em branco.'},400);
+ if(body.guaranteeType&&!['Veículo','Imobiliário'].includes(body.guaranteeType))return json({error:'Tipo de garantia inválido.'},400);
  const assignedUserId=await resolveAssignee(user,body.assignedUserId);
  if(assignedUserId===undefined)return json({error:'Responsável inválido.'},400);
- const operation=await env.DB.prepare("INSERT INTO operations (owner_id,assigned_user_id,client_id,original_product,category,producer,origin,value_cents,operation_date,status,created_at,updated_at) VALUES (?,?,?,?,?,?,'Kanban',0,?,'em_atendimento',?,?) RETURNING id").bind(user.ownerKey,assignedUserId,client.id,body.product,body.operationType||body.product,user.role==='employee'?user.displayName:'Thiago',new Date().toISOString().slice(0,10),now,now).first<{id:number}>();
- if(!operation)return json({error:'Não foi possível criar a operação.'},500);
- const requestedValue=body.financedValue||body.desiredCredit||body.loanValue||'';
- const phone=phoneBr(body.phone);
- if(phone)await env.DB.prepare('UPDATE clients SET phone=?,updated_at=? WHERE id=?').bind(phone,now,client.id).run();
- const payload={name,cpf,birthDate,phone,product:body.product,operationType:body.operationType||body.product,vehiclePlate:body.vehiclePlate||'',vehicleValue:body.vehicleValue||'',financedValue:body.financedValue||'',desiredCredit:body.desiredCredit||'',loanValue:body.loanValue||'',returnAt:'',returnReason:'',returnNotes:'',returnStatus:'',lastConversation:'',history:[]};
- await env.DB.prepare("UPDATE operations SET vehicle_plate=?,vehicle_value_cents=?,financed_value_cents=?,desired_credit_cents=?,value_cents=?,updated_at=? WHERE id=?").bind(body.vehiclePlate||null,moneyBr(body.vehicleValue),moneyBr(body.financedValue),moneyBr(body.desiredCredit||requestedValue),moneyBr(requestedValue),now,operation.id).run();
- const row=await env.DB.prepare("INSERT INTO deals (owner_id,assigned_user_id,client_id,operation_id,title,payload_json,stage,status,updated_at,created_at,needs_completion,source,probability) VALUES (?,?,?,?,?,?,'atendimento','aberto',?,?,0,'Kanban',0) RETURNING id,assigned_user_id as assignedUserId,stage,status,created_at as createdAt,updated_at as updatedAt").bind(user.ownerKey,assignedUserId,client.id,operation.id,JSON.stringify(payload),JSON.stringify(payload),now,now).first<any>();
- if(!row)return json({error:'Não foi possível iniciar o atendimento.'},500);
- await history(user.ownerKey,row.id,operation.id,'criacao','Atendimento criado pelo Kanban.',null,{stage:'atendimento'});
- return json({deal:{...row,...payload,needsCompletion:false,clientId:client.id,operationId:operation.id,source:'Kanban'}},201);
+ const now=Date.now(),birthDate=isoDate(body.birthDate),phone=phoneBr(body.phone);
+ const requestedValue=product==='Financiamento'?body.financedValue:body.desiredCredit||body.loanValue||body.financedValue;
+ const amounts={vehicleValue:moneyBr(body.vehicleValue),downPayment:moneyBr(body.downPayment),financedValue:moneyBr(body.financedValue),desiredCredit:moneyBr(product==='Financiamento'?body.desiredCredit:requestedValue)};
+ if(Object.values(amounts).some(value=>value<0))return json({error:'Os valores não podem ser negativos.'},400);
+ try {
+  const deal=await env.DB.transaction(async client=>{
+   // Serialize creation for one CPF and never match clients with a missing CPF.
+   if(cpf)await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))',[`${user.ownerKey}:${cpf}`]);
+   let customer=cpf?(await client.query('SELECT id,name,cpf,birth_date,phone FROM clients WHERE owner_id=ANY($1::text[]) AND cpf=$2 AND deleted_at IS NULL FOR UPDATE',[user.ownerKeys,cpf])).rows[0]:null;
+   if(customer&&norm(customer.name)!==norm(name))throw new RecordUpdateError('Este CPF já pertence a outro cliente. Confira o CPF antes de salvar este atendimento.',409);
+   if(!customer)customer=(await client.query('INSERT INTO clients (owner_id,name,normalized_name,cpf,birth_date,phone,notes,source_row,created_at,updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$9) RETURNING id,name,cpf,birth_date,phone',[user.ownerKey,name,norm(name),cpf||null,birthDate||null,phone||null,'Criado pelo Kanban','Kanban',now])).rows[0];
+   else customer=(await client.query("UPDATE clients SET birth_date=COALESCE(NULLIF(birth_date,''),$1),phone=COALESCE(NULLIF(phone,''),$2),updated_at=$3 WHERE id=$4 RETURNING id,name,cpf,birth_date,phone",[birthDate||null,phone||null,now,customer.id])).rows[0];
+   const guaranteeType=body.guaranteeType||'',operationType=body.operationType||(guaranteeType==='Imobiliário'?'Garantia de imóvel':guaranteeType==='Veículo'?'Garantia de veículo':product);
+   const notes=JSON.stringify({guaranteeType,...(guaranteeType?{agreement:guaranteeType==='Imobiliário'?'Imóvel':'Veículo'}:{})});
+   const operation=(await client.query("INSERT INTO operations (owner_id,assigned_user_id,client_id,original_product,category,producer,origin,value_cents,operation_date,status,vehicle_plate,vehicle_value_cents,financed_value_cents,desired_credit_cents,down_payment_cents,notes,created_at,updated_at) VALUES ($1,$2,$3,$4,$5,$6,'Kanban',$7,$8,'em_atendimento',$9,$10,$11,$12,$13,$14,$15,$15) RETURNING id",[user.ownerKey,assignedUserId,customer.id,product,operationType,user.role==='employee'?user.displayName:'Thiago',moneyBr(requestedValue),new Date().toISOString().slice(0,10),body.vehiclePlate||null,amounts.vehicleValue,amounts.financedValue,amounts.desiredCredit,amounts.downPayment,notes,now])).rows[0];
+   const payload={name:customer.name,cpf:customer.cpf||'',birthDate:customer.birth_date||'',phone:customer.phone||'',product,operationType,guaranteeType,vehiclePlate:body.vehiclePlate||'',vehicleValue:amounts.vehicleValue/100,downPayment:amounts.downPayment/100,financedValue:amounts.financedValue/100,desiredCredit:amounts.desiredCredit/100,loanValue:moneyBr(body.loanValue)/100,value:moneyBr(requestedValue)/100,returnAt:'',returnReason:'',returnNotes:'',returnStatus:'',lastConversation:'',history:[]};
+   const row=(await client.query("INSERT INTO deals (owner_id,assigned_user_id,client_id,operation_id,title,payload_json,stage,status,updated_at,created_at,needs_completion,source,probability) VALUES ($1,$2,$3,$4,$5,$5,'atendimento','aberto',$6,$6,0,'Kanban',0) RETURNING id,assigned_user_id AS \"assignedUserId\",stage,status,created_at AS \"createdAt\",updated_at AS \"updatedAt\"",[user.ownerKey,assignedUserId,customer.id,operation.id,JSON.stringify(payload),now])).rows[0];
+   await client.query("INSERT INTO deal_history (owner_id,deal_id,operation_id,event_type,description,after_json,source,created_at) VALUES ($1,$2,$3,'criacao','Atendimento criado pelo Kanban.',$4,'Gestão TF',$5)",[user.ownerKey,row.id,operation.id,JSON.stringify({stage:'atendimento'}),now]);
+   return {...row,...payload,needsCompletion:false,clientId:customer.id,operationId:operation.id,source:'Kanban'};
+  });
+  return json({deal},201);
+ }catch(error){if(error instanceof RecordUpdateError)return json({error:error.message},error.status);if((error as {code?:string}).code==='23505')return json({error:'Este CPF já está cadastrado. Confira os dados do cliente.'},409);throw error;}
 }
 
 export async function PATCH(request:Request){
@@ -63,23 +71,36 @@ export async function PATCH(request:Request){
  if(id&&body.action==='edit'){
   const current=await ownedDeal(user,id);
   if(!current)return json({error:'Atendimento não encontrado.'},404);
-  const base=parse(current.payload_json||current.title),d=(body.details||{}) as Record<string,string>;
-  const name=String(d.name||base.name||'').trim(),cpf=cleanCpf(String(d.cpf||base.cpf||'')),birthDate=isoDate(d.birthDate||base.birthDate),product=String(d.product||base.product||'').trim(),phone=phoneBr(d.phone??base.phone??'');
-  if(!name||cpf.length!==11||!birthDate||!product)return json({error:'Confira nome, CPF, nascimento e produto.'},400);
-  const now=Date.now(),payload={...base,...d,name,cpf,birthDate,product,phone};
-  const statements=[env.DB.prepare('UPDATE deals SET title=?,payload_json=?,updated_at=? WHERE id=?').bind(JSON.stringify(payload),JSON.stringify(payload),now,id)];
+  const d=(body.details||{}) as Record<string,string>;
+  const editableFields=['name','cpf','birthDate','phone','product','operationType','guaranteeType','vehiclePlate','vehicleValue','downPayment','financedValue','desiredCredit','loanValue'];
+  const patch:Record<string,unknown>=Object.fromEntries(Object.entries(d).filter(([key])=>editableFields.includes(key)));
+  if('name' in d&&!String(d.name||'').trim())return json({error:'Informe o nome do cliente.'},400);
+  if('cpf' in d){patch.cpf=cleanCpf(String(d.cpf||''));if(patch.cpf&&String(patch.cpf).length!==11)return json({error:'Confira o CPF ou deixe o campo em branco.'},400);}
+  if('phone' in d)patch.phone=phoneBr(d.phone);
+  if('birthDate' in d)patch.birthDate=isoDate(d.birthDate);
+  if('product' in d&&!String(d.product||'').trim())return json({error:'Informe o serviço.'},400);
+  if(d.guaranteeType){
+   if(!['Veículo','Imobiliário'].includes(d.guaranteeType))return json({error:'Tipo de garantia inválido.'},400);
+   patch.agreement=d.guaranteeType==='Imobiliário'?'Imóvel':'Veículo';
+   patch.operationType=d.guaranteeType==='Imobiliário'?'Garantia de imóvel':'Garantia de veículo';
+  }
+  const base=parse(current.payload_json||current.title),product=d.product||base.product;
+  const amountKey=product==='Financiamento'?'financedValue':'desiredCredit' in d?'desiredCredit':'loanValue' in d?'loanValue':'financedValue';
+  if(amountKey in d)patch.value=d[amountKey];
   try {
-   if(current.operation_id){
-    const patch:Record<string,unknown>={name,cpf,birthDate,phone,product};
-    for(const key of ['vehiclePlate','vehicleValue','financedValue','desiredCredit'])if(d[key]!=null)patch[key]=d[key];
-    const amount=d.financedValue||d.desiredCredit||d.loanValue;
-    if(amount!=null&&amount!=='')patch.value=amount;
-    await updateOperationRecord(env.DB,user,Number(current.operation_id),patch);
-   }else if(current.client_id)await updateClientRecord(env.DB,user,Number(current.client_id),{name,cpf,birthDate,phone});
+   const deal=await env.DB.transaction(async client=>{
+    const locked=(await client.query('SELECT * FROM deals WHERE id=$1 FOR UPDATE',[id])).rows[0];
+    if(locked.status==='processando_cadastro')throw new RecordUpdateError('Aguarde a conclusão do cadastro antes de editar.',409);
+    const previous=parse(locked.payload_json||locked.title),now=Date.now();
+    if(locked.operation_id)await updateOperationRecord(env.DB,user,Number(locked.operation_id),patch,client);
+    else if(locked.client_id)await updateClientRecord(env.DB,user,Number(locked.client_id),patch,client);
+    const payload={...previous,...patch};
+    await client.query('UPDATE deals SET title=$1,payload_json=$1,updated_at=$2 WHERE id=$3',[JSON.stringify(payload),now,id]);
+    await client.query("INSERT INTO deal_history (owner_id,deal_id,operation_id,event_type,description,before_json,after_json,source,created_at) VALUES ($1,$2,$3,'edicao','Dados do atendimento editados.',$4,$5,'Gestão TF',$6)",[user.ownerKey,id,locked.operation_id||null,JSON.stringify(previous),JSON.stringify(payload),now]);
+    return {...payload,id,stage:locked.stage,status:locked.status,needsCompletion:Boolean(locked.needs_completion),updatedAt:now,clientId:locked.client_id,operationId:locked.operation_id,source:locked.source};
+   });
+   return json({ok:true,deal});
   }catch(error){if(error instanceof RecordUpdateError)return json({error:error.message},error.status);throw error;}
-  statements.push(env.DB.prepare("INSERT INTO deal_history (owner_id,deal_id,operation_id,event_type,description,before_json,after_json,source,created_at) VALUES (?,?,?,?,?,?,?,'Gestão TF',?)").bind(user.ownerKey,id,current.operation_id||null,'edicao','Dados do atendimento editados.',JSON.stringify(base),JSON.stringify(payload),now));
-  await env.DB.batch(statements);
-  return json({ok:true,deal:{...payload,id,stage:current.stage,status:current.status,needsCompletion:Boolean(current.needs_completion),updatedAt:now,clientId:current.client_id,operationId:current.operation_id,source:current.source}});
  }
  if(id&&body.action==='schedule_return'){
   const current=await ownedDeal(user,id);
@@ -124,11 +145,20 @@ export async function PATCH(request:Request){
  if(current.status==='concluido'&&current.operation_id){await ensurePostSale(user,Number(current.operation_id),Number(current.client_id));return json({ok:true,stage:'finalizado',status:'concluido',needsCompletion:false,clientId:current.client_id,operationId:current.operation_id,alreadyCompleted:true});}
  const now=Date.now(),base=parse(current.payload_json||current.title);
  if(stage!=='finalizado'||!body.details){
-  const status=stage==='finalizado'?'aguardando_cadastro':stage==='cancelado'?'cancelado':'aberto',needs=stage==='finalizado'?1:0;
-  await env.DB.prepare('UPDATE deals SET stage=?,status=?,needs_completion=?,updated_at=? WHERE id=?').bind(stage,status,needs,now,id).run();
-  if(current.operation_id)await env.DB.prepare('UPDATE operations SET status=?,updated_at=? WHERE id=?').bind(status==='aberto'?stage:status,now,current.operation_id).run();
-  await history(user.ownerKey,id,current.operation_id,'mudanca_etapa',`Etapa alterada de ${current.stage} para ${stage}.`,{stage:current.stage,status:current.status},{stage,status,needsCompletion:Boolean(needs)});
-  return json({ok:true,stage,status,needsCompletion:Boolean(needs)});
+  try {
+   const result=await env.DB.transaction(async client=>{
+    const fresh=(await client.query('SELECT * FROM deals WHERE id=$1 FOR UPDATE',[id])).rows[0];
+    if(fresh.status==='processando_cadastro')throw new RecordUpdateError('O cadastro está sendo concluído. Aguarde antes de mudar a etapa.',409);
+    if(fresh.status==='concluido')return {stage:'finalizado',status:'concluido',needsCompletion:false,updatedAt:fresh.updated_at};
+    if(fresh.status==='excluido')throw new RecordUpdateError('Este atendimento foi excluído.',409);
+    const status=stage==='finalizado'?'aguardando_cadastro':stage==='cancelado'?'cancelado':'aberto',needs=stage==='finalizado'?1:0,updatedAt=Math.max(now,Number(fresh.updated_at)+1);
+    await client.query('UPDATE deals SET stage=$1,status=$2,needs_completion=$3,updated_at=$4 WHERE id=$5',[stage,status,needs,updatedAt,id]);
+    if(fresh.operation_id)await client.query('UPDATE operations SET status=$1,updated_at=$2 WHERE id=$3',[status==='aberto'?stage:status,updatedAt,fresh.operation_id]);
+    await client.query("INSERT INTO deal_history (owner_id,deal_id,operation_id,event_type,description,before_json,after_json,source,created_at) VALUES ($1,$2,$3,'mudanca_etapa',$4,$5,$6,'Gestão TF',$7)",[user.ownerKey,id,fresh.operation_id,`Etapa alterada de ${fresh.stage} para ${stage}.`,JSON.stringify({stage:fresh.stage,status:fresh.status}),JSON.stringify({stage,status,needsCompletion:Boolean(needs)}),updatedAt]);
+    return {stage,status,needsCompletion:Boolean(needs),updatedAt};
+   });
+   return json({ok:true,...result});
+  }catch(error){if(error instanceof RecordUpdateError)return json({error:error.message},error.status);throw error;}
  }
  const d=body.details as Record<string,string>,documentType=String(d.documentType||'CPF'),cpf=documentType==='CPF'?cleanCpf(String(d.cpf||base.cpf||'')):'',benefit=documentType==='Benefício'?String(d.benefit||'').trim():String(d.benefit||'').trim();
  if(documentType==='CPF'&&cpf.length!==11)return json({error:'Confira o CPF antes de concluir.'},400);
@@ -208,18 +238,4 @@ async function resolveAssignee(access:TfAccess,value:unknown):Promise<number|nul
  const id=Number(value||0);if(!id)return null;
  const row=await env.DB.prepare('SELECT id FROM access_users WHERE id=? AND owner_id=? AND active=1').bind(id,access.ownerKey).first<{id:number}>();
  return row?.id;
-}
-
-async function reconcileImportedCompletions(access:TfAccess){
- const pending=await env.DB.prepare("SELECT id,title,payload_json FROM deals WHERE owner_id IN (?,?) AND stage='finalizado' AND status='aguardando_cadastro'").bind(access.ownerKeys[0],access.ownerKeys[1]).all<{id:number;title:string;payload_json:string|null}>();
- for(const deal of pending.results){
-  const data=parse(deal.payload_json||deal.title),cpf=cleanCpf(String(data.cpf||''));if(cpf.length!==11)continue;
-  const match=await env.DB.prepare("SELECT c.id client_id,o.id operation_id FROM clients c JOIN operations o ON o.client_id=c.id WHERE c.owner_id IN (?,?) AND o.owner_id IN (?,?) AND c.cpf=? AND c.deleted_at IS NULL AND o.deleted_at IS NULL AND o.completed_at IS NOT NULL ORDER BY o.operation_date DESC,o.id DESC LIMIT 1").bind(access.ownerKeys[0],access.ownerKeys[1],access.ownerKeys[0],access.ownerKeys[1],cpf).first<{client_id:number;operation_id:number}>();
-  if(!match)continue;const now=Date.now();
-  await env.DB.batch([
-   env.DB.prepare("UPDATE deals SET client_id=?,operation_id=?,stage='finalizado',status='concluido',needs_completion=0,updated_at=? WHERE id=?").bind(match.client_id,match.operation_id,now,deal.id),
-   env.DB.prepare("INSERT INTO deal_history (owner_id,deal_id,operation_id,event_type,description,before_json,after_json,source,created_at) VALUES (?,?,?,?,?,?,?,'Gestão TF',?)").bind(access.ownerKey,deal.id,match.operation_id,'cadastro_vinculado','Cartão vinculado automaticamente à operação já concluída.',JSON.stringify({status:'aguardando_cadastro'}),JSON.stringify({status:'concluido',clientId:match.client_id,operationId:match.operation_id}),now)
-  ]);
-  await ensurePostSale(access,match.operation_id,match.client_id);
- }
 }
