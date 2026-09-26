@@ -6,6 +6,7 @@ import { parseMoney as parseMoneyBr, formatMoney as brl, formatMoneyInput, money
 import { partnerAdditionalFinance, partnerFinance } from "../lib/operation-finance";
 import { bankCatalog, bankInfo, bankNames } from "../lib/banks";
 import { CRM_CHANGED, CRM_STORAGE_KEY, notifyCrmChanged } from "../lib/crm-events";
+import { startActiveRefresh } from "../lib/active-refresh";
 import type { CanonicalOperation } from "../lib/operations";
 import {
   House,
@@ -544,7 +545,7 @@ export default function Dashboard({
     };
     let loading=false;
     const load = async () => {
-      if(loading)return;loading=true;
+      if(disposed||loading||document.visibilityState==="hidden"||navigator.onLine===false)return;loading=true;
       const dealsVersionAtStart=dealsMutationVersion.current;
       const [dealsData,crmData,teamData,partnerData,invoiceData,catalogData,postSaleData]=await Promise.all([
         (user.role==="admin"||user.permissions.includes("atendimento"))?readJson("/api/deals"):Promise.resolve(null),readCrm(),user.role==="admin"?readJson("/api/access-users"):Promise.resolve(null),(user.role==="admin"||user.permissions.includes("parceiros"))?readJson("/api/partners"):Promise.resolve(null),(user.role==="admin"||user.permissions.includes("notas"))?readJson("/api/invoices"):Promise.resolve(null),(user.role==="admin"||user.permissions.includes("atendimento"))?readJson("/api/catalog-options"):Promise.resolve(null),(user.role==="admin"||user.permissions.includes("posvenda"))?readJson("/api/post-sales"):Promise.resolve(null),
@@ -573,15 +574,13 @@ export default function Dashboard({
       loading=false;
     };
     load();
-    const timer = window.setInterval(load, 30000);
-    const refreshOnFocus=()=>load();window.addEventListener('focus',refreshOnFocus);
+    const stopRefresh = startActiveRefresh(load);
     return () => {
       disposed=true;
       controller.abort();
-      window.clearInterval(timer);
+      stopRefresh();
       document.removeEventListener("visibilitychange",refreshApp);
       navigator.serviceWorker?.removeEventListener("controllerchange",reloadForUpdate);
-      window.removeEventListener('focus',refreshOnFocus);
     };
   }, [user.role,user.permissions,user.serverAuthenticated,dataRevision]);
   const allClients = liveClients;

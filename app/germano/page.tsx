@@ -1,6 +1,7 @@
 'use client';
 import { formatMoney as brl } from '../../lib/money';
 import { CRM_CHANGED, CRM_STORAGE_KEY } from '../../lib/crm-events';
+import { startActiveRefresh } from '../../lib/active-refresh';
 
 import { useEffect, useMemo, useState } from 'react';
 import type { CSSProperties } from 'react';
@@ -49,7 +50,10 @@ export default function GermanoPortal(){
   useEffect(() => {
     if (!authenticated) return;
     let disposed = false;
+    let refreshing = false;
     const refresh = async () => {
+      if (disposed || refreshing || document.visibilityState === 'hidden' || navigator.onLine === false) return;
+      refreshing = true;
       try {
         const response = await fetch('/api/germano-report', { method: 'POST', cache: 'no-store', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ partnerId }) });
         if (response.ok) {
@@ -57,13 +61,13 @@ export default function GermanoPortal(){
           if (!disposed) setData(current);
         }
       } catch { /* Preserve the visible report while the connection is unavailable. */ }
+      finally { refreshing = false; }
     };
     const storage = (event: StorageEvent) => { if (event.key === CRM_STORAGE_KEY) void refresh(); };
-    const timer = window.setInterval(refresh, 30000);
-    window.addEventListener('focus', refresh);
+    const stopRefresh = startActiveRefresh(refresh);
     window.addEventListener(CRM_CHANGED, refresh);
     window.addEventListener('storage', storage);
-    return () => { disposed = true; window.clearInterval(timer); window.removeEventListener('focus', refresh); window.removeEventListener(CRM_CHANGED, refresh); window.removeEventListener('storage', storage); };
+    return () => { disposed = true; stopRefresh(); window.removeEventListener(CRM_CHANGED, refresh); window.removeEventListener('storage', storage); };
   }, [authenticated, partnerId]);
 
   const report=useMemo(()=>{
