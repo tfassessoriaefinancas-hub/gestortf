@@ -7,6 +7,8 @@ import { partnerAdditionalFinance, partnerFinance } from "../lib/operation-finan
 import { bankCatalog, bankInfo, bankNames } from "../lib/banks";
 import { CRM_CHANGED, CRM_STORAGE_KEY, notifyCrmChanged } from "../lib/crm-events";
 import { startActiveRefresh } from "../lib/active-refresh";
+import { resourcesForView, type CrmResource, type CrmRevisions } from "../lib/crm-resources";
+import { createResourceSync } from "../lib/resource-sync";
 import type { CanonicalOperation } from "../lib/operations";
 import {
   House,
@@ -456,24 +458,17 @@ export default function Dashboard({
     [productionPeriod,setProductionPeriod]=useState("2026-09"),
     [showReceivables,setShowReceivables]=useState(false),
     [dueReminderRequired,setDueReminderRequired]=useState(false),
-    [dataRevision,setDataRevision]=useState(0),
     [newDealRequest,setNewDealRequest]=useState(0),
     [locked, setLocked] = useState(true),
     [gateReady, setGateReady] = useState(false),
     [visualTheme,setVisualTheme]=useState<"classic"|"mono">("classic");
   const dealsMutationVersion = useRef(0);
+  const resourceSync = useRef<ReturnType<typeof createResourceSync> | null>(null);
   const updateDeals = useCallback<React.Dispatch<React.SetStateAction<Deal[]>>>((update) => {
     dealsMutationVersion.current += 1;
     setDeals(update);
   }, []);
-  const refreshData = useCallback(() => { dealsMutationVersion.current += 1; notifyCrmChanged(); setDataRevision((value) => value + 1); }, []);
-  useEffect(() => {
-    const refresh = () => setDataRevision(value => value + 1);
-    const storage = (event: StorageEvent) => { if (event.key === CRM_STORAGE_KEY) refresh(); };
-    window.addEventListener(CRM_CHANGED, refresh);
-    window.addEventListener('storage', storage);
-    return () => { window.removeEventListener(CRM_CHANGED, refresh); window.removeEventListener('storage', storage); };
-  }, []);
+  const refreshData = useCallback(() => { dealsMutationVersion.current += 1; notifyCrmChanged(); }, []);
   const dark = true;
   const toggleVisualTheme=()=>setVisualTheme(current=>{
     const next=current==="classic"?"mono":"classic";
@@ -517,17 +512,23 @@ export default function Dashboard({
       document.addEventListener("visibilitychange",refreshApp);
       navigator.serviceWorker.addEventListener("controllerchange",reloadForUpdate);
     }
+    return () => {
+      document.removeEventListener("visibilitychange",refreshApp);
+      navigator.serviceWorker?.removeEventListener("controllerchange",reloadForUpdate);
+    };
+  }, [user.serverAuthenticated]);
+  useEffect(() => {
     let disposed=false;
     const controller=new AbortController();
     const readJson = async (url:string):Promise<any> => {
-      const response = await fetch(`${url}${url.includes("?")?"&":"?"}_=${Date.now()}`, {
+      const response = await fetch(url, {
         cache: "no-store",
         signal: controller.signal,
         headers: { "cache-control": "no-cache" },
       });
       if (response.status === 401) {
         window.location.assign(`/signin-with-chatgpt?return_to=${encodeURIComponent(window.location.pathname + window.location.search)}`);
-        return null;
+        throw new Error("Sessão encerrada.");
       }
       if (!response.ok) throw new Error("Não foi possível atualizar os dados. Tente novamente.");
       return response.json();
@@ -543,46 +544,45 @@ export default function Dashboard({
       } while(offset!==null);
       return data;
     };
-    let loading=false;
-    const load = async () => {
-      if(disposed||loading||document.visibilityState==="hidden"||navigator.onLine===false)return;loading=true;
+    const endpoints: Record<Exclude<CrmResource,'crm'>,string> = {deals:'/api/deals',team:'/api/access-users',partners:'/api/partners',invoices:'/api/invoices',catalog:'/api/catalog-options',postSales:'/api/post-sales'};
+    const load = async (resource:CrmResource) => {
       const dealsVersionAtStart=dealsMutationVersion.current;
-      const [dealsData,crmData,teamData,partnerData,invoiceData,catalogData,postSaleData]=await Promise.all([
-        (user.role==="admin"||user.permissions.includes("atendimento"))?readJson("/api/deals"):Promise.resolve(null),readCrm(),user.role==="admin"?readJson("/api/access-users"):Promise.resolve(null),(user.role==="admin"||user.permissions.includes("parceiros"))?readJson("/api/partners"):Promise.resolve(null),(user.role==="admin"||user.permissions.includes("notas"))?readJson("/api/invoices"):Promise.resolve(null),(user.role==="admin"||user.permissions.includes("atendimento"))?readJson("/api/catalog-options"):Promise.resolve(null),(user.role==="admin"||user.permissions.includes("posvenda"))?readJson("/api/post-sales"):Promise.resolve(null),
-      ]).catch(()=>{if(!disposed)setNotice("Falha ao carregar os dados. Verifique sua conexão e tente novamente.");return [null,null,null,null,null,null,null]});
-      if(disposed)return;
-      if(dealsData?.deals&&dealsVersionAtStart===dealsMutationVersion.current)setDeals(dealsData.deals);
-      const x=crmData;
-      if(x){
-          if (x?.clients)
-            setLiveClients(
-              x.clients.map((c: Client) => ({
-                ...c,
-                cpf: formatCpf(c.cpf),
-                phone: formatPhone(c.phone),
-              })),
-            );
-          if (x?.operations) setLiveOps(x.operations);
-          if (x?.receivables) setReceivables(x.receivables);
+      const data=resource==='crm'?await readCrm():await readJson(endpoints[resource]);
+      if(disposed||!data)return false;
+      if(resource==='deals') {
+        if(dealsVersionAtStart!==dealsMutationVersion.current)return false;
+        setDeals(data.deals);
       }
-      if(teamData?.members)setTeamMembers(teamData.members);
-      if(partnerData?.partners){const loaded=partnerData.partners as PartnerRecord[];setPartners(loaded.some(partner=>partner.name.localeCompare("GG Veículos","pt-BR",{sensitivity:"base"})===0)?loaded:[{id:0,name:"GG Veículos",taxRate:0,invoiceRate:0,tfShare:50},...loaded]);}
-      if(invoiceData?.invoices)setInvoices(invoiceData.invoices);
-      if(catalogData?.options)setCatalogOptions(catalogData.options);
-      if(postSaleData?.tasks)setPostSales(postSaleData.tasks);
-      if(postSaleData?.googleReviewUrl!==undefined)setGoogleReviewUrl(postSaleData.googleReviewUrl);
-      loading=false;
+      if(resource==='crm') {
+        setLiveClients(data.clients.map((client:Client)=>({...client,cpf:formatCpf(client.cpf),phone:formatPhone(client.phone)})));
+        setLiveOps(data.operations);
+        setReceivables(data.receivables);
+      }
+      if(resource==='team')setTeamMembers(data.members);
+      if(resource==='partners'){const loaded=data.partners as PartnerRecord[];setPartners(loaded.some(partner=>partner.name.localeCompare("GG Veículos","pt-BR",{sensitivity:"base"})===0)?loaded:[{id:0,name:"GG Veículos",taxRate:0,invoiceRate:0,tfShare:50},...loaded]);}
+      if(resource==='invoices')setInvoices(data.invoices);
+      if(resource==='catalog')setCatalogOptions(data.options);
+      if(resource==='postSales'){setPostSales(data.tasks);setGoogleReviewUrl(data.googleReviewUrl||'');}
+      return true;
     };
-    load();
-    const stopRefresh = startActiveRefresh(load);
+    const sync=createResourceSync({revisions:()=>readJson('/api/crm/changes') as Promise<CrmRevisions>,load,scopeChanged:()=>window.location.reload(),error:()=>{if(!disposed)setNotice('Falha ao atualizar os dados. Verifique sua conexão.');}});
+    resourceSync.current=sync;
+    const refresh=()=>{if(document.visibilityState!=='hidden'&&navigator.onLine!==false)void sync.refresh();};
+    const storage=(event:StorageEvent)=>{if(event.key===CRM_STORAGE_KEY)refresh();};
+    const stopRefresh = startActiveRefresh(()=>sync.refresh());
+    window.addEventListener(CRM_CHANGED,refresh);
+    window.addEventListener('storage',storage);
     return () => {
       disposed=true;
+      sync.dispose();
+      resourceSync.current=null;
       controller.abort();
       stopRefresh();
-      document.removeEventListener("visibilitychange",refreshApp);
-      navigator.serviceWorker?.removeEventListener("controllerchange",reloadForUpdate);
+      window.removeEventListener(CRM_CHANGED,refresh);
+      window.removeEventListener('storage',storage);
     };
-  }, [user.role,user.permissions,user.serverAuthenticated,dataRevision]);
+  }, [user.role,user.permissions,user.serverAuthenticated]);
+  useEffect(()=>{void resourceSync.current?.setResources(resourcesForView(view,user.role,user.permissions));},[view,user.role,user.permissions,user.serverAuthenticated]);
   const allClients = liveClients;
   const allOps = useMemo(() => liveOps.map(operation => /proteção auto/i.test(operation.product) && operation.installment > 0 ? {...operation, value:operation.installment} : operation), [liveOps]);
   const currentPeriod=(()=>{const date=new Date();return new Date(date.getTime()-date.getTimezoneOffset()*60000).toISOString().slice(0,7)})();

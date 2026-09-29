@@ -1,5 +1,5 @@
 import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
-import { PostgresDatabase } from '../../lib/postgres';
+import { createDatabase } from '../../lib/database';
 
 const origin='http://127.0.0.1:3100';
 async function login(request:APIRequestContext){
@@ -22,7 +22,7 @@ test('optional client data stays separate and financial edits preserve the origi
   const second=await create(request,{name:'Cliente opcional B',product:'Financiamento',vehicleValue:95000.41,downPayment:30000.11,financedValue:65000.30});
   expect(first.clientId).not.toBe(second.clientId);
   expect(first.operationId).not.toBe(second.operationId);
-  const db=new PostgresDatabase();
+  const db=createDatabase();
   try {
     await db.prepare("UPDATE operations SET vehicle_plate='ABC1D23',source_row='origem preservada' WHERE id=?").bind(second.operationId).run();
     const edit=await request.patch('/api/deals',{data:{id:second.id,action:'edit',details:{name:'Cliente opcional B editado',downPayment:31000.19,financedValue:64000.22}}});
@@ -42,7 +42,7 @@ test('optional client data stays separate and financial edits preserve the origi
 test('moving a new service never replaces it with an older completed operation for the same CPF',async({request})=>{
   await login(request);
   const old=await create(request,{name:'Cliente com dois serviços',cpf:'77888999000',product:'Financiamento',financedValue:1000});
-  const db=new PostgresDatabase();
+  const db=createDatabase();
   try {
     await db.prepare("UPDATE operations SET completed_at='2026-09-01',status='Finalizado' WHERE id=?").bind(old.operationId).run();
     await db.prepare("UPDATE deals SET stage='finalizado',status='concluido' WHERE id=?").bind(old.id).run();
@@ -137,18 +137,22 @@ test('a delayed refresh cannot undo a drag and failed moves are visible without 
   await expect(card).toBeVisible();
   let release!:()=>void,held!:()=>void,intercepted=false;
   const releaseGate=new Promise<void>(resolve=>{release=resolve}),snapshotReady=new Promise<void>(resolve=>{held=resolve});
-  await page.route('**/api/deals?*',async route=>{
+  await page.route('**/api/deals',async route=>{
+    if(route.request().method()!=='GET'){await route.continue();return;}
     const response=await route.fetch();
     if(!intercepted){intercepted=true;held();await releaseGate;}
     try{await route.fulfill({response});}catch{/* Refresh may have been aborted by the mutation. */}
   });
-  await page.evaluate(()=>window.dispatchEvent(new Event('focus')));
+  const changed=createDatabase();
+  try{await changed.prepare('UPDATE deals SET updated_at=? WHERE id=?').bind(Date.now(),deal.id).run();}
+  finally{await changed.close();}
+  await page.evaluate(()=>window.dispatchEvent(new Event('tf:crm-changed')));
   await snapshotReady;
   await card.dragTo(page.locator('[data-stage="analise"]'));
   await expect(page.locator(`[data-stage="analise"] [data-deal-id="${deal.id}"]`)).toBeVisible();
   release();await page.waitForLoadState('networkidle');
   await expect(page.locator(`[data-stage="analise"] [data-deal-id="${deal.id}"]`)).toBeVisible();
-  await page.unroute('**/api/deals?*');
+  await page.unroute('**/api/deals');
   const data=await page.evaluateHandle(()=>new DataTransfer());
   await card.dispatchEvent('dragstart',{dataTransfer:data});
   await page.locator('[data-stage="finalizado"]').dispatchEvent('drop',{dataTransfer:data});

@@ -5,6 +5,7 @@ import { randomBytes } from 'node:crypto';
 if(existsSync('.env.local'))process.loadEnvFile('.env.local');
 process.env.TF_TEST_SCHEMA??=`tf_test_${randomBytes(8).toString('hex')}`;
 process.env.DATABASE_SCHEMA=process.env.TF_TEST_SCHEMA;
+if(process.env.DATABASE_PROVIDER==='mongodb')process.env.MONGODB_DATABASE=process.env.TF_TEST_SCHEMA;
 
 export default defineConfig({
   testDir: './tests/browser',
@@ -30,6 +31,8 @@ export default defineConfig({
     env: {
       DATABASE_URL: process.env.DATABASE_URL!,
       DATABASE_SCHEMA: process.env.DATABASE_SCHEMA,
+      DATABASE_PROVIDER: process.env.DATABASE_PROVIDER || 'postgres',
+      ...(process.env.DATABASE_PROVIDER==='mongodb'?{MONGODB_URI:process.env.MONGODB_URI!,MONGODB_DATABASE:process.env.MONGODB_DATABASE!}:{}),
       LOCAL_AUTH_ENABLED: 'false',
       LOCAL_USER_ID: 'local-test-owner',
       LOCAL_USER_EMAIL: 'admin@example.com',

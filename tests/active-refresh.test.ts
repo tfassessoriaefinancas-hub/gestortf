@@ -23,6 +23,10 @@ test('background, offline and unused screens stop polling and refresh on return'
   let requests = 0;
   const stop = startActiveRefresh(() => { requests++; });
   t.after(stop);
+  window.dispatchEvent(new Event('focus'));
+  document.dispatchEvent(new Event('visibilitychange'));
+  await Promise.resolve();
+  assert.equal(requests, 0, 'mounting and focus must not duplicate the initial screen load');
   t.mock.timers.tick(60_000); await Promise.resolve();
   assert.equal(requests, 1);
   t.mock.timers.tick(10 * 60_000); await Promise.resolve();
@@ -65,6 +69,9 @@ test('focus and polling do not overlap a slow refresh and failures allow later r
   window.dispatchEvent(new Event('focus'));
   assert.equal(requests, 1);
   reject(new Error('Connection unavailable')); await Promise.resolve();
+  window.dispatchEvent(new Event('focus'));
+  assert.equal(requests, 1, 'repeated focus must not immediately retry a failure');
+  t.mock.timers.tick(30_000);
   window.dispatchEvent(new Event('focus'));
   assert.equal(requests, 2);
   stop();

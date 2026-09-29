@@ -1,0 +1,2765 @@
+{
+  "version": 1,
+  "migrations": {
+    "001_initial.sql": "c6b7ee1b871435dbc7f166900cefec626ae1bd6693e3cdb9b781f477d4449e88",
+    "002_query_indexes.sql": "6e0af7bb48c2b22e34e891a19ee1add41b7bfe16e5fe77810d94c935f2aaa385",
+    "003_partner_settlement_bonus.sql": "ef1989a670691420e554aef5462f0d7254c2918bd104c6b04b960bca39152b91",
+    "004_post_sale_and_catalogs.sql": "f204d75ca6613866d4d1820ab7e42ba41d6917182c092afa9ac7d876d540c1ec",
+    "005_partner_login_alias.sql": "25800310c8af41b30d74f9f20e520653d5e8eda6104cb13bc1902f15e306d0cc"
+  },
+  "tables": {
+    "access_users": {
+      "columns": {
+        "id": {
+          "type": "bigint",
+          "required": true,
+          "default": null
+        },
+        "owner_id": {
+          "type": "text",
+          "required": true,
+          "default": null
+        },
+        "email": {
+          "type": "text",
+          "required": true,
+          "default": null
+        },
+        "name": {
+          "type": "text",
+          "required": true,
+          "default": null
+        },
+        "permissions_json": {
+          "type": "text",
+          "required": true,
+          "default": "[\"inicio\",\"atendimento\"]"
+        },
+        "active": {
+          "type": "bigint",
+          "required": true,
+          "default": 1
+        },
+        "created_at": {
+          "type": "bigint",
+          "required": true,
+          "default": null
+        },
+        "updated_at": {
+          "type": "bigint",
+          "required": true,
+          "default": null
+        },
+        "partner_id": {
+          "type": "bigint",
+          "required": false,
+          "default": null
+        },
+        "login": {
+          "type": "text",
+          "required": false,
+          "default": null
+        }
+      },
+      "primary": [
+        "id"
+      ],
+      "references": [
+        {
+          "columns": [
+            "partner_id"
+          ],
+          "table": "partners",
+          "foreignColumns": [
+            "id"
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "name": "idx_access_users_email_active",
+          "fields": {
+            "email": 1,
+            "active": 1
+          },
+          "unique": false
+        },
+        {
+          "name": "access_users_owner_email_unique",
+          "fields": {
+            "owner_id": 1,
+            "email": 1
+          },
+          "unique": true
+        },
+        {
+          "name": "access_users_owner_login_unique",
+          "fields": {
+            "owner_id": 1,
+            "__tf_lower_login": 1
+          },
+          "unique": true
+        }
+      ],
+      "identity": "id"
+    },
+    "activities": {
+      "columns": {
+        "id": {
+          "type": "bigint",
+          "required": true,
+          "default": null
+        },
+        "owner_id": {
+          "type": "text",
+          "required": true,
+          "default": null
+        },
+        "deal_id": {
+          "type": "bigint",
+          "required": false,
+          "default": null
+        },
+        "type": {
+          "type": "text",
+          "required": true,
+          "default": null
+        },
+        "title": {
+          "type": "text",
+          "required": true,
+          "default": null
+        },
+        "due_at": {
+          "type": "bigint",
+          "required": false,
+          "default": null
+        },
+        "completed_at": {
+          "type": "bigint",
+          "required": false,
+          "default": null
+        }
+      },
+      "primary": [
+        "id"
+      ],
+      "references": [
+        {
+          "columns": [
+            "deal_id"
+          ],
+          "table": "deals",
+          "foreignColumns": [
+            "id"
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "name": "idx_activities_owner_due",
+          "fields": {
+            "owner_id": 1,
+            "due_at": 1
+          },
+          "unique": false
+        }
+      ],
+      "identity": "id"
+    },
+    "audit_log": {
+      "columns": {
+        "id": {
+          "type": "bigint",
+          "required": true,
+          "default": null
+        },
+        "owner_id": {
+          "type": "text",
+          "required": true,
+          "default": null
+        },
+        "user_id": {
+          "type": "text",
+          "required": false,
+          "default": null
+        },
+        "entity_type": {
+          "type": "text",
+          "required": true,
+          "default": null
+        },
+        "entity_id": {
+          "type": "text",
+          "required": true,
+          "default": null
+        },
+        "action": {
+          "type": "text",
+          "required": true,
+          "default": null
+        },
+        "before_json": {
+          "type": "text",
+          "required": false,
+          "default": null
+        },
+        "after_json": {
+          "type": "text",
+          "required": false,
+          "default": null
+        },
+        "created_at": {
+          "type": "bigint",
+          "required": true,
+          "default": null
+        }
+      },
+      "primary": [
+        "id"
+      ],
+      "references": [],
+      "indexes": [
+        {
+          "name": "idx_audit_owner_entity",
+          "fields": {
+            "owner_id": 1,
+            "entity_type": 1,
+            "entity_id": 1
+          },
+          "unique": false
+        }
+      ],
+      "identity": "id"
+    },
+    "automations": {
+      "columns": {
+        "id": {
+          "type": "bigint",
+          "required": true,
+          "default": null
+        },
+        "owner_id": {
+          "type": "text",
+          "required": true,
+          "default": null
+        },
+        "name": {
+          "type": "text",
+          "required": true,
+          "default": null
+        },
+        "trigger_type": {
+          "type": "text",
+          "required": true,
+          "default": null
+        },
+        "action_type": {
+          "type": "text",
+          "required": true,
+          "default": null
+        },
+        "active": {
+          "type": "bigint",
+          "required": true,
+          "default": 1
+        }
+      },
+      "primary": [
+        "id"
+      ],
+      "references": [],
+      "indexes": [],
+      "identity": "id"
+    },
+    "client_documents": {
+      "columns": {
+        "id": {
+          "type": "bigint",
+          "required": true,
+          "default": null
+        },
+        "owner_id": {
+          "type": "text",
+          "required": true,
+          "default": null
+        },
+        "client_id": {
+          "type": "bigint",
+          "required": true,
+          "default": null
+        },
+        "file_key": {
+          "type": "text",
+          "required": true,
+          "default": null
+        },
+        "file_name": {
+          "type": "text",
+          "required": true,
+          "default": null
+        },
+        "mime_type": {
+          "type": "text",
+          "required": true,
+          "default": null
+        },
+        "size_bytes": {
+          "type": "bigint",
+          "required": true,
+          "default": null
+        },
+        "document_type": {
+          "type": "text",
+          "required": true,
+          "default": "outro"
+        },
+        "created_at": {
+          "type": "bigint",
+          "required": true,
+          "default": null
+        }
+      },
+      "primary": [
+        "id"
+      ],
+      "references": [
+        {
+          "columns": [
+            "client_id"
+          ],
+          "table": "clients",
+          "foreignColumns": [
+            "id"
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "name": "idx_client_documents_owner_client",
+          "fields": {
+            "owner_id": 1,
+            "client_id": 1
+          },
+          "unique": false
+        }
+      ],
+      "identity": "id"
+    },
+    "clients": {
+      "columns": {
+        "id": {
+          "type": "bigint",
+          "required": true,
+          "default": null
+        },
+        "owner_id": {
+          "type": "text",
+          "required": true,
+          "default": null
+        },
+        "name": {
+          "type": "text",
+          "required": true,
+          "default": null
+        },
+        "normalized_name": {
+          "type": "text",
+          "required": true,
+          "default": null
+        },
+        "cpf": {
+          "type": "text",
+          "required": false,
+          "default": null
+        },
+        "benefit_number": {
+          "type": "text",
+          "required": false,
+          "default": null
+        },
+        "birth_date": {
+          "type": "text",
+          "required": false,
+          "default": null
+        },
+        "phone": {
+          "type": "text",
+          "required": false,
+          "default": null
+        },
+        "email": {
+          "type": "text",
+          "required": false,
+          "default": null
+        },
+        "address": {
+          "type": "text",
+          "required": false,
+          "default": null
+        },
+        "city": {
+          "type": "text",
+          "required": false,
+          "default": null
+        },
+        "notes": {
+          "type": "text",
+          "required": false,
+          "default": null
+        },
+        "source_row": {
+          "type": "text",
+          "required": false,
+          "default": null
+        },
+        "created_at": {
+          "type": "bigint",
+          "required": true,
+          "default": null
+        },
+        "updated_at": {
+          "type": "bigint",
+          "required": true,
+          "default": null
+        },
+        "deleted_at": {
+          "type": "bigint",
+          "required": false,
+          "default": null
+        }
+      },
+      "primary": [
+        "id"
+      ],
+      "references": [],
+      "indexes": [
+        {
+          "name": "idx_clients_owner_phone",
+          "fields": {
+            "owner_id": 1,
+            "phone": 1
+          },
+          "unique": false
+        },
+        {
+          "name": "idx_clients_owner_benefit",
+          "fields": {
+            "owner_id": 1,
+            "benefit_number": 1
+          },
+          "unique": false
+        },
+        {
+          "name": "idx_clients_owner_name",
+          "fields": {
+            "owner_id": 1,
+            "normalized_name": 1
+          },
+          "unique": false
+        },
+        {
+          "name": "clients_owner_cpf_unique",
+          "fields": {
+            "owner_id": 1,
+            "cpf": 1
+          },
+          "unique": true
+        },
+        {
+          "name": "idx_clients_owner_page",
+          "fields": {
+            "owner_id": 1,
+            "updated_at": 1,
+            "id": 1
+          },
+          "unique": false
+        }
+      ],
+      "identity": "id"
+    },
+    "commissions": {
+      "columns": {
+        "id": {
+          "type": "bigint",
+          "required": true,
+          "default": null
+        },
+        "owner_id": {
+          "type": "text",
+          "required": true,
+          "default": null
+        },
+        "operation_id": {
+          "type": "bigint",
+          "required": true,
+          "default": null
+        },
+        "rate_bps": {
+          "type": "bigint",
+          "required": false,
+          "default": null
+        },
+        "value_cents": {
+          "type": "bigint",
+          "required": true,
+          "default": 0
+        },
+        "expected_at": {
+          "type": "text",
+          "required": false,
+          "default": null
+        },
+        "received_at": {
+          "type": "text",
+          "required": false,
+          "default": null
+        },
+        "status": {
+          "type": "text",
+          "required": true,
+          "default": "prevista"
+        },
+        "notes": {
+          "type": "text",
+          "required": false,
+          "default": null
+        },
+        "created_at": {
+          "type": "bigint",
+          "required": true,
+          "default": null
+        },
+        "updated_at": {
+          "type": "bigint",
+          "required": true,
+          "default": null
+        },
+        "deleted_at": {
+          "type": "bigint",
+          "required": false,
+          "default": null
+        }
+      },
+      "primary": [
+        "id"
+      ],
+      "references": [
+        {
+          "columns": [
+            "operation_id"
+          ],
+          "table": "operations",
+          "foreignColumns": [
+            "id"
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "name": "idx_commissions_operation_active",
+          "fields": {
+            "operation_id": 1
+          },
+          "unique": false
+        }
+      ],
+      "identity": "id"
+    },
+    "companies": {
+      "columns": {
+        "id": {
+          "type": "bigint",
+          "required": true,
+          "default": null
+        },
+        "owner_id": {
+          "type": "text",
+          "required": true,
+          "default": null
+        },
+        "name": {
+          "type": "text",
+          "required": true,
+          "default": null
+        },
+        "segment": {
+          "type": "text",
+          "required": false,
+          "default": null
+        },
+        "created_at": {
+          "type": "bigint",
+          "required": true,
+          "default": null
+        }
+      },
+      "primary": [
+        "id"
+      ],
+      "references": [],
+      "indexes": [
+        {
+          "name": "idx_companies_owner_id",
+          "fields": {
+            "owner_id": 1
+          },
+          "unique": false
+        }
+      ],
+      "identity": "id"
+    },
+    "contacts": {
+      "columns": {
+        "id": {
+          "type": "bigint",
+          "required": true,
+          "default": null
+        },
+        "company_id": {
+          "type": "bigint",
+          "required": false,
+          "default": null
+        },
+        "name": {
+          "type": "text",
+          "required": true,
+          "default": null
+        },
+        "email": {
+          "type": "text",
+          "required": false,
+          "default": null
+        },
+        "phone": {
+          "type": "text",
+          "required": false,
+          "default": null
+        }
+      },
+      "primary": [
+        "id"
+      ],
+      "references": [
+        {
+          "columns": [
+            "company_id"
+          ],
+          "table": "companies",
+          "foreignColumns": [
+            "id"
+          ]
+        }
+      ],
+      "indexes": [],
+      "identity": "id"
+    },
+    "deal_documents": {
+      "columns": {
+        "id": {
+          "type": "bigint",
+          "required": true,
+          "default": null
+        },
+        "owner_id": {
+          "type": "text",
+          "required": true,
+          "default": null
+        },
+        "deal_id": {
+          "type": "bigint",
+          "required": true,
+          "default": null
+        },
+        "file_key": {
+          "type": "text",
+          "required": true,
+          "default": null
+        },
+        "file_name": {
+          "type": "text",
+          "required": true,
+          "default": null
+        },
+        "mime_type": {
+          "type": "text",
+          "required": true,
+          "default": null
+        },
+        "size_bytes": {
+          "type": "bigint",
+          "required": true,
+          "default": null
+        },
+        "document_type": {
+          "type": "text",
+          "required": true,
+          "default": "identidade"
+        },
+        "created_at": {
+          "type": "bigint",
+          "required": true,
+          "default": null
+        }
+      },
+      "primary": [
+        "id"
+      ],
+      "references": [
+        {
+          "columns": [
+            "deal_id"
+          ],
+          "table": "deals",
+          "foreignColumns": [
+            "id"
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "name": "idx_deal_documents_owner_deal",
+          "fields": {
+            "owner_id": 1,
+            "deal_id": 1
+          },
+          "unique": false
+        }
+      ],
+      "identity": "id"
+    },
+    "deal_history": {
+      "columns": {
+        "id": {
+          "type": "bigint",
+          "required": true,
+          "default": null
+        },
+        "owner_id": {
+          "type": "text",
+          "required": true,
+          "default": null
+        },
+        "deal_id": {
+          "type": "bigint",
+          "required": true,
+          "default": null
+        },
+        "operation_id": {
+          "type": "bigint",
+          "required": false,
+          "default": null
+        },
+        "event_type": {
+          "type": "text",
+          "required": true,
+          "default": null
+        },
+        "description": {
+          "type": "text",
+          "required": true,
+          "default": null
+        },
+        "before_json": {
+          "type": "text",
+          "required": false,
+          "default": null
+        },
+        "after_json": {
+          "type": "text",
+          "required": false,
+          "default": null
+        },
+        "source": {
+          "type": "text",
+          "required": true,
+          "default": "Gestão TF"
+        },
+        "created_at": {
+          "type": "bigint",
+          "required": true,
+          "default": null
+        }
+      },
+      "primary": [
+        "id"
+      ],
+      "references": [
+        {
+          "columns": [
+            "operation_id"
+          ],
+          "table": "operations",
+          "foreignColumns": [
+            "id"
+          ]
+        },
+        {
+          "columns": [
+            "deal_id"
+          ],
+          "table": "deals",
+          "foreignColumns": [
+            "id"
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "name": "idx_deal_history_owner_deal",
+          "fields": {
+            "owner_id": 1,
+            "deal_id": 1,
+            "created_at": 1
+          },
+          "unique": false
+        }
+      ],
+      "identity": "id"
+    },
+    "deals": {
+      "columns": {
+        "id": {
+          "type": "bigint",
+          "required": true,
+          "default": null
+        },
+        "owner_id": {
+          "type": "text",
+          "required": true,
+          "default": null
+        },
+        "company_id": {
+          "type": "bigint",
+          "required": false,
+          "default": null
+        },
+        "title": {
+          "type": "text",
+          "required": true,
+          "default": null
+        },
+        "value_cents": {
+          "type": "bigint",
+          "required": true,
+          "default": 0
+        },
+        "stage": {
+          "type": "text",
+          "required": true,
+          "default": null
+        },
+        "status": {
+          "type": "text",
+          "required": true,
+          "default": "open"
+        },
+        "expected_close_at": {
+          "type": "bigint",
+          "required": false,
+          "default": null
+        },
+        "updated_at": {
+          "type": "bigint",
+          "required": true,
+          "default": null
+        },
+        "lead_score": {
+          "type": "bigint",
+          "required": true,
+          "default": 0
+        },
+        "source": {
+          "type": "text",
+          "required": false,
+          "default": null
+        },
+        "probability": {
+          "type": "bigint",
+          "required": true,
+          "default": 0
+        },
+        "recurring_value_cents": {
+          "type": "bigint",
+          "required": true,
+          "default": 0
+        },
+        "client_id": {
+          "type": "bigint",
+          "required": false,
+          "default": null
+        },
+        "operation_id": {
+          "type": "bigint",
+          "required": false,
+          "default": null
+        },
+        "payload_json": {
+          "type": "text",
+          "required": false,
+          "default": null
+        },
+        "created_at": {
+          "type": "bigint",
+          "required": true,
+          "default": 0
+        },
+        "needs_completion": {
+          "type": "bigint",
+          "required": true,
+          "default": 0
+        },
+        "assigned_user_id": {
+          "type": "bigint",
+          "required": false,
+          "default": null
+        }
+      },
+      "primary": [
+        "id"
+      ],
+      "references": [
+        {
+          "columns": [
+            "company_id"
+          ],
+          "table": "companies",
+          "foreignColumns": [
+            "id"
+          ]
+        },
+        {
+          "columns": [
+            "assigned_user_id"
+          ],
+          "table": "access_users",
+          "foreignColumns": [
+            "id"
+          ]
+        },
+        {
+          "columns": [
+            "operation_id"
+          ],
+          "table": "operations",
+          "foreignColumns": [
+            "id"
+          ]
+        },
+        {
+          "columns": [
+            "client_id"
+          ],
+          "table": "clients",
+          "foreignColumns": [
+            "id"
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "name": "idx_deals_owner_assignee_stage",
+          "fields": {
+            "owner_id": 1,
+            "assigned_user_id": 1,
+            "stage": 1
+          },
+          "unique": false
+        },
+        {
+          "name": "idx_deals_owner_operation",
+          "fields": {
+            "owner_id": 1,
+            "operation_id": 1
+          },
+          "unique": false
+        },
+        {
+          "name": "idx_deals_owner_client",
+          "fields": {
+            "owner_id": 1,
+            "client_id": 1
+          },
+          "unique": false
+        },
+        {
+          "name": "idx_deals_owner_stage",
+          "fields": {
+            "owner_id": 1,
+            "stage": 1
+          },
+          "unique": false
+        }
+      ],
+      "identity": "id"
+    },
+    "gestor_tf_audit": {
+      "columns": {
+        "id": {
+          "type": "bigint",
+          "required": true,
+          "default": null
+        },
+        "owner_id": {
+          "type": "text",
+          "required": true,
+          "default": null
+        },
+        "actor_role": {
+          "type": "text",
+          "required": true,
+          "default": null
+        },
+        "whatsapp_phone": {
+          "type": "text",
+          "required": true,
+          "default": null
+        },
+        "message_id": {
+          "type": "text",
+          "required": false,
+          "default": null
+        },
+        "command_text": {
+          "type": "text",
+          "required": true,
+          "default": null
+        },
+        "action": {
+          "type": "text",
+          "required": true,
+          "default": null
+        },
+        "client_id": {
+          "type": "bigint",
+          "required": false,
+          "default": null
+        },
+        "operation_id": {
+          "type": "bigint",
+          "required": false,
+          "default": null
+        },
+        "deal_id": {
+          "type": "bigint",
+          "required": false,
+          "default": null
+        },
+        "before_json": {
+          "type": "text",
+          "required": false,
+          "default": null
+        },
+        "after_json": {
+          "type": "text",
+          "required": false,
+          "default": null
+        },
+        "created_at": {
+          "type": "bigint",
+          "required": true,
+          "default": null
+        }
+      },
+      "primary": [
+        "id"
+      ],
+      "references": [
+        {
+          "columns": [
+            "deal_id"
+          ],
+          "table": "deals",
+          "foreignColumns": [
+            "id"
+          ]
+        },
+        {
+          "columns": [
+            "operation_id"
+          ],
+          "table": "operations",
+          "foreignColumns": [
+            "id"
+          ]
+        },
+        {
+          "columns": [
+            "client_id"
+          ],
+          "table": "clients",
+          "foreignColumns": [
+            "id"
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "name": "idx_gestor_tf_audit_owner_created",
+          "fields": {
+            "owner_id": 1,
+            "created_at": 1
+          },
+          "unique": false
+        }
+      ],
+      "identity": "id"
+    },
+    "import_batches": {
+      "columns": {
+        "id": {
+          "type": "bigint",
+          "required": true,
+          "default": null
+        },
+        "owner_id": {
+          "type": "text",
+          "required": true,
+          "default": null
+        },
+        "file_name": {
+          "type": "text",
+          "required": true,
+          "default": null
+        },
+        "backup_key": {
+          "type": "text",
+          "required": false,
+          "default": null
+        },
+        "row_count": {
+          "type": "bigint",
+          "required": true,
+          "default": 0
+        },
+        "unique_clients": {
+          "type": "bigint",
+          "required": true,
+          "default": 0
+        },
+        "merged_clients": {
+          "type": "bigint",
+          "required": true,
+          "default": 0
+        },
+        "preserved_operations": {
+          "type": "bigint",
+          "required": true,
+          "default": 0
+        },
+        "possible_duplicates": {
+          "type": "bigint",
+          "required": true,
+          "default": 0
+        },
+        "missing_cpf": {
+          "type": "bigint",
+          "required": true,
+          "default": 0
+        },
+        "inconsistencies": {
+          "type": "bigint",
+          "required": true,
+          "default": 0
+        },
+        "status": {
+          "type": "text",
+          "required": true,
+          "default": "analisando"
+        },
+        "created_at": {
+          "type": "bigint",
+          "required": true,
+          "default": null
+        }
+      },
+      "primary": [
+        "id"
+      ],
+      "references": [],
+      "indexes": [],
+      "identity": "id"
+    },
+    "institutions": {
+      "columns": {
+        "id": {
+          "type": "bigint",
+          "required": true,
+          "default": null
+        },
+        "owner_id": {
+          "type": "text",
+          "required": true,
+          "default": null
+        },
+        "name": {
+          "type": "text",
+          "required": true,
+          "default": null
+        },
+        "category": {
+          "type": "text",
+          "required": false,
+          "default": null
+        },
+        "url": {
+          "type": "text",
+          "required": false,
+          "default": null
+        },
+        "logo_key": {
+          "type": "text",
+          "required": false,
+          "default": null
+        },
+        "notes": {
+          "type": "text",
+          "required": false,
+          "default": null
+        },
+        "active": {
+          "type": "bigint",
+          "required": true,
+          "default": 1
+        },
+        "created_at": {
+          "type": "bigint",
+          "required": true,
+          "default": null
+        },
+        "updated_at": {
+          "type": "bigint",
+          "required": true,
+          "default": null
+        },
+        "deleted_at": {
+          "type": "bigint",
+          "required": false,
+          "default": null
+        }
+      },
+      "primary": [
+        "id"
+      ],
+      "references": [],
+      "indexes": [],
+      "identity": "id"
+    },
+    "invoices": {
+      "columns": {
+        "id": {
+          "type": "bigint",
+          "required": true,
+          "default": null
+        },
+        "owner_id": {
+          "type": "text",
+          "required": true,
+          "default": null
+        },
+        "number": {
+          "type": "text",
+          "required": true,
+          "default": null
+        },
+        "client_id": {
+          "type": "bigint",
+          "required": false,
+          "default": null
+        },
+        "partner_id": {
+          "type": "bigint",
+          "required": false,
+          "default": null
+        },
+        "service_id": {
+          "type": "bigint",
+          "required": false,
+          "default": null
+        },
+        "value_cents": {
+          "type": "bigint",
+          "required": true,
+          "default": null
+        },
+        "issued_at": {
+          "type": "text",
+          "required": false,
+          "default": null
+        },
+        "paid_at": {
+          "type": "text",
+          "required": false,
+          "default": null
+        },
+        "status": {
+          "type": "text",
+          "required": true,
+          "default": "pendente"
+        },
+        "file_key": {
+          "type": "text",
+          "required": false,
+          "default": null
+        },
+        "file_name": {
+          "type": "text",
+          "required": false,
+          "default": null
+        },
+        "notes": {
+          "type": "text",
+          "required": false,
+          "default": null
+        },
+        "created_at": {
+          "type": "bigint",
+          "required": true,
+          "default": null
+        },
+        "updated_at": {
+          "type": "bigint",
+          "required": true,
+          "default": null
+        },
+        "deleted_at": {
+          "type": "bigint",
+          "required": false,
+          "default": null
+        }
+      },
+      "primary": [
+        "id"
+      ],
+      "references": [],
+      "indexes": [],
+      "identity": "id"
+    },
+    "operations": {
+      "columns": {
+        "id": {
+          "type": "bigint",
+          "required": true,
+          "default": null
+        },
+        "owner_id": {
+          "type": "text",
+          "required": true,
+          "default": null
+        },
+        "client_id": {
+          "type": "bigint",
+          "required": true,
+          "default": null
+        },
+        "partner_id": {
+          "type": "bigint",
+          "required": false,
+          "default": null
+        },
+        "service_id": {
+          "type": "bigint",
+          "required": false,
+          "default": null
+        },
+        "bank": {
+          "type": "text",
+          "required": false,
+          "default": null
+        },
+        "promoter": {
+          "type": "text",
+          "required": false,
+          "default": null
+        },
+        "original_product": {
+          "type": "text",
+          "required": false,
+          "default": null
+        },
+        "category": {
+          "type": "text",
+          "required": false,
+          "default": null
+        },
+        "producer": {
+          "type": "text",
+          "required": false,
+          "default": null
+        },
+        "origin": {
+          "type": "text",
+          "required": false,
+          "default": null
+        },
+        "location": {
+          "type": "text",
+          "required": false,
+          "default": null
+        },
+        "benefit_number": {
+          "type": "text",
+          "required": false,
+          "default": null
+        },
+        "contract_number": {
+          "type": "text",
+          "required": false,
+          "default": null
+        },
+        "value_cents": {
+          "type": "bigint",
+          "required": false,
+          "default": 0
+        },
+        "installment_cents": {
+          "type": "bigint",
+          "required": false,
+          "default": 0
+        },
+        "term": {
+          "type": "bigint",
+          "required": false,
+          "default": null
+        },
+        "operation_date": {
+          "type": "text",
+          "required": false,
+          "default": null
+        },
+        "paid_at": {
+          "type": "text",
+          "required": false,
+          "default": null
+        },
+        "completed_at": {
+          "type": "text",
+          "required": false,
+          "default": null
+        },
+        "status": {
+          "type": "text",
+          "required": true,
+          "default": "novo_cliente"
+        },
+        "notes": {
+          "type": "text",
+          "required": false,
+          "default": null
+        },
+        "source_row": {
+          "type": "text",
+          "required": false,
+          "default": null
+        },
+        "dedupe_fingerprint": {
+          "type": "text",
+          "required": false,
+          "default": null
+        },
+        "created_at": {
+          "type": "bigint",
+          "required": true,
+          "default": null
+        },
+        "updated_at": {
+          "type": "bigint",
+          "required": true,
+          "default": null
+        },
+        "deleted_at": {
+          "type": "bigint",
+          "required": false,
+          "default": null
+        },
+        "vehicle_plate": {
+          "type": "text",
+          "required": false,
+          "default": null
+        },
+        "vehicle_name": {
+          "type": "text",
+          "required": false,
+          "default": null
+        },
+        "vehicle_model": {
+          "type": "text",
+          "required": false,
+          "default": null
+        },
+        "vehicle_year": {
+          "type": "bigint",
+          "required": false,
+          "default": null
+        },
+        "vehicle_value_cents": {
+          "type": "bigint",
+          "required": false,
+          "default": 0
+        },
+        "financed_value_cents": {
+          "type": "bigint",
+          "required": false,
+          "default": 0
+        },
+        "down_payment_cents": {
+          "type": "bigint",
+          "required": false,
+          "default": 0
+        },
+        "desired_credit_cents": {
+          "type": "bigint",
+          "required": false,
+          "default": 0
+        },
+        "assigned_user_id": {
+          "type": "bigint",
+          "required": false,
+          "default": null
+        },
+        "is_historical": {
+          "type": "bigint",
+          "required": true,
+          "default": 0
+        },
+        "report_excluded": {
+          "type": "bigint",
+          "required": true,
+          "default": 0
+        }
+      },
+      "primary": [
+        "id"
+      ],
+      "references": [
+        {
+          "columns": [
+            "service_id"
+          ],
+          "table": "services",
+          "foreignColumns": [
+            "id"
+          ]
+        },
+        {
+          "columns": [
+            "partner_id"
+          ],
+          "table": "partners",
+          "foreignColumns": [
+            "id"
+          ]
+        },
+        {
+          "columns": [
+            "client_id"
+          ],
+          "table": "clients",
+          "foreignColumns": [
+            "id"
+          ]
+        },
+        {
+          "columns": [
+            "assigned_user_id"
+          ],
+          "table": "access_users",
+          "foreignColumns": [
+            "id"
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "name": "idx_operations_owner_assignee",
+          "fields": {
+            "owner_id": 1,
+            "assigned_user_id": 1
+          },
+          "unique": false
+        },
+        {
+          "name": "idx_operations_dedupe",
+          "fields": {
+            "owner_id": 1,
+            "dedupe_fingerprint": 1
+          },
+          "unique": false
+        },
+        {
+          "name": "idx_operations_owner_client_date",
+          "fields": {
+            "owner_id": 1,
+            "client_id": 1,
+            "operation_date": 1
+          },
+          "unique": false
+        },
+        {
+          "name": "idx_operations_reporting",
+          "fields": {
+            "report_excluded": 1,
+            "deleted_at": 1,
+            "operation_date": 1
+          },
+          "unique": false
+        },
+        {
+          "name": "idx_operations_owner_page",
+          "fields": {
+            "owner_id": 1,
+            "updated_at": 1,
+            "id": 1
+          },
+          "unique": false
+        }
+      ],
+      "identity": "id"
+    },
+    "partner_operation_adjustments": {
+      "columns": {
+        "id": {
+          "type": "bigint",
+          "required": true,
+          "default": null
+        },
+        "owner_id": {
+          "type": "text",
+          "required": true,
+          "default": null
+        },
+        "partner_id": {
+          "type": "bigint",
+          "required": true,
+          "default": null
+        },
+        "operation_id": {
+          "type": "bigint",
+          "required": true,
+          "default": null
+        },
+        "ila_rate_bps": {
+          "type": "bigint",
+          "required": true,
+          "default": 0
+        },
+        "invoice_rate_bps": {
+          "type": "bigint",
+          "required": true,
+          "default": 201
+        },
+        "tf_share_bps": {
+          "type": "bigint",
+          "required": true,
+          "default": 5000
+        },
+        "created_at": {
+          "type": "bigint",
+          "required": true,
+          "default": null
+        },
+        "updated_at": {
+          "type": "bigint",
+          "required": true,
+          "default": null
+        }
+      },
+      "primary": [
+        "id"
+      ],
+      "references": [
+        {
+          "columns": [
+            "operation_id"
+          ],
+          "table": "operations",
+          "foreignColumns": [
+            "id"
+          ]
+        },
+        {
+          "columns": [
+            "partner_id"
+          ],
+          "table": "partners",
+          "foreignColumns": [
+            "id"
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "name": "idx_partner_operation_adjustments_owner_partner",
+          "fields": {
+            "owner_id": 1,
+            "partner_id": 1
+          },
+          "unique": false
+        },
+        {
+          "name": "partner_operation_adjustments_operation_unique",
+          "fields": {
+            "operation_id": 1
+          },
+          "unique": true
+        }
+      ],
+      "identity": "id"
+    },
+    "partner_settlements": {
+      "columns": {
+        "id": {
+          "type": "bigint",
+          "required": true,
+          "default": null
+        },
+        "owner_id": {
+          "type": "text",
+          "required": true,
+          "default": null
+        },
+        "partner_id": {
+          "type": "bigint",
+          "required": true,
+          "default": null
+        },
+        "period": {
+          "type": "text",
+          "required": true,
+          "default": null
+        },
+        "gross_commission_cents": {
+          "type": "bigint",
+          "required": true,
+          "default": 0
+        },
+        "fee_rate_bps": {
+          "type": "bigint",
+          "required": true,
+          "default": 201
+        },
+        "tf_share_bps": {
+          "type": "bigint",
+          "required": true,
+          "default": 5000
+        },
+        "status": {
+          "type": "text",
+          "required": true,
+          "default": "em_aberto"
+        },
+        "paid_at": {
+          "type": "text",
+          "required": false,
+          "default": null
+        },
+        "created_at": {
+          "type": "bigint",
+          "required": true,
+          "default": null
+        },
+        "updated_at": {
+          "type": "bigint",
+          "required": true,
+          "default": null
+        },
+        "bonus_cents": {
+          "type": "bigint",
+          "required": true,
+          "default": 0
+        },
+        "bonus_description": {
+          "type": "text",
+          "required": false,
+          "default": null
+        }
+      },
+      "primary": [
+        "id"
+      ],
+      "references": [
+        {
+          "columns": [
+            "partner_id"
+          ],
+          "table": "partners",
+          "foreignColumns": [
+            "id"
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "name": "idx_partner_settlements_owner_period",
+          "fields": {
+            "owner_id": 1,
+            "period": 1
+          },
+          "unique": false
+        },
+        {
+          "name": "partner_settlements_partner_period_unique",
+          "fields": {
+            "partner_id": 1,
+            "period": 1
+          },
+          "unique": true
+        }
+      ],
+      "identity": "id"
+    },
+    "partners": {
+      "columns": {
+        "id": {
+          "type": "bigint",
+          "required": true,
+          "default": null
+        },
+        "owner_id": {
+          "type": "text",
+          "required": true,
+          "default": null
+        },
+        "name": {
+          "type": "text",
+          "required": true,
+          "default": null
+        },
+        "trade_name": {
+          "type": "text",
+          "required": false,
+          "default": null
+        },
+        "document": {
+          "type": "text",
+          "required": false,
+          "default": null
+        },
+        "phone": {
+          "type": "text",
+          "required": false,
+          "default": null
+        },
+        "whatsapp": {
+          "type": "text",
+          "required": false,
+          "default": null
+        },
+        "email": {
+          "type": "text",
+          "required": false,
+          "default": null
+        },
+        "address": {
+          "type": "text",
+          "required": false,
+          "default": null
+        },
+        "contact_name": {
+          "type": "text",
+          "required": false,
+          "default": null
+        },
+        "partnership_type": {
+          "type": "text",
+          "required": false,
+          "default": null
+        },
+        "started_at": {
+          "type": "text",
+          "required": false,
+          "default": null
+        },
+        "notes": {
+          "type": "text",
+          "required": false,
+          "default": null
+        },
+        "active": {
+          "type": "bigint",
+          "required": true,
+          "default": 1
+        },
+        "created_at": {
+          "type": "bigint",
+          "required": true,
+          "default": null
+        },
+        "updated_at": {
+          "type": "bigint",
+          "required": true,
+          "default": null
+        },
+        "deleted_at": {
+          "type": "bigint",
+          "required": false,
+          "default": null
+        },
+        "tax_rate_bps": {
+          "type": "bigint",
+          "required": true,
+          "default": 0
+        },
+        "invoice_rate_bps": {
+          "type": "bigint",
+          "required": true,
+          "default": 0
+        },
+        "tf_share_bps": {
+          "type": "bigint",
+          "required": true,
+          "default": 5000
+        }
+      },
+      "primary": [
+        "id"
+      ],
+      "references": [],
+      "indexes": [],
+      "identity": "id"
+    },
+    "products": {
+      "columns": {
+        "id": {
+          "type": "bigint",
+          "required": true,
+          "default": null
+        },
+        "owner_id": {
+          "type": "text",
+          "required": true,
+          "default": null
+        },
+        "name": {
+          "type": "text",
+          "required": true,
+          "default": null
+        },
+        "price_cents": {
+          "type": "bigint",
+          "required": true,
+          "default": null
+        },
+        "active": {
+          "type": "bigint",
+          "required": true,
+          "default": 1
+        }
+      },
+      "primary": [
+        "id"
+      ],
+      "references": [],
+      "indexes": [],
+      "identity": "id"
+    },
+    "proposals": {
+      "columns": {
+        "id": {
+          "type": "bigint",
+          "required": true,
+          "default": null
+        },
+        "owner_id": {
+          "type": "text",
+          "required": true,
+          "default": null
+        },
+        "deal_id": {
+          "type": "bigint",
+          "required": false,
+          "default": null
+        },
+        "status": {
+          "type": "text",
+          "required": true,
+          "default": "draft"
+        },
+        "total_cents": {
+          "type": "bigint",
+          "required": true,
+          "default": null
+        },
+        "viewed_at": {
+          "type": "bigint",
+          "required": false,
+          "default": null
+        },
+        "accepted_at": {
+          "type": "bigint",
+          "required": false,
+          "default": null
+        }
+      },
+      "primary": [
+        "id"
+      ],
+      "references": [
+        {
+          "columns": [
+            "deal_id"
+          ],
+          "table": "deals",
+          "foreignColumns": [
+            "id"
+          ]
+        }
+      ],
+      "indexes": [],
+      "identity": "id"
+    },
+    "services": {
+      "columns": {
+        "id": {
+          "type": "bigint",
+          "required": true,
+          "default": null
+        },
+        "owner_id": {
+          "type": "text",
+          "required": true,
+          "default": null
+        },
+        "name": {
+          "type": "text",
+          "required": true,
+          "default": null
+        },
+        "category": {
+          "type": "text",
+          "required": false,
+          "default": null
+        },
+        "description": {
+          "type": "text",
+          "required": false,
+          "default": null
+        },
+        "price_cents": {
+          "type": "bigint",
+          "required": false,
+          "default": 0
+        },
+        "advisory_fee_cents": {
+          "type": "bigint",
+          "required": false,
+          "default": 0
+        },
+        "commission_rate_bps": {
+          "type": "bigint",
+          "required": false,
+          "default": 0
+        },
+        "institution": {
+          "type": "text",
+          "required": false,
+          "default": null
+        },
+        "notes": {
+          "type": "text",
+          "required": false,
+          "default": null
+        },
+        "active": {
+          "type": "bigint",
+          "required": true,
+          "default": 1
+        },
+        "created_at": {
+          "type": "bigint",
+          "required": true,
+          "default": null
+        },
+        "updated_at": {
+          "type": "bigint",
+          "required": true,
+          "default": null
+        },
+        "deleted_at": {
+          "type": "bigint",
+          "required": false,
+          "default": null
+        }
+      },
+      "primary": [
+        "id"
+      ],
+      "references": [],
+      "indexes": [],
+      "identity": "id"
+    },
+    "users": {
+      "columns": {
+        "id": {
+          "type": "text",
+          "required": true,
+          "default": null
+        },
+        "email": {
+          "type": "text",
+          "required": true,
+          "default": null
+        },
+        "name": {
+          "type": "text",
+          "required": false,
+          "default": null
+        },
+        "role": {
+          "type": "text",
+          "required": true,
+          "default": "admin"
+        },
+        "active": {
+          "type": "bigint",
+          "required": true,
+          "default": 1
+        },
+        "created_at": {
+          "type": "bigint",
+          "required": true,
+          "default": null
+        },
+        "updated_at": {
+          "type": "bigint",
+          "required": true,
+          "default": null
+        },
+        "deleted_at": {
+          "type": "bigint",
+          "required": false,
+          "default": null
+        },
+        "cpf": {
+          "type": "text",
+          "required": false,
+          "default": null
+        },
+        "login": {
+          "type": "text",
+          "required": false,
+          "default": null
+        }
+      },
+      "primary": [
+        "id"
+      ],
+      "references": [],
+      "indexes": [
+        {
+          "name": "users_email_unique",
+          "fields": {
+            "email": 1
+          },
+          "unique": true
+        },
+        {
+          "name": "users_cpf_unique",
+          "fields": {
+            "cpf": 1
+          },
+          "unique": true
+        },
+        {
+          "name": "idx_users_login_email",
+          "fields": {
+            "__tf_lower_email": 1
+          },
+          "unique": false
+        },
+        {
+          "name": "users_login_unique",
+          "fields": {
+            "__tf_lower_login": 1
+          },
+          "unique": true
+        }
+      ]
+    },
+    "whatsapp_integrations": {
+      "columns": {
+        "id": {
+          "type": "bigint",
+          "required": true,
+          "default": null
+        },
+        "owner_id": {
+          "type": "text",
+          "required": true,
+          "default": null
+        },
+        "admin_phone": {
+          "type": "text",
+          "required": true,
+          "default": null
+        },
+        "phone_number_id": {
+          "type": "text",
+          "required": true,
+          "default": null
+        },
+        "display_phone": {
+          "type": "text",
+          "required": false,
+          "default": null
+        },
+        "enabled": {
+          "type": "bigint",
+          "required": true,
+          "default": 1
+        },
+        "created_at": {
+          "type": "bigint",
+          "required": true,
+          "default": null
+        },
+        "updated_at": {
+          "type": "bigint",
+          "required": true,
+          "default": null
+        }
+      },
+      "primary": [
+        "id"
+      ],
+      "references": [],
+      "indexes": [
+        {
+          "name": "whatsapp_integrations_phone_number_id_unique",
+          "fields": {
+            "phone_number_id": 1
+          },
+          "unique": true
+        },
+        {
+          "name": "whatsapp_integrations_owner_unique",
+          "fields": {
+            "owner_id": 1
+          },
+          "unique": true
+        }
+      ],
+      "identity": "id"
+    },
+    "whatsapp_messages": {
+      "columns": {
+        "message_id": {
+          "type": "text",
+          "required": true,
+          "default": null
+        },
+        "owner_id": {
+          "type": "text",
+          "required": false,
+          "default": null
+        },
+        "from_phone": {
+          "type": "text",
+          "required": true,
+          "default": null
+        },
+        "message_type": {
+          "type": "text",
+          "required": true,
+          "default": null
+        },
+        "command_text": {
+          "type": "text",
+          "required": false,
+          "default": null
+        },
+        "status": {
+          "type": "text",
+          "required": true,
+          "default": null
+        },
+        "error_text": {
+          "type": "text",
+          "required": false,
+          "default": null
+        },
+        "received_at": {
+          "type": "bigint",
+          "required": true,
+          "default": null
+        },
+        "processed_at": {
+          "type": "bigint",
+          "required": false,
+          "default": null
+        }
+      },
+      "primary": [
+        "message_id"
+      ],
+      "references": [],
+      "indexes": [
+        {
+          "name": "idx_whatsapp_messages_owner_received",
+          "fields": {
+            "owner_id": 1,
+            "received_at": 1
+          },
+          "unique": false
+        }
+      ]
+    },
+    "whatsapp_pending_actions": {
+      "columns": {
+        "id": {
+          "type": "bigint",
+          "required": true,
+          "default": null
+        },
+        "owner_id": {
+          "type": "text",
+          "required": true,
+          "default": null
+        },
+        "from_phone": {
+          "type": "text",
+          "required": true,
+          "default": null
+        },
+        "kind": {
+          "type": "text",
+          "required": true,
+          "default": null
+        },
+        "payload_json": {
+          "type": "text",
+          "required": true,
+          "default": null
+        },
+        "status": {
+          "type": "text",
+          "required": true,
+          "default": "pendente"
+        },
+        "created_at": {
+          "type": "bigint",
+          "required": true,
+          "default": null
+        },
+        "expires_at": {
+          "type": "bigint",
+          "required": true,
+          "default": null
+        }
+      },
+      "primary": [
+        "id"
+      ],
+      "references": [],
+      "indexes": [
+        {
+          "name": "idx_whatsapp_pending_owner_phone",
+          "fields": {
+            "owner_id": 1,
+            "from_phone": 1,
+            "status": 1,
+            "expires_at": 1
+          },
+          "unique": false
+        }
+      ],
+      "identity": "id"
+    },
+    "stored_files": {
+      "columns": {
+        "key": {
+          "type": "text",
+          "required": true,
+          "default": null
+        },
+        "body": {
+          "type": "bytea",
+          "required": true,
+          "default": null
+        },
+        "content_type": {
+          "type": "text",
+          "required": true,
+          "default": null
+        },
+        "updated_at": {
+          "type": "bigint",
+          "required": true,
+          "default": null
+        }
+      },
+      "primary": [
+        "key"
+      ],
+      "references": [],
+      "indexes": []
+    },
+    "source_records": {
+      "columns": {
+        "source": {
+          "type": "text",
+          "required": true,
+          "default": null
+        },
+        "source_id": {
+          "type": "text",
+          "required": true,
+          "default": null
+        },
+        "entity_type": {
+          "type": "text",
+          "required": false,
+          "default": null
+        },
+        "entity_id": {
+          "type": "bigint",
+          "required": false,
+          "default": null
+        },
+        "payload": {
+          "type": "jsonb",
+          "required": true,
+          "default": null
+        }
+      },
+      "primary": [
+        "source",
+        "source_id"
+      ],
+      "references": [],
+      "indexes": []
+    },
+    "migration_runs": {
+      "columns": {
+        "name": {
+          "type": "text",
+          "required": true,
+          "default": null
+        },
+        "source_hash": {
+          "type": "text",
+          "required": true,
+          "default": null
+        },
+        "summary": {
+          "type": "jsonb",
+          "required": true,
+          "default": null
+        },
+        "completed_at": {
+          "type": "bigint",
+          "required": true,
+          "default": null
+        }
+      },
+      "primary": [
+        "name"
+      ],
+      "references": [],
+      "indexes": []
+    },
+    "app_settings": {
+      "columns": {
+        "key": {
+          "type": "text",
+          "required": true,
+          "default": null
+        },
+        "value": {
+          "type": "text",
+          "required": true,
+          "default": null
+        }
+      },
+      "primary": [
+        "key"
+      ],
+      "references": [],
+      "indexes": []
+    },
+    "auth_credentials": {
+      "columns": {
+        "user_id": {
+          "type": "text",
+          "required": true,
+          "default": null
+        },
+        "password_hash": {
+          "type": "text",
+          "required": true,
+          "default": null
+        },
+        "updated_at": {
+          "type": "bigint",
+          "required": true,
+          "default": null
+        }
+      },
+      "primary": [
+        "user_id"
+      ],
+      "references": [
+        {
+          "columns": [
+            "user_id"
+          ],
+          "table": "users",
+          "foreignColumns": [
+            "id"
+          ]
+        }
+      ],
+      "indexes": []
+    },
+    "auth_sessions": {
+      "columns": {
+        "token_hash": {
+          "type": "text",
+          "required": true,
+          "default": null
+        },
+        "user_id": {
+          "type": "text",
+          "required": true,
+          "default": null
+        },
+        "created_at": {
+          "type": "bigint",
+          "required": true,
+          "default": null
+        },
+        "expires_at": {
+          "type": "bigint",
+          "required": true,
+          "default": null
+        }
+      },
+      "primary": [
+        "token_hash"
+      ],
+      "references": [
+        {
+          "columns": [
+            "user_id"
+          ],
+          "table": "users",
+          "foreignColumns": [
+            "id"
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "name": "idx_auth_sessions_expiry",
+          "fields": {
+            "expires_at": 1
+          },
+          "unique": false
+        }
+      ]
+    },
+    "auth_attempts": {
+      "columns": {
+        "key": {
+          "type": "text",
+          "required": true,
+          "default": null
+        },
+        "attempts": {
+          "type": "bigint",
+          "required": true,
+          "default": null
+        },
+        "window_start": {
+          "type": "bigint",
+          "required": true,
+          "default": null
+        }
+      },
+      "primary": [
+        "key"
+      ],
+      "references": [],
+      "indexes": []
+    },
+    "post_sale_tasks": {
+      "columns": {
+        "id": {
+          "type": "bigint",
+          "required": true,
+          "default": null
+        },
+        "owner_id": {
+          "type": "text",
+          "required": true,
+          "default": null
+        },
+        "operation_id": {
+          "type": "bigint",
+          "required": true,
+          "default": null
+        },
+        "client_id": {
+          "type": "bigint",
+          "required": true,
+          "default": null
+        },
+        "status": {
+          "type": "text",
+          "required": true,
+          "default": "pendente"
+        },
+        "completed_at": {
+          "type": "bigint",
+          "required": false,
+          "default": null
+        },
+        "created_at": {
+          "type": "bigint",
+          "required": true,
+          "default": null
+        },
+        "updated_at": {
+          "type": "bigint",
+          "required": true,
+          "default": null
+        }
+      },
+      "primary": [
+        "id"
+      ],
+      "references": [
+        {
+          "columns": [
+            "operation_id"
+          ],
+          "table": "operations",
+          "foreignColumns": [
+            "id"
+          ]
+        },
+        {
+          "columns": [
+            "client_id"
+          ],
+          "table": "clients",
+          "foreignColumns": [
+            "id"
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "name": "post_sale_tasks_operation_unique",
+          "fields": {
+            "operation_id": 1
+          },
+          "unique": true
+        },
+        {
+          "name": "idx_post_sale_tasks_owner_status",
+          "fields": {
+            "owner_id": 1,
+            "status": 1,
+            "updated_at": 1
+          },
+          "unique": false
+        }
+      ],
+      "identity": "id"
+    },
+    "crm_catalog_options": {
+      "columns": {
+        "id": {
+          "type": "bigint",
+          "required": true,
+          "default": null
+        },
+        "owner_id": {
+          "type": "text",
+          "required": true,
+          "default": null
+        },
+        "kind": {
+          "type": "text",
+          "required": true,
+          "default": null
+        },
+        "label": {
+          "type": "text",
+          "required": true,
+          "default": null
+        },
+        "normalized_label": {
+          "type": "text",
+          "required": true,
+          "default": null
+        },
+        "active": {
+          "type": "bigint",
+          "required": true,
+          "default": 1
+        },
+        "created_at": {
+          "type": "bigint",
+          "required": true,
+          "default": null
+        },
+        "updated_at": {
+          "type": "bigint",
+          "required": true,
+          "default": null
+        }
+      },
+      "primary": [
+        "id"
+      ],
+      "references": [],
+      "indexes": [
+        {
+          "name": "crm_catalog_options_owner_kind_label_unique",
+          "fields": {
+            "owner_id": 1,
+            "kind": 1,
+            "normalized_label": 1
+          },
+          "unique": true
+        },
+        {
+          "name": "idx_crm_catalog_options_owner_kind",
+          "fields": {
+            "owner_id": 1,
+            "kind": 1,
+            "active": 1
+          },
+          "unique": false
+        }
+      ],
+      "identity": "id"
+    },
+    "_schema_migrations": {
+      "columns": {
+        "name": {
+          "type": "text",
+          "required": true,
+          "default": null
+        },
+        "checksum": {
+          "type": "text",
+          "required": true,
+          "default": null
+        },
+        "applied_at": {
+          "type": "bigint",
+          "required": true,
+          "default": null
+        }
+      },
+      "primary": [
+        "name"
+      ],
+      "references": [],
+      "indexes": []
+    }
+  }
+}

@@ -1,4 +1,4 @@
-import type { PostgresDatabase } from './postgres.ts';
+import type { ApplicationDatabase } from './database-types.ts';
 import { operationFinance, operationNotes, type CommissionRow } from './operation-finance.ts';
 
 export type OperationAccess = { ownerKeys: string[]; role: string; memberId: number | null; partnerId: number | null };
@@ -61,7 +61,7 @@ export function operationFromRow(row: OperationRow) {
 
 export type CanonicalOperation = ReturnType<typeof operationFromRow>;
 
-export async function readOperations(db: PostgresDatabase, access: OperationAccess, options: { limit?: number; offset?: number; ids?: number[]; includeIncomplete?: boolean } = {}) {
+export async function readOperations(db: ApplicationDatabase, access: OperationAccess, options: { limit?: number; offset?: number; ids?: number[]; includeIncomplete?: boolean } = {}) {
   if (options.ids && !options.ids.length) return [];
   const values: unknown[] = [access.ownerKeys[0], access.ownerKeys[1]];
   let scope = 'o.owner_id IN (?,?) AND o.deleted_at IS NULL AND c.deleted_at IS NULL';

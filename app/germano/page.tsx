@@ -2,8 +2,9 @@
 import { formatMoney as brl } from '../../lib/money';
 import { CRM_CHANGED, CRM_STORAGE_KEY } from '../../lib/crm-events';
 import { startActiveRefresh } from '../../lib/active-refresh';
+import type { CrmRevisions } from '../../lib/crm-resources';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 
 type Operation={id:number;clientName:string;cpf:string;bank:string;product:string;date:string;value:number;gross:number;ilaRate:number;ilaValue:number;afterIla:number;invoiceRate:number;invoiceFee:number;net:number;thiagoShare:number;partnerShare:number};
@@ -36,14 +37,26 @@ export default function GermanoPortal(){
   const [period,setPeriod]=useState('');
   const [error,setError]=useState('');
   const [loading,setLoading]=useState(false);
+  const revision=useRef<{scope:string;value:string}|null>(null);
   const partnerId=typeof window==='undefined'?0:Number(new URLSearchParams(window.location.search).get('partner')||0);
+  const readRevision=async()=>{
+    const response=await fetch('/api/crm/changes',{cache:'no-store'});
+    if(!response.ok)throw new Error('Não foi possível verificar as atualizações.');
+    const versions=await response.json() as CrmRevisions;
+    return {scope:versions.scope,value:`${versions.crm}:${versions.partners}`};
+  };
 
   const enter=async(event?:React.FormEvent,accessPassword=password)=>{
     event?.preventDefault();setLoading(true);setError('');
-    const response=await fetch('/api/germano-report',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({password:accessPassword,partnerId})});
-    const payload=await response.json();setLoading(false);
-    if(!response.ok){setError(payload.error||'Não foi possível entrar.');return}
-    sessionStorage.setItem('tf_germano_access','1');setData(payload);setPeriod(payload.periods[0]||new Date().toISOString().slice(0,7));
+    try {
+      const current=await readRevision();
+      const response=await fetch('/api/germano-report',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({password:accessPassword,partnerId})});
+      const payload=await response.json();
+      if(!response.ok){setError(payload.error||'Não foi possível entrar.');return}
+      revision.current=current;
+      sessionStorage.setItem('tf_germano_access','1');setData(payload);setPeriod(payload.periods[0]||new Date().toISOString().slice(0,7));
+    } catch {setError('Não foi possível carregar o relatório. Tente novamente.');}
+    finally {setLoading(false);}
   };
   useEffect(()=>{if(partnerId||sessionStorage.getItem('tf_germano_access')==='1'){setPassword(partnerId?'':'GG');void enter(undefined,partnerId?'':'GG')}},[partnerId]);
   const authenticated = Boolean(data);
@@ -55,11 +68,16 @@ export default function GermanoPortal(){
       if (disposed || refreshing || document.visibilityState === 'hidden' || navigator.onLine === false) return;
       refreshing = true;
       try {
+        const current=await readRevision();
+        if(disposed)return;
+        if(revision.current&&revision.current.scope!==current.scope){window.location.reload();return;}
+        if(revision.current?.value===current.value)return;
         const response = await fetch('/api/germano-report', { method: 'POST', cache: 'no-store', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ partnerId }) });
         if (response.ok) {
           const current = await response.json();
           if (!disposed) setData(current);
         }
+        if(response.ok&&!disposed)revision.current=current;
       } catch { /* Preserve the visible report while the connection is unavailable. */ }
       finally { refreshing = false; }
     };

@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { PostgresDatabase } from '../../lib/postgres';
+import { createDatabase } from '../../lib/database';
 
 async function login(page: Page) {
   const response = await page.request.post('/api/auth/login', { headers: { origin: 'http://127.0.0.1:3100' }, data: { email: 'admin@example.com', password: 'test-only-password' } });
@@ -8,7 +8,7 @@ async function login(page: Page) {
 
 test('an imported operation updates the same client, revenues, partner and reports after reload', async ({ page }) => {
   test.setTimeout(120000);
-  const db = new PostgresDatabase();
+  const db = createDatabase();
   const name = 'João Pedro — validação';
   try {
     await db.batch([
@@ -115,7 +115,7 @@ test('both themes share responsive structure, full menu labels and an unobstruct
 
 test('finalização, pós-venda e bonificação são reversíveis e idempotentes', async ({ page }) => {
   test.setTimeout(120000);
-  const db = new PostgresDatabase();
+  const db = createDatabase();
   const dealId = 601;
   const clientId = 601;
   const clientName = 'Cliente fluxo completo Gestão TF';
@@ -173,7 +173,7 @@ test('finalização, pós-venda e bonificação são reversíveis e idempotentes
     expect(response.ok(), await response.text()).toBeTruthy();
     expect((await response.json()).settlement).toMatchObject({ bonus });
   }
-  const dbAfterZero = new PostgresDatabase();
+  const dbAfterZero = createDatabase();
   try {
     expect(await dbAfterZero.prepare('SELECT bonus_cents,bonus_description FROM partner_settlements WHERE partner_id=? AND period=?').bind(partnerId, '2026-09').first()).toEqual({ bonus_cents: 0, bonus_description: null });
   } finally { await dbAfterZero.close(); }
@@ -192,12 +192,12 @@ test('finalização, pós-venda e bonificação são reversíveis e idempotentes
   await partnerCard.getByRole('button', { name: 'Remover valor adicional', exact: true }).click();
   await removeResponse;
   await expect(partnerCard.getByRole('button', { name: 'Remover valor adicional', exact: true })).toBeHidden();
-  const verifiedZero = new PostgresDatabase();
+  const verifiedZero = createDatabase();
   try { expect(await verifiedZero.prepare('SELECT bonus_cents FROM partner_settlements WHERE partner_id=? AND period=?').bind(partnerId, '2026-09').first('bonus_cents')).toBe(0); }
   finally { await verifiedZero.close(); }
 
   async function dbQuery(operationId: number) {
-    const connection = new PostgresDatabase();
+    const connection = createDatabase();
     try {
       const entries = await Promise.all([
         ['clients', Number(await connection.prepare('SELECT COUNT(*) AS count FROM clients WHERE id=?').bind(clientId).first('count'))],

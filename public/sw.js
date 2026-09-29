@@ -1,3 +1,4 @@
+// Release 2026-09-29: update open screens to revision-based CRM synchronization.
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', (event) => event.waitUntil((async()=>{
   const keys=await caches.keys();

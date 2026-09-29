@@ -1,11 +1,12 @@
 import 'server-only';
-import { PostgresDatabase, PostgresFiles } from './postgres';
+import { createDatabase, DatabaseFiles } from './database';
+import type { ApplicationDatabase } from './database-types';
 
-const localState = globalThis as typeof globalThis & { tfPostgres?: PostgresDatabase; tfPostgresFiles?: PostgresFiles };
+const localState = globalThis as typeof globalThis & { tfDatabase?: ApplicationDatabase; tfDatabaseFiles?: DatabaseFiles };
 
 export const env = {
-  get DB() { return localState.tfPostgres ??= new PostgresDatabase(); },
-  get FILES() { return localState.tfPostgresFiles ??= new PostgresFiles(this.DB); },
+  get DB() { return localState.tfDatabase ??= createDatabase(); },
+  get FILES() { return localState.tfDatabaseFiles ??= new DatabaseFiles(this.DB); },
   get WHATSAPP_VERIFY_TOKEN() { return process.env.WHATSAPP_VERIFY_TOKEN; },
   get WHATSAPP_APP_SECRET() { return process.env.WHATSAPP_APP_SECRET; },
   get WHATSAPP_ACCESS_TOKEN() { return process.env.WHATSAPP_ACCESS_TOKEN; },

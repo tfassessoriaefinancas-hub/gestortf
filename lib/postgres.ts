@@ -1,5 +1,6 @@
 import pg from 'pg';
-import type { PoolClient } from 'pg';
+import type { ApplicationDatabase, DatabaseClient, DatabaseStatement, StatementResult } from './database-types.ts';
+import { changedTable, withDatabaseChanges } from './database-changes.ts';
 
 const safeNumber = (value: string) => {
   const number = Number(value);
@@ -48,7 +49,8 @@ export class PostgresStatement {
     this.database = database; this.sql = sql; this.values = values;
   }
   bind(...values: unknown[]) { return new PostgresStatement(this.database, this.sql, valuesForPostgres(values)); }
-  async execute<T = Record<string, unknown>>(client?: PoolClient) {
+  async execute<T = Record<string, unknown>>(client?: DatabaseClient): Promise<StatementResult<T>> {
+    if (!client && changedTable(this.sql)) return this.database.transaction(transaction => this.execute<T>(transaction));
     const result = await (client || this.database.pool).query(postgresSql(this.sql, this.database.schema), this.values);
     return { success: true as const, results: result.rows as T[], meta: { changes: result.command === 'SELECT' ? 0 : result.rowCount || 0, last_row_id: Number(result.rows[0]?.id || 0), duration: 0 } };
   }
@@ -59,6 +61,7 @@ export class PostgresStatement {
   async all<T = Record<string, unknown>>() { return this.execute<T>(); }
   async run<T = Record<string, unknown>>() { return this.execute<T>(); }
   async raw<T = unknown[]>(): Promise<T[]> {
+    if (changedTable(this.sql)) return (await this.execute<Record<string, unknown>>()).results.map(row => Object.values(row)) as T[];
     const result = await this.database.pool.query({ text: postgresSql(this.sql, this.database.schema), values: this.values, rowMode: 'array' });
     return result.rows as T[];
   }
@@ -81,7 +84,7 @@ export class PostgresDatabase {
     this.pool.on('error', () => console.error('PostgreSQL: conexão ociosa encerrada; uma nova conexão será aberta.'));
   }
   prepare(sql: string) { return new PostgresStatement(this, sql); }
-  async batch<T = Record<string, unknown>>(statements: PostgresStatement[]) {
+  async batch<T = Record<string, unknown>>(statements: DatabaseStatement[]) {
     return this.transaction(async (client) => {
       const results = [];
       for (const statement of statements) {
@@ -91,12 +94,12 @@ export class PostgresDatabase {
       return results;
     });
   }
-  async transaction<T>(action: (client: PoolClient) => Promise<T>) {
+  async transaction<T>(action: (client: DatabaseClient) => Promise<T>) {
     const client = await this.pool.connect();
     try {
       await client.query('BEGIN');
       await client.query(`SET LOCAL search_path TO ${quoteIdentifier(this.schema)}`);
-      const result = await action(client);
+      const result = await withDatabaseChanges(client, action);
       await client.query('COMMIT');
       return result;
     } catch (error) { await client.query('ROLLBACK'); throw error; }
@@ -107,8 +110,8 @@ export class PostgresDatabase {
 
 /** Attachments live with the records, including on ephemeral Vercel instances. */
 export class PostgresFiles {
-  readonly db: PostgresDatabase;
-  constructor(db: PostgresDatabase) { this.db = db; }
+  readonly db: ApplicationDatabase;
+  constructor(db: ApplicationDatabase) { this.db = db; }
   async put(key: string, value: ArrayBuffer, options?: { httpMetadata?: { contentType?: string } }) {
     await this.db.prepare('INSERT INTO stored_files (key,body,content_type,updated_at) VALUES (?,?,?,?) ON CONFLICT(key) DO UPDATE SET body=excluded.body,content_type=excluded.content_type,updated_at=excluded.updated_at')
       .bind(key, value, options?.httpMetadata?.contentType || 'application/octet-stream', Date.now()).run();

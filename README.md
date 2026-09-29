@@ -1,6 +1,30 @@
-# Gestão TF — Next.js + Neon
+# Gestão TF — Next.js + PostgreSQL / MongoDB
 
-CRM em Next.js 16, React 19 e TypeScript, com a interface original do Gestão TF. **PostgreSQL é a única fonte de dados em execução**, tanto localmente quanto na Vercel. Clientes, operações, comissões, permissões, sessões e anexos são lidos e gravados no banco indicado por `DATABASE_URL`.
+CRM em Next.js 16, React 19 e TypeScript, com a interface original do Gestão TF. **Uma única base é selecionada explicitamente** por `DATABASE_PROVIDER`: `postgres` (padrão, `DATABASE_URL`) ou `mongodb` (`MONGODB_URI` e `MONGODB_DATABASE`). Clientes, operações, comissões, permissões, sessões e anexos usam essa mesma base. Não há troca automática de provedor nem leitura de backups locais quando o banco fica indisponível.
+
+O suporte a MongoDB preserva as consultas parametrizadas da aplicação e as traduz em consultas e agregações nativas. As coleções mantêm IDs, campos, relacionamentos e valores em centavos; os inteiros são armazenados como BSON `int64`. Transações, índices únicos e verificação das referências protegem edições e gravações relacionadas. Os cálculos continuam em `lib/operation-finance.ts`, compartilhados pelas telas e relatórios.
+
+## MongoDB Atlas e transferência
+
+Use um cluster com suporte a transações (replica set). Cadastre `MONGODB_URI` e `MONGODB_DATABASE=gestortf` como variáveis privadas. Mantenha `DATABASE_PROVIDER=postgres` até concluir a transferência. A origem continua sendo o PostgreSQL atual; os arquivos históricos locais não representam uma exportação atual.
+
+```bash
+# Gera um arquivo privado completo; a origem é consultada somente para leitura.
+npm run db:transfer:mongodb -- export data/mongodb-migration/current-postgres-snapshot.json
+
+# Cria a estrutura, importa em uma transação e compara todos os campos.
+# O destino precisa estar vazio e o snapshot precisa ter menos de uma hora.
+npm run db:transfer:mongodb -- import data/mongodb-migration/current-postgres-snapshot.json
+npm run db:transfer:mongodb -- verify data/mongodb-migration/current-postgres-snapshot.json
+```
+
+A exportação inclui as 37 tabelas, registros excluídos, recebimentos, configurações, ajustes de parceiros, senhas já derivadas, sessões, anexos e fontes de importação. O processo preserva os IDs e prepara os próximos IDs. Se o destino tiver dados, se houver diferença de estrutura ou checksum, ou se a origem estiver inacessível, a transferência para e mantém a conexão ativa. Uma nova execução com o mesmo snapshot apenas verifica o destino; nunca o limpa nem sobrescreve edições posteriores.
+
+No momento da troca, suspenda temporariamente gravações na origem, exporte novamente e confira o destino antes de mudar `DATABASE_PROVIDER=mongodb` na Vercel e publicar novamente. A aplicação recusa uma base MongoDB sem o marcador de transferência verificada. Mantenha a origem e o snapshot privados para recuperação; após novas gravações no MongoDB, voltar ao PostgreSQL exige reconciliar essas alterações.
+
+`db/mongodb-schema.json` é gerado das migrações existentes por `npm run db:generate:mongodb`; não contém dados de clientes. `npm run db:migrate:mongodb` prepara somente a estrutura, sem dados. Novas alterações de contrato exigem migração explícita; a inicialização não reinterpreta silenciosamente uma base existente.
+
+Os testes `npm run test:mongodb` usam uma base `tf_test_` exclusiva e a removem ao terminar. `npm run test:database-transfer` verifica uma transferência completa entre bases de teste; requer também `TRANSFER_TEST_POSTGRES_URL`. Para executar os mesmos testes de navegador com MongoDB, forneça `DATABASE_PROVIDER=mongodb`, `MONGODB_URI` e execute `npm run test:e2e`; o teste define sozinho o nome isolado da base.
 
 ## Vercel
 
@@ -12,6 +36,10 @@ CRM em Next.js 16, React 19 e TypeScript, com a interface original do Gestão TF
 O banco deste projeto já foi migrado. O deploy não importa dados novamente nem precisa de arquivos locais. Credenciais, backups e dados pessoais não fazem parte do repositório. O acesso usa senhas com scrypt, sessões revogáveis no PostgreSQL e cookies HTTP-only. O modo opcional de desenvolvimento local é desativado automaticamente na Vercel.
 
 As APIs paginam o histórico em blocos de até 1.000 registros, carregados pelo painel. Anexos de até **4 MB** ficam em `stored_files`, no próprio PostgreSQL, para persistir entre deploys. Esse tamanho deixa margem para o [limite de requisições da Vercel](https://vercel.com/docs/errors/function_payload_too_large).
+
+Durante o uso, o painel consulta apenas `/api/crm/changes` a cada minuto. A resposta contém sete revisões pequenas; o histórico carregado é reutilizado enquanto sua revisão não mudar. Notas, parceiros, equipe, catálogos e pós-venda são carregados conforme a tela aberta. O portal do parceiro segue a mesma verificação. Telas ocultas, offline ou sem atividade há dois minutos suspendem a atualização; eventos próximos de foco são agrupados.
+
+As revisões ficam em chaves `crm_revision:*` da tabela existente `app_settings`, gravadas na mesma transação dos dados, tanto no PostgreSQL quanto no MongoDB. Isso funciona entre diferentes instâncias da aplicação, detecta exclusões e não exige uma migração de esquema. Alterações externas devem passar pela camada de banco da aplicação ou invalidar as revisões correspondentes na mesma transação. Uma alteração real ainda recarrega o conjunto afetado completo; consultas sem alterações não percorrem novamente o histórico. Os testes `request-budget.spec.ts` verificam esse comportamento nos dois temas e entre sessões independentes.
 
 ## Executar localmente
 

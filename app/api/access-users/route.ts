@@ -1,6 +1,5 @@
 import { hashPassword } from '@/lib/password';
-import type { PoolClient } from 'pg';
-import type { PostgresStatement } from '@/lib/postgres';
+import type { DatabaseClient, DatabaseStatement } from '@/lib/database-types';
 import { env } from '@/lib/runtime';
 import { getTfOwner, TF_PERMISSIONS, type TfPermission } from '../../chatgpt-auth';
 import { loginIdentifier } from '@/lib/login-identifier';
@@ -72,7 +71,7 @@ export async function DELETE(request:Request){
   return json({member:mapMember(row)});
 }
 
-async function persistMember(statement: PostgresStatement, password: string) {
+async function persistMember(statement: DatabaseStatement, password: string) {
   return env.DB.transaction(async client => {
     const row=(await statement.execute<MemberRow>(client)).results[0];
     await syncMemberAccount(client,mapMember(row),password);
@@ -80,7 +79,7 @@ async function persistMember(statement: PostgresStatement, password: string) {
   });
 }
 
-async function syncMemberAccount(client: PoolClient, member: ReturnType<typeof mapMember>, password: string) {
+async function syncMemberAccount(client: DatabaseClient, member: ReturnType<typeof mapMember>, password: string) {
   const id = `member:${member.id}`, now = Date.now();
   const statements = [env.DB.prepare(`INSERT INTO users (id,email,login,name,role,active,created_at,updated_at)
     VALUES (?,?,?,?,'employee',?,?,?) ON CONFLICT(id) DO UPDATE SET email=excluded.email,login=excluded.login,name=excluded.name,active=excluded.active,updated_at=excluded.updated_at`)

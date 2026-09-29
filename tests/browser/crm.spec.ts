@@ -1,5 +1,5 @@
 import { test, expect, type APIRequestContext } from '@playwright/test';
-import { PostgresDatabase, PostgresFiles } from '../../lib/postgres';
+import { createDatabase, DatabaseFiles } from '../../lib/database';
 
 const origin='http://127.0.0.1:3100';
 async function login(request:APIRequestContext,email='admin@example.com',password='test-only-password'){
@@ -105,7 +105,7 @@ test('historical records are editable in PostgreSQL and superseded entries stay 
 });
 
 test('advisory fees keep their cents when typed, pasted, saved and reopened', async ({ page }) => {
-  const db = new PostgresDatabase();
+  const db = createDatabase();
   try {
     await db.batch([
       db.prepare("INSERT INTO clients (id,owner_id,name,normalized_name,cpf,created_at,updated_at) VALUES (200,'local-test-owner','Teste de taxa de assessoria','teste de taxa de assessoria','22222222222',1,1)"),
@@ -179,7 +179,7 @@ test('server authentication rejects anonymous access and manages employee sessio
 });
 
 test('PostgreSQL batches roll back and document bytes survive reconnection',async()=>{
-  let db=new PostgresDatabase();
+  let db=createDatabase();
   try{
     await expect(db.batch([
       db.prepare("INSERT INTO companies (owner_id,name,created_at) VALUES ('test','Rollback company',1)"),
@@ -188,10 +188,10 @@ test('PostgreSQL batches roll back and document bytes survive reconnection',asyn
     expect(await db.prepare('SELECT COUNT(*) AS count FROM companies').first('count')).toBe(0);
     const inserted=await db.prepare("INSERT INTO companies (owner_id,name,created_at) VALUES ('test','Persistent company',1) RETURNING id AS companyId").first<{companyId:number}>();
     expect(typeof inserted?.companyId).toBe('number');
-    const files=new PostgresFiles(db);
+    const files=new DatabaseFiles(db);
     await files.put('test/persistent.txt',new TextEncoder().encode('Bytes persistidos no PostgreSQL').buffer);
-    await db.close();db=new PostgresDatabase();
-    expect(new TextDecoder().decode((await new PostgresFiles(db).get('test/persistent.txt'))?.body)).toBe('Bytes persistidos no PostgreSQL');
+    await db.close();db=createDatabase();
+    expect(new TextDecoder().decode((await new DatabaseFiles(db).get('test/persistent.txt'))?.body)).toBe('Bytes persistidos no PostgreSQL');
   }finally{await db.close();}
 });
 
@@ -203,6 +203,6 @@ test('CPF and email aliases share the same login attempt limit',async({request})
   }
   const blocked=await request.post('/api/auth/login',{headers:{origin},data:{login:'01234567890',password:'test-only-password'}});
   expect(blocked.status()).toBe(429);
-  const db=new PostgresDatabase();
+  const db=createDatabase();
   try { await db.prepare('DELETE FROM auth_attempts').run(); } finally { await db.close(); }
 });

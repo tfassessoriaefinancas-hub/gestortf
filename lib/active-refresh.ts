@@ -1,15 +1,18 @@
 const REFRESH_INTERVAL = 60_000;
 const IDLE_TIMEOUT = 120_000;
+const MIN_REFRESH_GAP = 30_000;
 
 /** Refresh live screens only while someone is using them. */
 export function startActiveRefresh(refresh: () => void | Promise<void>) {
   let lastActivity = Date.now();
+  let lastAttempt = Date.now(); // The screen performs its initial load itself.
   let running = false;
   let stopped = false;
   const visibleAndOnline = () => document.visibilityState !== 'hidden' && navigator.onLine !== false;
   const run = async () => {
-    if (stopped || running || !visibleAndOnline()) return;
+    if (stopped || running || !visibleAndOnline() || Date.now() - lastAttempt < MIN_REFRESH_GAP) return;
     running = true;
+    lastAttempt = Date.now();
     try { await refresh(); }
     catch { /* The screen handles its own error and preserves the loaded data. */ }
     finally { running = false; }

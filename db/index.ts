@@ -1,4 +1,4 @@
 import { env } from '@/lib/runtime';
 
-/** The shared PostgreSQL connection. Schema changes live in db/postgres/*.sql. */
+/** The explicitly selected application database, shared by every API. */
 export function getDb() { return env.DB; }

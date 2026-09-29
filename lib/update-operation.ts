@@ -1,5 +1,4 @@
-import type { PoolClient } from 'pg';
-import type { PostgresDatabase } from './postgres.ts';
+import type { DatabaseClient, ApplicationDatabase } from './database-types.ts';
 import { operationSelect, operationFromRow, type OperationAccess, type OperationRow } from './operations.ts';
 import { operationNotes, feeLabels, isGrossCommission, isPartnerBonus, isPartnerLegacyBase, type CommissionRow } from './operation-finance.ts';
 import { parseMoney, parseRate, toCents } from './money.ts';
@@ -21,7 +20,7 @@ function addMonths(iso: string | null, months: number) {
   return `${next.getUTCFullYear()}-${String(next.getUTCMonth() + 1).padStart(2, '0')}-${String(Math.min(day, last)).padStart(2, '0')}`;
 }
 
-async function updateClient(client: PoolClient, id: number, ownerKeys: string[], patch: Record<string, unknown>, now: number) {
+async function updateClient(client: DatabaseClient, id: number, ownerKeys: string[], patch: Record<string, unknown>, now: number) {
   const result = await client.query('SELECT * FROM clients WHERE id=$1 AND owner_id=ANY($2::text[]) AND deleted_at IS NULL FOR UPDATE', [id, ownerKeys]);
   const row = result.rows[0];
   if (!row) throw new RecordUpdateError('Cliente não encontrado.', 404);
@@ -38,14 +37,14 @@ async function updateClient(client: PoolClient, id: number, ownerKeys: string[],
   await client.query('UPDATE clients SET name=$1,normalized_name=$2,cpf=$3,benefit_number=$4,birth_date=$5,phone=$6,updated_at=$7 WHERE id=$8', [name, norm(name), cpf, benefit, has(patch, 'birthDate') ? date(patch.birthDate) : row.birth_date, has(patch, 'phone') ? String(patch.phone || '').trim() || null : row.phone, now, id]);
 }
 
-export async function updateClientRecord(db: PostgresDatabase, access: OperationAccess, id: number, patch: Record<string, unknown>, transactionClient?: PoolClient) {
-  const action = (client: PoolClient) => updateClient(client, id, access.ownerKeys, patch, Date.now());
+export async function updateClientRecord(db: ApplicationDatabase, access: OperationAccess, id: number, patch: Record<string, unknown>, transactionClient?: DatabaseClient) {
+  const action = (client: DatabaseClient) => updateClient(client, id, access.ownerKeys, patch, Date.now());
   return transactionClient ? action(transactionClient) : db.transaction(action);
 }
 
 /** Update the original operation and its existing revenue rows atomically. */
-export async function updateOperationRecord(db: PostgresDatabase, access: OperationAccess, id: number, patch: Record<string, unknown>, transactionClient?: PoolClient) {
-  const action = async (client: PoolClient) => {
+export async function updateOperationRecord(db: ApplicationDatabase, access: OperationAccess, id: number, patch: Record<string, unknown>, transactionClient?: DatabaseClient) {
+  const action = async (client: DatabaseClient) => {
     const found = await client.query<OperationRow>(`${operationSelect} WHERE o.id=$1 AND o.owner_id=ANY($2::text[]) AND o.deleted_at IS NULL AND c.deleted_at IS NULL FOR UPDATE OF o,c`, [id, access.ownerKeys]);
     const row = found.rows[0];
     if (!row || (access.role === 'employee' && (access.partnerId ? Number(row.partner_id) !== access.partnerId : Number(row.assigned_user_id) !== access.memberId))) throw new RecordUpdateError('Operação não encontrada.', 404);
