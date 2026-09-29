@@ -52,13 +52,13 @@
   .tf-kanban>article,.tf-sheet,.tf-modal,.tf-settings
 ){
   border-color:rgba(255,255,255,.22)!important;
-  background:linear-gradient(145deg,rgba(64,68,74,.24),rgba(8,9,11,.12))!important;
-  box-shadow:inset 0 1px rgba(255,255,255,.14),0 18px 42px rgba(0,0,0,.30)!important;
-  backdrop-filter:blur(18px) saturate(.80)!important;
-  -webkit-backdrop-filter:blur(18px) saturate(.80)!important;
+  background:linear-gradient(145deg,rgba(58,62,68,.14),rgba(5,6,8,.05))!important;
+  box-shadow:inset 0 1px rgba(255,255,255,.13),0 18px 42px rgba(0,0,0,.22)!important;
+  backdrop-filter:blur(9px) saturate(.74)!important;
+  -webkit-backdrop-filter:blur(9px) saturate(.74)!important;
 }
 .tf-app.theme-mono .tf-command-hero{
-  background:linear-gradient(110deg,rgba(9,10,12,.32),rgba(62,66,72,.12))!important;
+  background:linear-gradient(110deg,rgba(8,9,11,.17),rgba(58,62,68,.06))!important;
   background-blend-mode:normal!important;
 }
 .tf-app.theme-mono :is(
