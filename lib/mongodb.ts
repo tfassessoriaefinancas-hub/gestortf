@@ -137,7 +137,11 @@ export class MongoDatabase implements ApplicationDatabase, DatabaseClient {
     if (!this.ready) this.ready = this.connection().then(async db => {
       const marker = await db.collection<StoredDocument>('_tf_state').findOne({ _id: 'schema' });
       if (marker?.hash !== contractHash) throw new Error('Estrutura MongoDB não inicializada ou incompatível. Execute db:migrate:mongodb antes de ativar a base.');
-      if (!/^tf_test_[a-f0-9]{16}$/.test(this.name) && !await db.collection<StoredDocument>('_tf_state').findOne({ _id: 'data-migration' })) throw new Error('Dados atuais ainda não migrados e verificados. A base vazia não pode ser ativada.');
+      if (!/^tf_test_[a-f0-9]{16}$/.test(this.name)) {
+        const migrated = await db.collection<StoredDocument>('_tf_state').findOne({ _id: 'data-migration' });
+        const fresh = await db.collection<StoredDocument>('_tf_state').findOne({ _id: 'empty-start', mode: 'empty-with-admin' });
+        if (!migrated && !fresh?.ownerId) throw new Error('Base ainda não migrada ou inicializada explicitamente com administrador.');
+      }
     }).catch(error => { this.ready = undefined; throw error; });
     return this.ready;
   }

@@ -6,7 +6,7 @@ O suporte a MongoDB preserva as consultas parametrizadas da aplicação e as tra
 
 ## MongoDB Atlas e transferência
 
-Use um cluster com suporte a transações (replica set). Cadastre `MONGODB_URI` e `MONGODB_DATABASE=gestortf` como variáveis privadas. Mantenha `DATABASE_PROVIDER=postgres` até concluir a transferência. A origem continua sendo o PostgreSQL atual; os arquivos históricos locais não representam uma exportação atual.
+Use um cluster com suporte a transações (replica set). Cadastre `MONGODB_URI` e `MONGODB_DATABASE=gestortf` como variáveis privadas. Mantenha `DATABASE_PROVIDER=postgres` até concluir a transferência ou inicializar explicitamente uma base vazia com autorização do responsável. Os arquivos históricos locais não representam uma exportação atual do PostgreSQL.
 
 ```bash
 # Gera um arquivo privado completo; a origem é consultada somente para leitura.
@@ -20,7 +20,9 @@ npm run db:transfer:mongodb -- verify data/mongodb-migration/current-postgres-sn
 
 A exportação inclui as 37 tabelas, registros excluídos, recebimentos, configurações, ajustes de parceiros, senhas já derivadas, sessões, anexos e fontes de importação. O processo preserva os IDs e prepara os próximos IDs. Se o destino tiver dados, se houver diferença de estrutura ou checksum, ou se a origem estiver inacessível, a transferência para e mantém a conexão ativa. Uma nova execução com o mesmo snapshot apenas verifica o destino; nunca o limpa nem sobrescreve edições posteriores.
 
-No momento da troca, suspenda temporariamente gravações na origem, exporte novamente e confira o destino antes de mudar `DATABASE_PROVIDER=mongodb` na Vercel e publicar novamente. A aplicação recusa uma base MongoDB sem o marcador de transferência verificada. Mantenha a origem e o snapshot privados para recuperação; após novas gravações no MongoDB, voltar ao PostgreSQL exige reconciliar essas alterações.
+No momento da transferência, suspenda temporariamente gravações na origem, exporte novamente e confira o destino antes de mudar `DATABASE_PROVIDER=mongodb` na Vercel e publicar novamente. A aplicação recusa uma base MongoDB sem transferência verificada ou inicialização vazia explícita. Mantenha a origem e o snapshot privados para recuperação; após novas gravações no MongoDB, voltar ao PostgreSQL exige reconciliar essas alterações.
+
+Para começar sem histórico por escolha explícita do responsável, execute `npm run db:migrate:mongodb -- --empty --admin-file caminho/privado/admin.json`. O arquivo privado deve conter `id`, `email`, `name`, `login` (CPF) e `password` do administrador. Esse modo cria somente a estrutura, os metadados e o acesso administrativo, registra `empty-start` separadamente de uma migração e recusa destinos preenchidos. Reexecutar não redefine a senha nem apaga novos registros. Depois de conferir o acesso, configure `DATABASE_PROVIDER=mongodb` e publique novamente. Uma importação posterior precisa preservar o que for cadastrado nesse intervalo; a transferência integral continua recusando destinos preenchidos.
 
 `db/mongodb-schema.json` é gerado das migrações existentes por `npm run db:generate:mongodb`; não contém dados de clientes. `npm run db:migrate:mongodb` prepara somente a estrutura, sem dados. Novas alterações de contrato exigem migração explícita; a inicialização não reinterpreta silenciosamente uma base existente.
 
