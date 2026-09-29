@@ -26,7 +26,7 @@ async function nextCheck(page: Page) {
   await page.evaluate(() => Promise.resolve());
 }
 
-test('both themes keep unchanged history cached and synchronize edits from another session', async ({ page, browser }) => {
+test('the luxury black theme keeps unchanged history cached and synchronizes edits from another session', async ({ page, browser }) => {
   test.setTimeout(120000);
   const db = createDatabase();
   try {
@@ -41,12 +41,11 @@ test('both themes keep unchanged history cached and synchronize edits from anoth
   page.on('request', request => { if (request.method() === 'GET' && new URL(request.url()).pathname.startsWith('/api/')) requests.push(new URL(request.url()).pathname); });
   const count = (path: string) => requests.filter(item => item === path).length;
   try {
-    for (const theme of ['classic', 'mono']) {
-      await page.addInitScript(value => { localStorage.setItem('tf_visual_theme', value); }, theme);
+    {
       const initial = page.waitForResponse(response => new URL(response.url()).pathname === '/api/crm/data');
       await page.goto('/');
       await initial;
-      await expect(page.locator('.tf-app')).toHaveClass(new RegExp(`theme-${theme}`));
+      await expect(page.locator('.tf-app')).toHaveClass(/theme-mono/);
       const initialReads = count('/api/crm/data');
       const otherReads = count('/api/partners') + count('/api/invoices') + count('/api/post-sales') + count('/api/access-users');
       for (let i = 0; i < 3; i++) await nextCheck(page);
@@ -56,7 +55,7 @@ test('both themes keep unchanged history cached and synchronize edits from anoth
       await page.evaluate(() => { for (let i = 0; i < 5; i++) { window.dispatchEvent(new Event('focus')); document.dispatchEvent(new Event('visibilitychange')); } });
       await page.clock.fastForward(1000);
       expect(count('/api/crm/changes')).toBe(beforeFocus);
-      const changedName = `Cliente alterado em outro computador ${theme}`;
+      const changedName = 'Cliente alterado em outro computador';
       const saved = await remote.request.patch(`${origin}/api/records`, { data: { entity: 'client', id: 902, details: { name: changedName } } });
       expect(saved.ok(), await saved.text()).toBeTruthy();
       const reloaded = page.waitForResponse(response => new URL(response.url()).pathname === '/api/crm/data');

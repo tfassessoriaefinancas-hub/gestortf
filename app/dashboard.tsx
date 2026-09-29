@@ -52,7 +52,6 @@ import {
   KeyRound,
   Paperclip,
   ScanText,
-  Palette,
   Star,
   type LucideIcon,
 } from "lucide-react";
@@ -460,8 +459,7 @@ export default function Dashboard({
     [dueReminderRequired,setDueReminderRequired]=useState(false),
     [newDealRequest,setNewDealRequest]=useState(0),
     [locked, setLocked] = useState(true),
-    [gateReady, setGateReady] = useState(false),
-    [visualTheme,setVisualTheme]=useState<"classic"|"mono">("classic");
+    [gateReady, setGateReady] = useState(false);
   const dealsMutationVersion = useRef(0);
   const resourceSync = useRef<ReturnType<typeof createResourceSync> | null>(null);
   const updateDeals = useCallback<React.Dispatch<React.SetStateAction<Deal[]>>>((update) => {
@@ -470,11 +468,6 @@ export default function Dashboard({
   }, []);
   const refreshData = useCallback(() => { dealsMutationVersion.current += 1; notifyCrmChanged(); }, []);
   const dark = true;
-  const toggleVisualTheme=()=>setVisualTheme(current=>{
-    const next=current==="classic"?"mono":"classic";
-    localStorage.setItem("tf_visual_theme",next);
-    return next;
-  });
   useEffect(() => {
     const onClick = (e: Event) => {
       const t = e.target as HTMLElement;
@@ -497,7 +490,7 @@ export default function Dashboard({
   useEffect(() => {
     setGateReady(true);
     setLocked(!user.serverAuthenticated && localStorage.getItem("tf_access_unlocked") !== "1");
-    setVisualTheme(localStorage.getItem("tf_visual_theme")==="mono"?"mono":"classic");
+    localStorage.removeItem("tf_visual_theme");
     localStorage.setItem("tf_dark_mode", "1");
     const refreshApp=()=>navigator.serviceWorker?.getRegistration().then(async(registration)=>{
       await registration?.update();
@@ -624,7 +617,7 @@ export default function Dashboard({
     );
   return (
     <main
-      className={`tf-app ${dark ? "dark" : "light"} theme-${visualTheme}${mobileMenu ? " menu-open" : ""}`}
+      className={`tf-app ${dark ? "dark" : "light"} theme-mono${mobileMenu ? " menu-open" : ""}`}
     >
       <aside className="tf-side" aria-label="Menu principal" id="tf-navigation">
         <div className="tf-brand">
@@ -680,12 +673,6 @@ export default function Dashboard({
             className={view==="usuarios"?"active":""}
             onClick={()=>{setView("usuarios");setMobileMenu(false)}}
           ><i><UserRoundCog/></i><span>Usuários e acessos</span><b>{teamMembers.filter(m=>m.active).length}</b></button>}
-          <button
-            type="button"
-            aria-label={visualTheme==="mono"?"Usar tema original":"Usar tema Preto Luxo"}
-            className={visualTheme==="mono"?"active":""}
-            onClick={()=>{toggleVisualTheme();setMobileMenu(false)}}
-          ><i><Palette/></i><span>{visualTheme==="mono"?"Tema original":"Tema Preto Luxo"}</span></button>
         </nav>
         <div className="tf-user">
           <i>TO</i>
