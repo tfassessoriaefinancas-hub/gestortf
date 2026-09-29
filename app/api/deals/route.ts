@@ -35,8 +35,7 @@ export async function GET(){
 export async function POST(request:Request){
  const user=await getTfAccess();if(!user||!hasTfPermission(user,'atendimento'))return json({error:'Não autorizado'},401);
  const body=await request.json() as Record<string,string>,cpf=cleanCpf(String(body.cpf||''));
- const name=String(body.name||'').trim(),product=String(body.product||'').trim();
- if(!name||!product)return json({error:'Informe o nome do cliente e o serviço.'},400);
+ const name=String(body.name||'').trim()||'Cliente sem nome',product=String(body.product||'').trim()||'Serviço não informado';
  if(cpf&&cpf.length!==11)return json({error:'Confira o CPF ou deixe o campo em branco.'},400);
  if(body.guaranteeType&&!['Veículo','Imobiliário'].includes(body.guaranteeType))return json({error:'Tipo de garantia inválido.'},400);
  const assignedUserId=await resolveAssignee(user,body.assignedUserId);

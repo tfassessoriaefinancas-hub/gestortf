@@ -2143,10 +2143,10 @@ function Kanban({
             <button type="button" className="tf-modal-close" disabled={creating} onClick={()=>{setForm(false);setFormStep(1)}}>×</button>
             <small>{formStep===1?"INÍCIO DO ATENDIMENTO":"DADOS DO ATENDIMENTO"}</small>
             <h2>{formStep===1?"Novo atendimento":"Especificações da operação"}</h2>
-            <p>{formStep===1?"Escolha o serviço do cliente.":"Informe o nome. Os demais dados podem ser preenchidos depois."}</p>
+            <p>{formStep===1?"Escolha o serviço do cliente.":"Todos os campos são opcionais e podem ser preenchidos depois."}</p>
             <label>Serviço<select name="product" value={selectedProduct} disabled={creating} onChange={e=>{setSelectedProduct(e.target.value);setCreateForm(current=>({...current,operationType:""}))}}>{productOptions.map(option=><option key={option}>{option}</option>)}</select></label>
             {formStep===1?<button className="tf-primary">Continuar</button>:<>
-              <label>Nome completo<input name="name" required autoFocus value={createForm.name} onChange={e=>setCreateForm(current=>({...current,name:e.target.value}))}/></label>
+              <label>Nome completo<input name="name" autoFocus placeholder="Opcional" value={createForm.name} onChange={e=>setCreateForm(current=>({...current,name:e.target.value}))}/></label>
               {selectedProduct==="Crédito com garantia"?<label>Tipo de garantia<select name="guaranteeType" value={createForm.guaranteeType} onChange={e=>setCreateForm(current=>({...current,guaranteeType:e.target.value}))}><option>Veículo</option><option>Imobiliário</option></select></label>:<label>Tipo de operação<select name="operationType" value={createForm.operationType||operationOptionsFor(selectedProduct)[0]} onChange={e=>setCreateForm(current=>({...current,operationType:e.target.value}))}>{operationOptionsFor(selectedProduct).map(option=><option key={option}>{option}</option>)}</select></label>}
               <label>CPF<input name="cpf" inputMode="numeric" maxLength={14} placeholder="Opcional" value={createForm.cpf} onChange={e=>setCreateForm(current=>({...current,cpf:maskCpf(e.target.value)}))}/></label>
               <label>Data de nascimento<input name="birthDate" inputMode="numeric" maxLength={10} placeholder="DD/MM/AAAA · opcional" value={createForm.birthDate} onChange={e=>setCreateForm(current=>({...current,birthDate:maskDate(e.target.value)}))}/></label>

@@ -18,8 +18,10 @@ async function board(page:Page){
 
 test('optional client data stays separate and financial edits preserve the original IDs and omitted fields',async({request})=>{
   await login(request);
+  const empty=await create(request,{});
   const first=await create(request,{name:'Cliente opcional A',product:'Crédito com garantia',guaranteeType:'Imobiliário',desiredCredit:15000.37});
   const second=await create(request,{name:'Cliente opcional B',product:'Financiamento',vehicleValue:95000.41,downPayment:30000.11,financedValue:65000.30});
+  expect(empty).toMatchObject({name:'Cliente sem nome',product:'Serviço não informado',cpf:'',birthDate:'',phone:''});
   expect(first.clientId).not.toBe(second.clientId);
   expect(first.operationId).not.toBe(second.operationId);
   const db=createDatabase();
