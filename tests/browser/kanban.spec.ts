@@ -70,6 +70,15 @@ test('new card forms reset between clients, offer the requested amounts and shar
   test.setTimeout(120000);page.setDefaultTimeout(10000);
   const pageErrors:string[]=[];page.on('pageerror',error=>pageErrors.push(error.message));
   await login(page.request);await page.goto('/');await board(page);
+  const desktopLayout=await page.evaluate(()=>{
+    const owner=document.querySelector('.tf-kanban-owner')!.getBoundingClientRect();
+    const stages=[...document.querySelectorAll('.tf-kanban>article')].map(stage=>stage.getBoundingClientRect());
+    return {count:stages.length,ownerLeft:owner.left,ownerRight:owner.right,boardLeft:stages[0].left,boardRight:stages.at(-1)!.right,widths:stages.map(stage=>stage.width)};
+  });
+  expect(desktopLayout.count).toBe(5);
+  expect(Math.abs(desktopLayout.boardLeft-desktopLayout.ownerLeft)).toBeLessThanOrEqual(1);
+  expect(Math.abs(desktopLayout.boardRight-desktopLayout.ownerRight)).toBeLessThanOrEqual(1);
+  expect(Math.max(...desktopLayout.widths)-Math.min(...desktopLayout.widths)).toBeLessThanOrEqual(1);
   const open=async(product:string)=>{
     await page.locator('[data-stage="atendimento"] > footer').getByRole('button',{name:'Novo atendimento',exact:true}).click();
     const form=page.locator('.tf-create-deal-modal');
