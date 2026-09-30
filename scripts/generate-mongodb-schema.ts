@@ -17,8 +17,8 @@ function column(table: any, node: any) {
   if (constraints.some((c: any) => c.type === 'add generated')) table.identity = node.name.name;
   for (const c of constraints.filter((c: any) => c.type === 'reference')) table.references.push({ columns: [node.name.name], table: c.foreignTable.name, foreignColumns: c.foreignColumns.map((x: any) => x.name) });
 }
-for (const name of readdirSync('db/postgres').filter(n => n.endsWith('.sql')).sort()) {
-  const sql = readFileSync('db/postgres/' + name, 'utf8');
+for (const name of readdirSync('db/postgres').filter(n => n.endsWith('.sql') && !n.endsWith('.postgres.sql')).sort()) {
+  const sql = readFileSync('db/postgres/' + name, 'utf8').replace(/\r\n/g, '\n');
   migrations[name] = createHash('sha256').update(sql).digest('hex');
   for (const node of parse(sql.replace(/DEFERRABLE INITIALLY DEFERRED/g, '')) as any[]) {
     if (node.type === 'create table') {
