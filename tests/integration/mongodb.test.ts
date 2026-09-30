@@ -30,10 +30,11 @@ test('binds literal values and preserves SQL null, aliases, LIKE and aggregate s
   assert.equal((await database.prepare('SELECT id FROM clients WHERE id IN (?)').bind(3).first())?.id, 3);
 });
 
-test('upserts, uniqueness and rate-limit expressions are atomic under concurrency', async () => {
+test('upserts and rate-limit expressions are atomic while client CPF may repeat', async () => {
   await Promise.all(Array.from({ length: 4 }, () => database.prepare('INSERT INTO auth_attempts (key,attempts,window_start) VALUES (?,1,?) ON CONFLICT(key) DO UPDATE SET attempts=CASE WHEN auth_attempts.window_start<? THEN 1 ELSE auth_attempts.attempts+1 END,window_start=CASE WHEN auth_attempts.window_start<? THEN excluded.window_start ELSE auth_attempts.window_start END RETURNING attempts').bind('account',100,0,0).run()));
   assert.equal((await database.prepare('SELECT attempts FROM auth_attempts WHERE key=?').bind('account').first())?.attempts, 4);
-  await assert.rejects(database.prepare('INSERT INTO clients (owner_id,name,normalized_name,cpf,created_at,updated_at) VALUES (?,?,?,?,1,1)').bind('test-owner','Duplicado','duplicado','11111111111').run(), { code: '23505' });
+  await database.prepare('INSERT INTO clients (owner_id,name,normalized_name,cpf,created_at,updated_at) VALUES (?,?,?,?,1,1)').bind('test-owner','Duplicado','duplicado','11111111111').run();
+  assert.equal(await database.prepare('SELECT COUNT(*) AS count FROM clients WHERE cpf=?').bind('11111111111').first('count'), 2);
   assert.equal((await database.prepare('INSERT INTO auth_attempts (key,attempts,window_start) VALUES (?,9,1) ON CONFLICT(key) DO NOTHING').bind('account').run()).meta.changes, 0);
 });
 

@@ -30,10 +30,6 @@ async function updateClient(client: DatabaseClient, id: number, ownerKeys: strin
   if (has(patch, 'document')) { const d = digits(patch.document); cpf = d.length === 11 ? d : null; benefit = d.length === 11 ? row.benefit_number : d || null; }
   if (has(patch, 'cpf')) cpf = digits(patch.cpf) || null;
   if (has(patch, 'benefit')) benefit = digits(patch.benefit) || null;
-  if (cpf && cpf !== row.cpf) {
-    const duplicate = await client.query('SELECT id FROM clients WHERE id!=$1 AND cpf=$2 AND owner_id=ANY($3::text[]) AND deleted_at IS NULL LIMIT 1', [id, cpf, ownerKeys]);
-    if (duplicate.rowCount) throw new RecordUpdateError('Este CPF já pertence a outro cadastro. Revise o documento para evitar duplicidade.');
-  }
   await client.query('UPDATE clients SET name=$1,normalized_name=$2,cpf=$3,benefit_number=$4,birth_date=$5,phone=$6,updated_at=$7 WHERE id=$8', [name, norm(name), cpf, benefit, has(patch, 'birthDate') ? date(patch.birthDate) : row.birth_date, has(patch, 'phone') ? String(patch.phone || '').trim() || null : row.phone, now, id]);
 }
 

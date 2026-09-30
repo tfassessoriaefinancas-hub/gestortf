@@ -47,6 +47,9 @@ for (const name of readdirSync('db/postgres').filter(n => n.endsWith('.sql')).so
         fields[field] = item.order === 'DESC' ? -1 : 1;
       }
       tables[node.table.name].indexes.push({ name: node.indexName.name, fields, unique: Boolean(node.unique) });
+    } else if (node.type === 'drop index') {
+      const dropped = new Set(node.names.map((name: any) => name.name));
+      for (const table of Object.values(tables) as any[]) table.indexes = table.indexes.filter((index: any) => !dropped.has(index.name));
     } else if (node.type !== 'update') throw new Error('Unsupported migration statement: ' + node.type);
   }
 }

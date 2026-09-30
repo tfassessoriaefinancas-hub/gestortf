@@ -34,14 +34,17 @@ test('optional client data stays separate and financial edits preserve the origi
     expect(list.find((row:{id:number})=>row.id===second.id)).toMatchObject({name:'Cliente opcional B editado',vehicleValue:95000.41,downPayment:31000.19,financedValue:64000.22,value:64000.22,clientId:second.clientId,operationId:second.operationId});
     expect(await db.prepare('SELECT vehicle_value_cents,down_payment_cents,financed_value_cents,vehicle_plate,source_row FROM operations WHERE id=?').bind(second.operationId).first()).toEqual({vehicle_value_cents:9500041,down_payment_cents:3100019,financed_value_cents:6400022,vehicle_plate:'ABC1D23',source_row:'origem preservada'});
     const duplicate=await request.post('/api/deals',{data:{name:'Outro nome com o mesmo CPF',cpf:'11111111111',product:'Financiamento'}});
-    expect(duplicate.status()).toBe(409);
+    const duplicateBody=await duplicate.json();
+    expect(duplicate.status(),JSON.stringify(duplicateBody)).toBe(201);
+    expect(duplicateBody.deal.clientId).not.toBe(100);
+    expect(await db.prepare('SELECT COUNT(*) AS count FROM clients WHERE cpf=? AND deleted_at IS NULL').bind('11111111111').first('count')).toBe(2);
     expect(await db.prepare('SELECT COUNT(*) AS count FROM clients WHERE cpf IS NULL AND id IN (?,?)').bind(first.clientId,second.clientId).first('count')).toBe(2);
     const invalid=await request.post('/api/deals',{data:{name:'CPF incompleto',cpf:'123',product:'FGTS'}});
     expect(invalid.status()).toBe(400);
   }finally{await db.close();}
 });
 
-test('moving a new service never replaces it with an older completed operation for the same CPF',async({request})=>{
+test('a new service with the same CPF keeps a separate client and never replaces an older operation',async({request})=>{
   await login(request);
   const old=await create(request,{name:'Cliente com dois serviços',cpf:'77888999000',product:'Financiamento',financedValue:1000});
   const db=createDatabase();
@@ -49,7 +52,7 @@ test('moving a new service never replaces it with an older completed operation f
     await db.prepare("UPDATE operations SET completed_at='2026-09-01',status='Finalizado' WHERE id=?").bind(old.operationId).run();
     await db.prepare("UPDATE deals SET stage='finalizado',status='concluido' WHERE id=?").bind(old.id).run();
     const current=await create(request,{name:'Cliente com dois serviços',cpf:'77888999000',product:'Crédito com garantia',guaranteeType:'Veículo',desiredCredit:2500});
-    expect(current.clientId).toBe(old.clientId);
+    expect(current.clientId).not.toBe(old.clientId);
     expect(current.operationId).not.toBe(old.operationId);
     for(const stage of ['analise','finalizado','assinatura','finalizado']){
       const response=await request.patch('/api/deals',{data:{id:current.id,stage}});
@@ -82,6 +85,7 @@ test('new card forms reset between clients, offer the requested amounts and shar
   await form.getByRole('combobox',{name:'Tipo de garantia',exact:true}).selectOption('Imobiliário');
   await form.getByLabel('Valor desejado',{exact:true}).fill('80.123,45');
   await expect(form.getByLabel('Valor total do veículo',{exact:true})).toHaveCount(0);
+  await expect(form.getByLabel('Valor do veículo',{exact:true})).toHaveCount(0);
   const saved=page.waitForResponse(response=>response.url().endsWith('/api/deals')&&response.request().method()==='POST');
   await form.getByRole('button',{name:'Iniciar atendimento',exact:true}).click();
   const first=(await (await saved).json()).deal;
@@ -92,7 +96,7 @@ test('new card forms reset between clients, offer the requested amounts and shar
   await next.getByLabel('Nome completo',{exact:true}).fill('Cliente visual financiamento');
   await next.getByLabel('Valor total do veículo',{exact:true}).fill('90.000,50');
   await next.getByLabel('Entrada',{exact:true}).fill('20.000,25');
-  await next.getByLabel('Valor do financiamento',{exact:true}).fill('70.000,25');
+  await expect(next.getByLabel('Valor financiado',{exact:true})).toHaveValue(/70\.000,25/);
   const savedNext=page.waitForResponse(response=>response.url().endsWith('/api/deals')&&response.request().method()==='POST');
   await next.getByRole('button',{name:'Iniciar atendimento',exact:true}).click();
   const second=(await (await savedNext).json()).deal;
@@ -116,7 +120,7 @@ test('new card forms reset between clients, offer the requested amounts and shar
   await secondCard.getByRole('button',{name:'Editar cadastro',exact:true}).click();
   const edit=page.locator('.tf-edit-deal-modal');
   await expect(edit.getByLabel('Entrada',{exact:true})).toHaveValue(/20\.000,25/);
-  await expect(edit.getByLabel('Valor do financiamento',{exact:true})).toHaveValue(/70\.000,25/);
+  await expect(edit.getByLabel('Valor financiado',{exact:true})).toHaveValue(/70\.000,25/);
   await edit.getByRole('button',{name:'Cancelar',exact:true}).click();
   await page.locator('[data-stage="analise"] > footer').getByRole('button',{name:'Adicionar negócio',exact:true}).click();
   await expect(page.locator('.tf-create-deal-modal')).toBeVisible();

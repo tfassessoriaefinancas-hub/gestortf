@@ -46,12 +46,7 @@ export async function POST(request:Request){
  if(Object.values(amounts).some(value=>value<0))return json({error:'Os valores não podem ser negativos.'},400);
  try {
   const deal=await env.DB.transaction(async client=>{
-   // Serialize creation for one CPF and never match clients with a missing CPF.
-   if(cpf)await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))',[`${user.ownerKey}:${cpf}`]);
-   let customer=cpf?(await client.query('SELECT id,name,cpf,birth_date,phone FROM clients WHERE owner_id=ANY($1::text[]) AND cpf=$2 AND deleted_at IS NULL FOR UPDATE',[user.ownerKeys,cpf])).rows[0]:null;
-   if(customer&&norm(customer.name)!==norm(name))throw new RecordUpdateError('Este CPF já pertence a outro cliente. Confira o CPF antes de salvar este atendimento.',409);
-   if(!customer)customer=(await client.query('INSERT INTO clients (owner_id,name,normalized_name,cpf,birth_date,phone,notes,source_row,created_at,updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$9) RETURNING id,name,cpf,birth_date,phone',[user.ownerKey,name,norm(name),cpf||null,birthDate||null,phone||null,'Criado pelo Kanban','Kanban',now])).rows[0];
-   else customer=(await client.query("UPDATE clients SET birth_date=COALESCE(NULLIF(birth_date,''),$1),phone=COALESCE(NULLIF(phone,''),$2),updated_at=$3 WHERE id=$4 RETURNING id,name,cpf,birth_date,phone",[birthDate||null,phone||null,now,customer.id])).rows[0];
+   const customer=(await client.query('INSERT INTO clients (owner_id,name,normalized_name,cpf,birth_date,phone,notes,source_row,created_at,updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$9) RETURNING id,name,cpf,birth_date,phone',[user.ownerKey,name,norm(name),cpf||null,birthDate||null,phone||null,'Criado pelo Kanban','Kanban',now])).rows[0];
    const guaranteeType=body.guaranteeType||'',operationType=body.operationType||(guaranteeType==='Imobiliário'?'Garantia de imóvel':guaranteeType==='Veículo'?'Garantia de veículo':product);
    const notes=JSON.stringify({guaranteeType,...(guaranteeType?{agreement:guaranteeType==='Imobiliário'?'Imóvel':'Veículo'}:{})});
    const operation=(await client.query("INSERT INTO operations (owner_id,assigned_user_id,client_id,original_product,category,producer,origin,value_cents,operation_date,status,vehicle_plate,vehicle_value_cents,financed_value_cents,desired_credit_cents,down_payment_cents,notes,created_at,updated_at) VALUES ($1,$2,$3,$4,$5,$6,'Kanban',$7,$8,'em_atendimento',$9,$10,$11,$12,$13,$14,$15,$15) RETURNING id",[user.ownerKey,assignedUserId,customer.id,product,operationType,user.role==='employee'?user.displayName:'Thiago',moneyBr(requestedValue),new Date().toISOString().slice(0,10),body.vehiclePlate||null,amounts.vehicleValue,amounts.financedValue,amounts.desiredCredit,amounts.downPayment,notes,now])).rows[0];
@@ -61,7 +56,7 @@ export async function POST(request:Request){
    return {...row,...payload,needsCompletion:false,clientId:customer.id,operationId:operation.id,source:'Kanban'};
   });
   return json({deal},201);
- }catch(error){if(error instanceof RecordUpdateError)return json({error:error.message},error.status);if((error as {code?:string}).code==='23505')return json({error:'Este CPF já está cadastrado. Confira os dados do cliente.'},409);throw error;}
+ }catch(error){if(error instanceof RecordUpdateError)return json({error:error.message},error.status);throw error;}
 }
 
 export async function PATCH(request:Request){
@@ -117,7 +112,7 @@ export async function PATCH(request:Request){
  if(id&&body.action==='resume_flow'){
   const current=await ownedDeal(user,id);
   if(!current)return json({error:'Atendimento não encontrado.'},404);
-  const allowedStages=['atendimento','analise','indecisao','fechamento','assinatura','contratado'];
+  const allowedStages=['atendimento','analise','indecisao','assinatura'];
   const resumeStage=String(body.resumeStage||'');
   if(!allowedStages.includes(resumeStage))return json({error:'Escolha uma etapa válida para reiniciar o fluxo.'},400);
   const base=parse(current.payload_json||current.title),now=Date.now();
@@ -137,7 +132,7 @@ export async function PATCH(request:Request){
   await history(user.ownerKey,id,current.operation_id,'retorno_concluido','Retorno concluído.',base,payload);
   return json({ok:true,deal:{...payload,id,stage:current.stage,status:current.status,needsCompletion:Boolean(current.needs_completion),updatedAt:now}});
  }
- const allowed=['atendimento','analise','indecisao','fechamento','assinatura','contratado','finalizado','cancelado'];
+ const allowed=['atendimento','analise','indecisao','assinatura','finalizado','cancelado'];
  if(!id||!allowed.includes(stage))return json({error:'Etapa inválida.'},400);
  const current=await ownedDeal(user,id);
  if(!current)return json({error:'Atendimento não encontrado.'},404);

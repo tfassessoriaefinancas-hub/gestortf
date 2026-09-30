@@ -1699,9 +1699,7 @@ function Kanban({
     ["atendimento", "Atendimento", "Entrada"],
     ["analise", "Em análise", "Proposta"],
     ["indecisao", "Indecisão", "Acompanhamento"],
-    ["fechamento", "Em fechamento", "Negociação"],
     ["assinatura", "Em assinatura", "Formalização"],
-    ["contratado", "Contratado", "Contrato"],
     ["finalizado", "Finalizado", "Concluído"],
   ];
   const [columnLabels,setColumnLabels]=useState<Record<string,string>>(()=>{try{return typeof window==="undefined"?{}:JSON.parse(localStorage.getItem("tf_kanban_columns")||"{}")}catch{return {}}});
@@ -1821,7 +1819,7 @@ function Kanban({
     editingRef.current=true;setEditing(true);setEditError("");
     try {
       const normalizedEdit={name:editForm.name,cpf:cpfKey(editForm.cpf),birthDate:dateToIso(editForm.birthDate),phone:maskPhone(editForm.phone||""),product:editForm.product,
-        ...(editForm.product==="Crédito com garantia"?{guaranteeType:editForm.guaranteeType}:{}),
+        ...(editForm.product==="Crédito com garantia"?{guaranteeType:editForm.guaranteeType,vehicleValue:moneyToStorage(editForm.vehicleValue)}:{}),
         ...(editForm.product==="Financiamento"?{vehicleValue:moneyToStorage(editForm.vehicleValue),downPayment:moneyToStorage(editForm.downPayment),financedValue:moneyToStorage(editForm.financedValue)}:{desiredCredit:moneyToStorage(editForm.desiredCredit)})};
       const r=await fetch('/api/deals',{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({id,action:'edit',details:normalizedEdit})});
       const x=await r.json();
@@ -2153,9 +2151,12 @@ function Kanban({
               <label>Telefone / WhatsApp<input name="phone" inputMode="tel" maxLength={15} placeholder="Opcional" value={createForm.phone} onChange={e=>setCreateForm(current=>({...current,phone:maskPhone(e.target.value)}))}/></label>
               <div className="tf-form-divider">Valores da operação · opcionais</div>
               {selectedProduct==="Financiamento"?<>
-                <label>Valor total do veículo<CurrencyInput name="vehicleValue" value={createForm.vehicleValue} onChange={value=>setCreateForm(current=>({...current,vehicleValue:value}))}/></label>
-                <label>Entrada<CurrencyInput name="downPayment" value={createForm.downPayment} onChange={value=>setCreateForm(current=>({...current,downPayment:value}))}/></label>
-                <label>Valor do financiamento<CurrencyInput name="financedValue" value={createForm.financedValue} onChange={value=>setCreateForm(current=>({...current,financedValue:value}))}/></label>
+                <label>Valor total do veículo<CurrencyInput name="vehicleValue" value={createForm.vehicleValue} onChange={value=>setCreateForm(current=>({...current,vehicleValue:value,financedValue:formatMoneyInput(Math.max(0,parseMoneyBr(value)-parseMoneyBr(current.downPayment)))}))}/></label>
+                <label>Entrada<CurrencyInput name="downPayment" value={createForm.downPayment} onChange={value=>setCreateForm(current=>({...current,downPayment:value,financedValue:formatMoneyInput(Math.max(0,parseMoneyBr(current.vehicleValue)-parseMoneyBr(value)))}))}/><output>O valor financiado é calculado pelo valor do veículo menos a entrada.</output></label>
+                <label>Valor financiado<CurrencyInput name="financedValue" value={createForm.financedValue} readOnly aria-readonly="true"/></label>
+              </>:selectedProduct==="Crédito com garantia"&&createForm.guaranteeType==="Veículo"?<>
+                <label>Valor do veículo<CurrencyInput name="vehicleValue" value={createForm.vehicleValue} onChange={value=>setCreateForm(current=>({...current,vehicleValue:value}))}/></label>
+                <label>Valor que deseja levantar<CurrencyInput name="desiredCredit" value={createForm.desiredCredit} onChange={value=>setCreateForm(current=>({...current,desiredCredit:value}))}/></label>
               </>:<label>Valor desejado<CurrencyInput name="desiredCredit" value={createForm.desiredCredit} onChange={value=>setCreateForm(current=>({...current,desiredCredit:value}))}/></label>}
               {createError&&<p className="tf-kanban-error" role="alert">{createError}</p>}
               <div className="tf-modal-actions"><button type="button" className="tf-secondary" disabled={creating} onClick={()=>setFormStep(1)}>Voltar</button><button className="tf-primary" disabled={creating}>{creating?"Salvando…":"Iniciar atendimento"}</button></div>
@@ -2176,9 +2177,12 @@ function Kanban({
               <label>Serviço<select value={editForm.product||"Financiamento"} onChange={e=>setEditForm(x=>({...x,product:e.target.value}))}>{productOptions.map(option=><option key={option}>{option}</option>)}</select></label>
               {editForm.product==="Crédito com garantia"&&<label>Tipo de garantia<select value={editForm.guaranteeType||"Veículo"} onChange={e=>setEditForm(x=>({...x,guaranteeType:e.target.value}))}><option>Veículo</option><option>Imobiliário</option></select></label>}
               {editForm.product==="Financiamento"?<>
-                <label>Valor total do veículo<CurrencyInput value={editForm.vehicleValue||""} onChange={value=>setEditForm(x=>({...x,vehicleValue:value}))}/></label>
-                <label>Entrada<CurrencyInput value={editForm.downPayment||""} onChange={value=>setEditForm(x=>({...x,downPayment:value}))}/></label>
-                <label>Valor do financiamento<CurrencyInput value={editForm.financedValue||""} onChange={value=>setEditForm(x=>({...x,financedValue:value}))}/></label>
+                <label>Valor total do veículo<CurrencyInput value={editForm.vehicleValue||""} onChange={value=>setEditForm(x=>({...x,vehicleValue:value,financedValue:formatMoneyInput(Math.max(0,parseMoneyBr(value)-parseMoneyBr(x.downPayment)))}))}/></label>
+                <label>Entrada<CurrencyInput value={editForm.downPayment||""} onChange={value=>setEditForm(x=>({...x,downPayment:value,financedValue:formatMoneyInput(Math.max(0,parseMoneyBr(x.vehicleValue)-parseMoneyBr(value)))}))}/><output>O valor financiado é calculado pelo valor do veículo menos a entrada.</output></label>
+                <label>Valor financiado<CurrencyInput value={editForm.financedValue||""} readOnly aria-readonly="true"/></label>
+              </>:editForm.product==="Crédito com garantia"&&(editForm.guaranteeType||"Veículo")==="Veículo"?<>
+                <label>Valor do veículo<CurrencyInput value={editForm.vehicleValue||""} onChange={value=>setEditForm(x=>({...x,vehicleValue:value}))}/></label>
+                <label>Valor que deseja levantar<CurrencyInput value={editForm.desiredCredit||""} onChange={value=>setEditForm(x=>({...x,desiredCredit:value}))}/></label>
               </>:<label>Valor desejado<CurrencyInput value={editForm.desiredCredit||""} onChange={value=>setEditForm(x=>({...x,desiredCredit:value}))}/></label>}
             </div>
             {editError&&<p className="tf-kanban-error" role="alert">{editError}</p>}
