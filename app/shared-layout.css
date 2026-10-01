@@ -653,3 +653,117 @@
   .tf-invoice-file>input { width: 100%; }
   .tf-post-sale-template>header,.tf-post-sale-template>footer { align-items: stretch; flex-direction: column; }
 }
+
+/* V110 · vidro uniforme e compromissos com hierarquia visual mais forte. */
+.tf-app.theme-mono {
+  --tf-glass: linear-gradient(145deg,rgba(29,33,28,.32),rgba(8,11,9,.17));
+  --tf-glass-soft: linear-gradient(135deg,rgba(46,51,44,.23),rgba(7,10,8,.12));
+  --tf-glass-line: rgba(232,205,151,.24);
+  --tf-glass-shadow: inset 0 1px rgba(255,255,255,.105),0 18px 44px rgba(0,0,0,.16);
+  background: transparent !important;
+}
+.tf-app.theme-mono::before {
+  background: linear-gradient(135deg,rgba(0,0,0,.16),rgba(5,7,6,.31)),url('/tf-crm-background-premium.png') center/cover no-repeat !important;
+  background-blend-mode: multiply,luminosity !important;
+  filter: grayscale(1) saturate(.12) contrast(1.02) brightness(.86) !important;
+}
+.tf-app.theme-mono :is(
+  .tf-command-hero,.tf-kpi-strip,.tf-operation-board,.tf-result-card,.tf-month-comparison,
+  .tf-quick-panel,.tf-panel,.tf-metric,.tf-filters,.tf-client-list,.tf-entity,
+  .tf-service-grid article,.tf-banks article,.tf-report-hero,.tf-partner-executive,
+  .tf-access-list,.tf-access-form,.tf-kanban>article,.tf-sheet,.tf-modal,.tf-settings,
+  .tf-kanban-owner,.tf-scheduled-board,.tf-production-operation-group,.tf-finance-performance>article,
+  .tf-activity-summary>article,.tf-activity-list>article,.tf-activity-empty,
+  .tf-post-sale-summary>article,.tf-post-sale-summary>div,.tf-post-sale-list>article,
+  .tf-post-sale-template,.tf-bank-toolbar,.tf-additional-operations,.tf-invoice-file
+) {
+  border-color: var(--tf-glass-line) !important;
+  background: var(--tf-glass) !important;
+  box-shadow: var(--tf-glass-shadow) !important;
+  backdrop-filter: blur(14px) saturate(1.18) !important;
+  -webkit-backdrop-filter: blur(14px) saturate(1.18) !important;
+}
+.tf-app.theme-mono :is(
+  .tf-service-band,.tf-band-values span,.tf-result-card li button,.tf-partner-metrics>div,
+  .tf-mini-comparison,.tf-report-groups article,.tf-production-controls,.tf-production-compare article,
+  .tf-finance-comparison,.tf-access-share,.tf-password-settings,.tf-commission>div,.tf-op-table>div,
+  .tf-client-row,.tf-deal-card,.tf-scheduled-board>div>article,.tf-post-sale-details>span,
+  .tf-additional-operations>article,.tf-invoices>div,.tf-activity-reminder>div>article
+) {
+  border-color: rgba(235,211,160,.17) !important;
+  background: var(--tf-glass-soft) !important;
+  box-shadow: inset 0 1px rgba(255,255,255,.07) !important;
+  backdrop-filter: blur(9px) saturate(1.12) !important;
+  -webkit-backdrop-filter: blur(9px) saturate(1.12) !important;
+}
+.tf-app.theme-mono :is(input,select,textarea),
+.tf-app.theme-mono .tf-top>label {
+  background-color: rgba(9,12,10,.25) !important;
+  backdrop-filter: blur(9px) !important;
+  -webkit-backdrop-filter: blur(9px) !important;
+}
+
+.tf-activity-summary>article { position: relative; overflow: hidden; min-height: 98px; }
+.tf-activity-summary>article::after {
+  content:"";
+  position:absolute;
+  inset:auto -28px -50px auto;
+  width:105px;
+  height:105px;
+  border-radius:50%;
+  background:radial-gradient(circle,color-mix(in srgb,var(--gold) 17%,transparent),transparent 68%);
+  pointer-events:none;
+}
+.tf-activity-summary>article:nth-child(1)>svg { color:#73b9e8; background:rgba(82,158,208,.13); }
+.tf-activity-summary>article:nth-child(2)>svg { color:#e49b75; background:rgba(210,105,82,.13); }
+.tf-activity-summary>article:nth-child(3)>svg { color:#79d29a; background:rgba(69,171,107,.13); }
+.tf-activity-list>article {
+  position:relative;
+  isolation:isolate;
+  overflow:hidden;
+  gap:16px;
+  min-height:220px;
+  padding:18px;
+  transition:transform .2s ease,border-color .2s ease,box-shadow .2s ease;
+}
+.tf-activity-list>article::before {
+  content:"";
+  position:absolute;
+  z-index:-1;
+  inset:0;
+  background:linear-gradient(120deg,color-mix(in srgb,currentColor 7%,transparent),transparent 48%);
+  opacity:.72;
+  pointer-events:none;
+}
+.tf-activity-list>article:hover { transform:translateY(-2px); box-shadow:inset 0 1px rgba(255,255,255,.13),0 22px 48px rgba(0,0,0,.23) !important; }
+.tf-activity-list>article>i { box-shadow:inset 0 1px rgba(255,255,255,.10),0 8px 18px rgba(0,0,0,.15); }
+.tf-activity-list>article>div { gap:6px; }
+.tf-activity-list h3 {
+  font-size:18px;
+  font-weight:900;
+  line-height:1.22;
+  letter-spacing:.005em;
+  text-shadow:0 2px 14px rgba(0,0,0,.38);
+}
+.tf-activity-list>article.type-agendamento h3 { color:#82c8f4; }
+.tf-activity-list>article.type-tarefa h3 { color:#86d8a4; }
+.tf-activity-list>article.type-lembrete h3 { color:#f0bc72; }
+.tf-activity-list>article.type-compromisso h3 { color:#c8a6eb; }
+.tf-activity-list>article.type-agendamento>i { color:#82c8f4; background:rgba(76,153,205,.15); }
+.tf-activity-list>article.type-tarefa>i { color:#86d8a4; background:rgba(70,174,109,.15); }
+.tf-activity-list>article.type-lembrete>i { color:#f0bc72; background:rgba(205,142,63,.15); }
+.tf-activity-list>article.type-compromisso>i { color:#c8a6eb; background:rgba(143,102,184,.15); }
+.tf-activity-list>article>div>small { font-size:9px; letter-spacing:.11em; }
+.tf-activity-list>article>div>b { color:color-mix(in srgb,var(--ink) 78%,var(--muted)); font-size:11px; }
+.tf-activity-list p { font-size:11px; line-height:1.55; }
+.tf-activity-list time { grid-template-columns:1fr auto; align-items:center; padding:10px 11px; border:1px solid color-mix(in srgb,var(--line) 78%,transparent); border-radius:10px; background:rgba(255,255,255,.025); }
+.tf-activity-list time>b { font-size:11px; }
+.tf-activity-list time>span { text-align:right; font-size:11px; font-weight:800; }
+.tf-activity-list time>em { grid-column:1/-1; margin-top:3px; }
+.tf-activity-list>article>footer button { background:rgba(255,255,255,.025); transition:background .18s ease,color .18s ease,border-color .18s ease; }
+.tf-activity-list>article>footer button:hover { background:rgba(255,255,255,.08); color:var(--ink); }
+
+@media(max-width:700px){
+  .tf-activity-list>article { min-height:0; }
+  .tf-activity-list time { grid-column:1/-1; }
+}
