@@ -15,6 +15,7 @@ const affected: Record<string, readonly CrmResource[]> = {
   users: ['team'],
   crm_catalog_options: ['catalog'],
   post_sale_tasks: ['postSales'],
+  activities: ['activities'],
   app_settings: ['postSales'],
 };
 

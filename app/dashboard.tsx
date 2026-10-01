@@ -37,6 +37,7 @@ import {
   Phone,
   MessageCircle,
   CalendarDays,
+  CalendarClock,
   History,
   CheckCircle2,
   Clock3,
@@ -58,6 +59,7 @@ import {
 
 type View =
   | "inicio"
+  | "compromissos"
   | "clientes"
   | "atendimento"
   | "producao"
@@ -157,6 +159,7 @@ type InvoiceRecord={id:number;number:string;clientName:string;partnerName?:strin
 type DashboardUser={name:string;email:string;role:"admin"|"employee";memberId:number|null;partnerId:number|null;permissions:string[];serverAuthenticated?:boolean};
 type CatalogOption={id:number;kind:"indicator"|"promoter"|"production";label:string};
 type PostSaleTask={id:number;operationId:number;clientId:number;status:"pendente"|"concluido";completedAt:number|null;clientName:string;phone:string;product:string;bank:string;value:number;installment:number;term:number;completionDate:string;partner:string;postSaleNotes?:string;postSale?:string};
+type ActivityItem={id:number;type:"agendamento"|"compromisso"|"tarefa"|"lembrete";title:string;clientName:string;notes:string;dueAt:number|null;completedAt:number|null};
 const cpfKey = (cpf?: string) => String(cpf || "").replace(/\D/g, "");
 const formatCpf = (cpf?: string) => {
   const d = cpfKey(cpf);
@@ -421,6 +424,7 @@ const finalBankOptions = [
 const finalPromoterOptions = ["BEVI", "Solution"];
 const menu: [View, LucideIcon, string][] = [
   ["inicio", House, "Início"],
+  ["compromissos", CalendarClock, "Compromissos e negócios"],
   ["atendimento", Columns3, "Atendimento"],
   ["bancos", Landmark, "Bancos e financiamentos"],
   ["clientes", UsersRound, "Clientes"],
@@ -450,12 +454,14 @@ export default function Dashboard({
     [teamMembers,setTeamMembers]=useState<TeamMember[]>([]),
     [catalogOptions,setCatalogOptions]=useState<CatalogOption[]>([]),
     [postSales,setPostSales]=useState<PostSaleTask[]>([]),
+    [activities,setActivities]=useState<ActivityItem[]>([]),
     [googleReviewUrl,setGoogleReviewUrl]=useState(""),
     [receivables,setReceivables]=useState<Receivable[]>([]),
     [invoices,setInvoices]=useState<InvoiceRecord[]>([]),
     [partners,setPartners]=useState<PartnerRecord[]>([{id:0,name:"GG Veículos"}]),
     [productionPeriod,setProductionPeriod]=useState("2026-09"),
     [showReceivables,setShowReceivables]=useState(false),
+    [showActivityReminder,setShowActivityReminder]=useState(false),
     [dueReminderRequired,setDueReminderRequired]=useState(false),
     [newDealRequest,setNewDealRequest]=useState(0),
     [locked, setLocked] = useState(true),
@@ -537,7 +543,7 @@ export default function Dashboard({
       } while(offset!==null);
       return data;
     };
-    const endpoints: Record<Exclude<CrmResource,'crm'>,string> = {deals:'/api/deals',team:'/api/access-users',partners:'/api/partners',invoices:'/api/invoices',catalog:'/api/catalog-options',postSales:'/api/post-sales'};
+    const endpoints: Record<Exclude<CrmResource,'crm'>,string> = {deals:'/api/deals',team:'/api/access-users',partners:'/api/partners',invoices:'/api/invoices',catalog:'/api/catalog-options',postSales:'/api/post-sales',activities:'/api/activities'};
     const load = async (resource:CrmResource) => {
       const dealsVersionAtStart=dealsMutationVersion.current;
       const data=resource==='crm'?await readCrm():await readJson(endpoints[resource]);
@@ -556,6 +562,7 @@ export default function Dashboard({
       if(resource==='invoices')setInvoices(data.invoices);
       if(resource==='catalog')setCatalogOptions(data.options);
       if(resource==='postSales'){setPostSales(data.tasks);setGoogleReviewUrl(data.googleReviewUrl||'');}
+      if(resource==='activities')setActivities(data.activities);
       return true;
     };
     const sync=createResourceSync({revisions:()=>readJson('/api/crm/changes') as Promise<CrmRevisions>,load,scopeChanged:()=>window.location.reload(),error:()=>{if(!disposed)setNotice('Falha ao atualizar os dados. Verifique sua conexão.');}});
@@ -583,10 +590,13 @@ export default function Dashboard({
   const total = currentMonthOps.reduce((s, o) => s + o.value, 0),
     commission = currentMonthOps.reduce((s, o) => s + o.commission, 0);
   const todayDate=(()=>{const date=new Date();return new Date(date.getTime()-date.getTimezoneOffset()*60000).toISOString().slice(0,10)})();
+  const todayEnd=(()=>{const date=new Date();date.setHours(23,59,59,999);return date.getTime()})();
+  const dueActivities=useMemo(()=>activities.filter(item=>!item.completedAt&&item.dueAt&&item.dueAt<=todayEnd),[activities,todayEnd]);
   const dueReceivables=useMemo(()=>receivables.filter(item=>item.dueDate&&item.dueDate<=todayDate),[receivables,todayDate]);
   const displayedReceivables=dueReminderRequired?dueReceivables:receivables;
   useEffect(()=>{if(!locked&&dueReceivables.length&&localStorage.getItem(`tf_receivables_seen_${todayDate}`)!=="1"){setDueReminderRequired(true);setShowReceivables(true)}},[locked,dueReceivables.length,todayDate]);
   useEffect(()=>{if(dueReminderRequired&&!dueReceivables.length){setDueReminderRequired(false);setShowReceivables(false)}},[dueReminderRequired,dueReceivables.length]);
+  useEffect(()=>{if(locked||!dueActivities.length||localStorage.getItem(`tf_activities_seen_${todayDate}`)==="1")return;const timer=window.setTimeout(()=>setShowActivityReminder(true),0);return()=>window.clearTimeout(timer)},[locked,dueActivities.length,todayDate]);
   const found = useMemo(
     () =>
       allClients.filter(
@@ -603,7 +613,7 @@ export default function Dashboard({
     setTimeout(() => setNotice(""), 2200);
   };
   const markCommissionReceived=async(id:number)=>{const response=await fetch('/api/records',{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({entity:'commission',id,details:{status:'recebida'}})});if(response.ok){setReceivables(current=>current.filter(item=>item.id!==id));refreshData();flash('Crédito marcado como recebido')}else{const data=await response.json().catch(()=>({}));alert(data.error||'Não foi possível atualizar o crédito.')}};
-  const can=(section:View)=>user.role==="admin"||user.permissions.includes(section);
+  const can=(section:View)=>section==="compromissos"?user.role==="admin"||user.permissions.includes("inicio"):user.role==="admin"||user.permissions.includes(section);
   useEffect(()=>{if(!can(view))setView('inicio')},[view,user.permissions]);
   if (!gateReady) return <main className="tf-gate-loading" />;
   if (locked)
@@ -664,6 +674,7 @@ export default function Dashboard({
               </i>
               <span>{label}</span>
               {id === "clientes" && <b>{allClients.length}</b>}
+              {id === "compromissos" && dueActivities.length > 0 && <b className="tf-menu-alert-count tf-activity-count">{dueActivities.length}</b>}
               {id === "posvenda" && postSales.filter((task) => task.status === "pendente").length > 0 && <b className="tf-menu-alert-count">{postSales.filter((task) => task.status === "pendente").length}</b>}
             </button>
           ))}
@@ -712,9 +723,9 @@ export default function Dashboard({
           </label>
           <div>
             {receivables.length>0&&<button className="tf-receivable-trigger" aria-label={`${receivables.length} comissões e taxas a receber`} title="Comissões a receber" onClick={()=>{setDueReminderRequired(false);setShowReceivables(true)}}><BadgeDollarSign/><span>Comissões a receber</span><b>{receivables.length}</b></button>}
-            <button className="tf-notifications-trigger" aria-label="Notificações">
+            <button className={`tf-notifications-trigger${dueActivities.length?" has-activities":""}`} aria-label={dueActivities.length?`${dueActivities.length} atividades para hoje ou atrasadas`:"Nenhuma atividade pendente para hoje"} title="Compromissos e negócios" onClick={()=>setView("compromissos")}>
               <Bell />
-              <b>3</b>
+              {dueActivities.length>0&&<b>{dueActivities.length}</b>}
             </button>
             {user.role==="admin"&&<button className={`tf-top-settings${settingsOpen ? " active" : ""}`} aria-label="Configurações" title="Configurações" onClick={()=>setSettingsOpen(true)}><SettingsIcon/></button>}
             <button className="tf-logout" aria-label="Sair e bloquear o sistema" title="Sair" onClick={()=>{localStorage.removeItem("tf_access_unlocked");if(user.serverAuthenticated)window.location.assign("/signout-with-chatgpt");else setLocked(true)}}><LogOut/></button>
@@ -743,11 +754,13 @@ export default function Dashboard({
               allRows={allOps}
               monthPeriod={currentPeriod}
               activeDealCount={deals.filter(deal=>deal.stage!=="finalizado").length}
+              activityCount={dueActivities.length}
             />
           )}{" "}
           {view === "clientes" && (
             <ClientsFiltered data={found} operations={allOps} open={setSelected} />
           )}{" "}
+          {view === "compromissos" && <Commitments activities={activities} setActivities={setActivities} clients={allClients} />}{" "}
           {view === "atendimento" && (
             <Kanban deals={deals} setDeals={updateDeals} user={user} members={teamMembers} partnerNames={partners.map(partner=>partner.name)} receivables={receivables} catalogOptions={catalogOptions} onCatalogChange={(option)=>setCatalogOptions(current=>option.label?[option,...current.filter(item=>item.id!==option.id)]:current.filter(item=>item.id!==option.id))} newDealRequest={newDealRequest} onMarkReceived={markCommissionReceived} onReceivableCreated={(item)=>setReceivables(items=>[item,...items.filter(existing=>existing.id!==item.id)])} onDataChanged={refreshData} />
           )}{" "}
@@ -772,6 +785,7 @@ export default function Dashboard({
       </section>
       {settingsOpen && <SettingsPanel close={() => setSettingsOpen(false)} serverAuthenticated={user.serverAuthenticated} />}{" "}
       {showReceivables&&<div className={`tf-modal-back${dueReminderRequired?" tf-receivable-blocking":""}`}><section className="tf-modal tf-receivables-modal">{!dueReminderRequired&&<button type="button" className="tf-modal-close" onClick={()=>setShowReceivables(false)}>×</button>}<small>FINANCEIRO</small><h2>{dueReminderRequired?"Você tem comissões a receber":"Comissões a receber"}</h2><p>{dueReminderRequired?"Confira quem deve pagar hoje ou possui pagamento atrasado.":"Valores previstos de comissões, taxas de adesão e assessorias."}</p><div>{displayedReceivables.map(item=><article key={item.id}><i><BadgeDollarSign/></i><span><b>{item.name}</b><small>{item.product} · {item.type}</small></span><strong>{brl(item.value)}</strong><time className={item.dueDate&&item.dueDate<todayDate?"overdue":""}>{item.dueDate?formatDateBr(item.dueDate):"Sem data"}</time><button type="button" onClick={()=>markCommissionReceived(item.id)}>Marcar recebido</button></article>)}</div>{dueReminderRequired&&<button type="button" className="tf-primary tf-receivable-ack" onClick={()=>{localStorage.setItem(`tf_receivables_seen_${todayDate}`,"1");setDueReminderRequired(false);setShowReceivables(false)}}>Visualizei os recebimentos</button>}</section></div>}{" "}
+      {showActivityReminder&&dueActivities.length>0&&<div className="tf-modal-back tf-activity-reminder-back"><section className="tf-modal tf-activity-reminder"><small>COMPROMISSOS E NEGÓCIOS</small><h2>Você tem {dueActivities.length===1?'uma atividade':`${dueActivities.length} atividades`} para acompanhar</h2><p>Confira os compromissos de hoje e o que estiver atrasado.</p><div>{dueActivities.slice(0,5).map(item=><article key={item.id}><CalendarClock/><span><b>{item.title}</b><small>{item.clientName||item.type} · {item.dueAt?new Date(item.dueAt).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):''}</small></span></article>)}</div><footer><button type="button" className="tf-secondary" onClick={()=>{localStorage.setItem(`tf_activities_seen_${todayDate}`,"1");setShowActivityReminder(false)}}>Visualizei</button><button type="button" className="tf-primary" onClick={()=>{localStorage.setItem(`tf_activities_seen_${todayDate}`,"1");setShowActivityReminder(false);setView('compromissos')}}>Abrir atividades</button></footer></section></div>}{" "}
       {selected && <ClientSheet client={allClients.find(client=>client.id===selected.id)||selected} operations={allOps} close={() => setSelected(null)} refresh={()=>{setSelected(null);refreshData()}} />}{" "}
       {notice && <div className="tf-toast">✓ {notice}</div>}
     </main>
@@ -1062,6 +1076,27 @@ function ClientsFiltered({
     </>
   );
 }
+
+function Commitments({activities,setActivities,clients}:{activities:ActivityItem[];setActivities:React.Dispatch<React.SetStateAction<ActivityItem[]>>;clients:Client[]}){
+  const blank={id:0,type:'agendamento' as ActivityItem['type'],title:'',clientName:'',notes:'',dueAt:'',completedAt:null as number|null};
+  const [form,setForm]=useState<typeof blank|null>(null),[filter,setFilter]=useState<'pending'|'today'|'completed'>('pending'),[saving,setSaving]=useState(false),[message,setMessage]=useState('');
+  const localInput=(value:number|null)=>{if(!value)return '';const date=new Date(value),local=new Date(value-date.getTimezoneOffset()*60000);return local.toISOString().slice(0,16)};
+  const startNew=()=>{const date=new Date();date.setMinutes(0,0,0);date.setHours(date.getHours()+1);setMessage('');setForm({...blank,dueAt:localInput(date.getTime())})};
+  const edit=(item:ActivityItem)=>{setMessage('');setForm({...item,dueAt:localInput(item.dueAt)})};
+  const submit=async(event:React.FormEvent)=>{event.preventDefault();if(!form)return;setSaving(true);setMessage('');const body={...form,dueAt:new Date(form.dueAt).getTime()},response=await fetch('/api/activities',{method:form.id?'PATCH':'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)}),data=await response.json();setSaving(false);if(!response.ok){setMessage(data.error||'Não foi possível salvar.');return}setActivities(rows=>form.id?rows.map(item=>item.id===data.activity.id?data.activity:item):[data.activity,...rows]);setForm(null)};
+  const complete=async(item:ActivityItem)=>{const response=await fetch('/api/activities',{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({id:item.id,action:'complete',completed:!item.completedAt})}),data=await response.json();if(response.ok)setActivities(rows=>rows.map(row=>row.id===item.id?data.activity:row));else alert(data.error||'Não foi possível atualizar a atividade.')};
+  const remove=async(item:ActivityItem)=>{if(!window.confirm(`Excluir “${item.title}”?`))return;const response=await fetch(`/api/activities?id=${item.id}`,{method:'DELETE'}),data=await response.json();if(response.ok)setActivities(rows=>rows.filter(row=>row.id!==item.id));else alert(data.error||'Não foi possível excluir a atividade.')};
+  const now=Date.now(),today=new Date(),sameDay=(value:number|null)=>Boolean(value)&&new Date(value!).toDateString()===today.toDateString();
+  const rows=activities.filter(item=>filter==='completed'?Boolean(item.completedAt):!item.completedAt&&(filter==='pending'||sameDay(item.dueAt))).sort((a,b)=>filter==='completed'?Number(b.completedAt)-Number(a.completedAt):Number(a.dueAt)-Number(b.dueAt));
+  const typeLabel:Record<ActivityItem['type'],string>={agendamento:'Agendamento de cliente',compromisso:'Compromisso',tarefa:'Tarefa',lembrete:'Lembrete'};
+  return <>
+    <Title over="ORGANIZAÇÃO DO ESCRITÓRIO" title="Compromissos e negócios" text="Agendamentos, tarefas e lembretes do trabalho reunidos em uma agenda." action="Nova atividade" onAction={startNew}/>
+    <section className="tf-activity-summary"><article><CalendarClock/><span><small>PARA HOJE</small><b>{activities.filter(item=>!item.completedAt&&sameDay(item.dueAt)).length}</b></span></article><article><Clock3/><span><small>ATRASADAS</small><b>{activities.filter(item=>!item.completedAt&&item.dueAt&&item.dueAt<now&&!sameDay(item.dueAt)).length}</b></span></article><article><CheckCircle2/><span><small>CONCLUÍDAS</small><b>{activities.filter(item=>item.completedAt).length}</b></span></article></section>
+    <div className="tf-activity-filters"><button className={filter==='pending'?'active':''} onClick={()=>setFilter('pending')}>Pendentes</button><button className={filter==='today'?'active':''} onClick={()=>setFilter('today')}>Hoje</button><button className={filter==='completed'?'active':''} onClick={()=>setFilter('completed')}>Concluídas</button></div>
+    <section className="tf-activity-list">{rows.map(item=>{const overdue=!item.completedAt&&item.dueAt&&item.dueAt<now;return <article key={item.id} className={`${overdue?'overdue ':''}${item.completedAt?'completed':''}`}><i>{item.type==='agendamento'?<UsersRound/>:item.type==='tarefa'?<CheckCircle2/>:item.type==='compromisso'?<Briefcase/>:<Bell/>}</i><div><small>{typeLabel[item.type]}</small><h3>{item.title}</h3>{item.clientName&&<b>Cliente: {item.clientName}</b>}{item.notes&&<p>{item.notes}</p>}</div><time><b>{item.dueAt?new Date(item.dueAt).toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'short'}):'Sem data'}</b><span>{item.dueAt?new Date(item.dueAt).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}):''}</span>{overdue&&<em>ATRASADO</em>}</time><footer><button onClick={()=>complete(item)}>{item.completedAt?'Reabrir':'Concluir'}</button><button onClick={()=>edit(item)}>Editar</button><button className="danger" onClick={()=>remove(item)}>Excluir</button></footer></article>})}{!rows.length&&<div className="tf-activity-empty"><CalendarClock/><b>Nenhuma atividade nesta lista</b><small>Cadastre um compromisso, tarefa, lembrete ou agendamento.</small><button className="tf-primary" onClick={startNew}>＋ Nova atividade</button></div>}</section>
+    {form&&<div className="tf-modal-back"><form className="tf-modal tf-activity-form" onSubmit={submit}><button type="button" className="tf-modal-close" onClick={()=>setForm(null)}>×</button><small>{form.id?'EDITAR ATIVIDADE':'NOVA ATIVIDADE'}</small><h2>{form.id?'Atualizar compromisso':'Cadastrar compromisso ou tarefa'}</h2><p>Defina a data e o horário para receber o aviso no sistema.</p><label>Tipo<select value={form.type} onChange={event=>setForm(current=>current&&({...current,type:event.target.value as ActivityItem['type']}))}><option value="agendamento">Agendamento de cliente</option><option value="compromisso">Compromisso</option><option value="tarefa">Tarefa</option><option value="lembrete">Lembrete</option></select></label><label>Título<input required maxLength={160} value={form.title} onChange={event=>setForm(current=>current&&({...current,title:event.target.value}))} placeholder="Ex.: Ligar para o cliente"/></label><label>Cliente (opcional)<input list="tf-activity-clients" maxLength={160} value={form.clientName} onChange={event=>setForm(current=>current&&({...current,clientName:event.target.value}))} placeholder="Digite ou selecione o cliente"/><datalist id="tf-activity-clients">{clients.map(client=><option key={client.id} value={client.name}/>)}</datalist></label><label>Data e horário<input required type="datetime-local" value={form.dueAt} onChange={event=>setForm(current=>current&&({...current,dueAt:event.target.value}))}/></label><label className="tf-form-full">Observações<textarea maxLength={1200} value={form.notes} onChange={event=>setForm(current=>current&&({...current,notes:event.target.value}))} placeholder="Detalhes, endereço, materiais ou informações importantes"/></label>{message&&<em className="tf-form-error">{message}</em>}<div className="tf-modal-actions"><button type="button" className="tf-secondary" onClick={()=>setForm(null)}>Cancelar</button><button className="tf-primary" disabled={saving}>{saving?'Salvando…':'Salvar atividade'}</button></div></form></div>}
+  </>;
+}
 function Home({
   go,
   openMonth,
@@ -1071,6 +1106,7 @@ function Home({
   allRows,
   monthPeriod,
   activeDealCount,
+  activityCount,
 }: {
   go: (v: View) => void;
   openMonth: (period:string) => void;
@@ -1080,6 +1116,7 @@ function Home({
   allRows: Operation[];
   monthPeriod: string;
   activeDealCount: number;
+  activityCount: number;
 }) {
   const [selectedDistribution, setSelectedDistribution] = useState<string | null>(null);
   const [hoveredDistribution, setHoveredDistribution] = useState<string | null>(null);
@@ -1214,6 +1251,14 @@ function Home({
           <small>EM ANDAMENTO</small>
           <strong>{activeDealCount}</strong>
           <span>Novos atendimentos</span>
+        </article>
+        <article className={`tf-kpi-navigate tf-activity-kpi${activityCount?" due":""}`}>
+          <button type="button" onClick={()=>go("compromissos")} aria-label="Abrir compromissos e negócios">
+            <small>COMPROMISSOS E NEGÓCIOS</small>
+            <strong>{activityCount}</strong>
+            <span>{activityCount?`${activityCount} para hoje ou atrasado${activityCount===1?'':'s'}`:'Agenda do escritório em dia'}</span>
+            <em>Ver atividades →</em>
+          </button>
         </article>
       </section>
       <section className="tf-executive-chart tf-month-comparison">

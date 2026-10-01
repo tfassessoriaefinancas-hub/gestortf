@@ -10,17 +10,17 @@ test('unchanged checks and screen navigation never redownload loaded history', a
   let checks = 0;
   const sync = createResourceSync({ revisions: async () => { checks++; return { ...revisions }; }, load: async resource => { loads.push(resource); }, scopeChanged: assert.fail, error: error => { throw error; } });
   await sync.setResources(resourcesForView('inicio', 'admin', []));
-  assert.deepEqual(loads, ['crm', 'deals']);
+  assert.deepEqual(loads, ['crm', 'deals', 'activities']);
   for (let i = 0; i < 10; i++) await sync.refresh();
-  assert.equal(loads.length, 2);
+  assert.equal(loads.length, 3);
   await sync.setResources(resourcesForView('notas', 'admin', []));
-  assert.deepEqual(loads, ['crm', 'deals', 'invoices']);
+  assert.deepEqual(loads, ['crm', 'deals', 'activities', 'invoices']);
   revisions.catalog = 'changed-elsewhere';
   await sync.refresh();
-  assert.equal(loads.length, 3, 'changes in an unopened screen must not fetch its data');
+  assert.equal(loads.length, 4, 'changes in an unopened screen must not fetch its data');
   revisions.crm = 'changed-client';
   await sync.refresh();
-  assert.deepEqual(loads, ['crm', 'deals', 'invoices', 'crm']);
+  assert.deepEqual(loads, ['crm', 'deals', 'activities', 'invoices', 'crm']);
   assert.equal(checks, 14);
 });
 

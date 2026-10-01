@@ -1,4 +1,4 @@
-export const CRM_RESOURCES = ['crm', 'deals', 'partners', 'invoices', 'team', 'catalog', 'postSales'] as const;
+export const CRM_RESOURCES = ['crm', 'deals', 'partners', 'invoices', 'team', 'catalog', 'postSales', 'activities'] as const;
 export type CrmResource = typeof CRM_RESOURCES[number];
 export type CrmRevisions = Record<CrmResource, string> & { scope: string };
 export const revisionKey = (resource: CrmResource) => `crm_revision:${resource}`;
@@ -14,5 +14,6 @@ export function resourcesForView(view: string, role: string, permissions: readon
   if (view === 'atendimento' && allowed('atendimento')) resources.add('catalog');
   if (view === 'notas' && allowed('notas')) resources.add('invoices');
   if (view === 'posvenda' && allowed('posvenda')) resources.add('postSales');
+  if (['inicio', 'compromissos'].includes(view) && allowed('inicio')) resources.add('activities');
   return [...resources];
 }
