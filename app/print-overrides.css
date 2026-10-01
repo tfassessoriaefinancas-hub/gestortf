@@ -1,6 +1,6 @@
-/* Final print layer: keep the partner report on one portrait A4 sheet. */
+/* Final print layer: partner reports use the same professional A4 landscape sheet. */
 @media print {
-  @page { size: A4 portrait; margin: 4mm; }
+  @page { size: A4 landscape; margin: 5mm; }
 
   html,
   body {
@@ -72,4 +72,67 @@
   .tf-partner-trend-comparison,
   .tf-partner-report-analysis { break-inside: avoid-page !important; page-break-inside: avoid !important; }
   .tf-partner-report * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+
+  .tf-germano-top { display: none !important; }
+  .tf-germano-portal {
+    display: block !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    background: #fff !important;
+    color: #171917 !important;
+  }
+  .tf-germano-report {
+    display: block !important;
+    width: var(--print-width, 121.951%) !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: #fff !important;
+    color: #171917 !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    zoom: var(--print-zoom, .82) !important;
+  }
+  .tf-germano-report-heading { padding-bottom: 7px !important; break-after: avoid-page !important; }
+  .tf-germano-report-heading h2 { margin: 2px 0 !important; font-size: 24px !important; }
+  .tf-germano-report-heading button,
+  .tf-germano-report > footer { display: none !important; }
+  .tf-germano-cards {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    gap: 5px !important;
+    margin: 7px 0 !important;
+    break-inside: avoid-page !important;
+  }
+  .tf-germano-cards article { min-height: 0 !important; padding: 7px !important; background: #f6f3ec !important; }
+  .tf-germano-cards article.partner { border-color: #79a988 !important; background: #e4f2e7 !important; }
+  .tf-germano-cards article.partner small { color: #245a34 !important; }
+  .tf-germano-cards article.partner strong { color: #173e24 !important; }
+  .tf-germano-cards strong { margin-top: 2px !important; font-size: 14px !important; }
+  .tf-germano-comparison { padding: 7px !important; background: #f7f5f0 !important; break-inside: avoid-page !important; }
+  .tf-germano-comparison h3 { margin: 1px 0 !important; font-size: 14px !important; }
+  .tf-germano-months { grid-template-columns: 1fr 1fr .62fr !important; gap: 5px !important; margin: 5px 0 !important; }
+  .tf-germano-months article,
+  .tf-germano-months aside { min-height: 0 !important; padding: 6px !important; background: #fff !important; }
+  .tf-germano-months :is(small,strong,span) { color: #222 !important; }
+  .tf-germano-months strong { font-size: 15px !important; }
+  .tf-germano-chart { padding: 2px !important; overflow: hidden !important; background: #fff !important; }
+  .tf-germano-chart > svg { width: 100% !important; height: 120px !important; }
+  .tf-germano-chart > div { margin: 0 !important; }
+  .tf-germano-chart-point { display: none !important; }
+  .tf-germano-analysis { grid-template-columns: 135px 1fr !important; gap: 8px !important; margin-top: 5px !important; padding: 6px 8px !important; background: #f6f3ec !important; break-inside: avoid-page !important; }
+  .tf-germano-analysis > span { min-height: 32px !important; padding: 4px !important; color: #245a34 !important; }
+  .tf-germano-analysis b { color: #79551e !important; font-size: 9px !important; }
+  .tf-germano-analysis p { margin: 2px 0 0 !important; color: #333 !important; font-size: 7px !important; line-height: 1.35 !important; }
+  .tf-germano-table { width: 100% !important; margin-top: 5px !important; overflow: visible !important; background: #fff !important; }
+  .tf-germano-table table { width: 100% !important; min-width: 0 !important; table-layout: fixed !important; font-size: 6.2px !important; line-height: 1.08 !important; }
+  .tf-germano-table th,
+  .tf-germano-table td { padding: 3px 2px !important; white-space: normal !important; overflow-wrap: anywhere !important; }
+  .tf-germano-table th { background: #20231f !important; color: #fff !important; }
+  .tf-germano-table td { color: #222 !important; }
+  .tf-germano-table td.partner-value { color: #245a34 !important; font-weight: 900 !important; }
+  .tf-germano-report * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
 }
