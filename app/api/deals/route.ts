@@ -162,15 +162,11 @@ export async function PATCH(request:Request){
    return json({ok:true,...result});
   }catch(error){if(error instanceof RecordUpdateError)return json({error:error.message},error.status);throw error;}
  }
- const d=body.details as Record<string,string>,documentType=String(d.documentType||'CPF'),cpf=documentType==='CPF'?cleanCpf(String(d.cpf||base.cpf||'')):'',benefit=documentType==='Benefício'?String(d.benefit||'').trim():String(d.benefit||'').trim();
- if(documentType==='CPF'&&cpf.length!==11)return json({error:'Confira o CPF antes de concluir.'},400);
- if(documentType==='Benefício'&&!benefit)return json({error:'Informe o número do benefício antes de concluir.'},400);
- const required=[d.name||base.name,d.birthDate||base.birthDate,d.bank,d.product,d.operationType,d.producer,d.origin,d.value,d.contractStatus,d.operationDate];
- if(required.some(value=>!String(value||'').trim()))return json({error:'Preencha todos os dados obrigatórios da operação.'},400);
- const operationStatus=/pago|finalizado/i.test(String(d.contractStatus||''))?'Finalizado':String(d.contractStatus||'Finalizado'),paidAt=['Finalizado','Concluído'].includes(operationStatus)?(isoDate(d.paidDate)||new Date().toISOString().slice(0,10)):null,operationOrigin=d.origin==='Sem parceiro'?'TF':d.origin;
- const selectedCommissionRate=Number(String(d.commissionRate||'0').replace(',','.')),customCommissionRate=Number(String(d.commissionCustomRate||'0').replace(',','.')),commissionRate=Number.isFinite(customCommissionRate)&&customCommissionRate>0?customCommissionRate:selectedCommissionRate,commissionValueCents=Number.isFinite(commissionRate)&&commissionRate>0?Math.round(moneyBr(d.value)*commissionRate/100):0,adhesionFeeCents=moneyBr(d.adhesionFee),advisoryFeeCents=moneyBr(d.advisoryFee),bonusCents=moneyBr(d.bonus);
- const hasRevenue=commissionValueCents>0||adhesionFeeCents>0||advisoryFeeCents>0||bonusCents>0;
- if(hasRevenue&&d.commissionPaid!=='Sim'&&!isoDate(d.commissionDueDate))return json({error:'Informe o primeiro vencimento das receitas.'},400);
+ const d=body.details as Record<string,string>,name=String(d.name||base.name||'').trim(),cpf=cleanCpf(String(d.cpf||base.cpf||'')),benefit=String(d.benefit||'').trim();
+ if(!name)return json({error:'Informe o nome do cliente.'},400);
+ if(cpf.length!==11)return json({error:'Confira o CPF antes de concluir.'},400);
+ const operationStatus=/pago|finalizado/i.test(String(d.contractStatus||''))?'Finalizado':String(d.contractStatus||'Finalizado'),paidAt=['Finalizado','Concluído'].includes(operationStatus)?(isoDate(d.paidDate)||new Date().toISOString().slice(0,10)):null,rawOrigin=String(d.origin||base.origin||'TF').trim()||'TF',operationOrigin=rawOrigin==='Sem parceiro'?'TF':rawOrigin;
+ const selectedCommissionRate=Number(String(d.commissionRate||'0').replace(',','.')),customCommissionRate=Number(String(d.commissionCustomRate||'0').replace(',','.')),commissionRate=Number.isFinite(customCommissionRate)&&customCommissionRate>0?customCommissionRate:selectedCommissionRate,adhesionFeeCents=moneyBr(d.adhesionFee),advisoryFeeCents=moneyBr(d.advisoryFee),bonusCents=moneyBr(d.bonus);
  await env.DB.prepare("UPDATE deals SET status='aguardando_cadastro',updated_at=? WHERE id=? AND status='processando_cadastro' AND updated_at<?").bind(now,id,now-10*60*1000).run();
  const claim=await env.DB.prepare("UPDATE deals SET stage='finalizado',status='processando_cadastro',updated_at=? WHERE id=? AND status IN ('aguardando_cadastro','aberto') RETURNING id").bind(now,id).run();
  if(!claim.results.length){const fresh=await ownedDeal(user,id);if(fresh?.status==='concluido'&&fresh.operation_id){await ensurePostSale(user,Number(fresh.operation_id),Number(fresh.client_id));return json({ok:true,stage:'finalizado',status:'concluido',needsCompletion:false,clientId:fresh.client_id,operationId:fresh.operation_id,alreadyCompleted:true});}return json({error:'Este cadastro já está sendo processado. Aguarde alguns segundos e atualize a tela.'},409);}
@@ -182,8 +178,8 @@ export async function PATCH(request:Request){
   partnerId=partner?.id||null;
  }
  let client=current.client_id?{id:Number(current.client_id)}:cpf?await env.DB.prepare('SELECT id FROM clients WHERE owner_id IN (?,?) AND cpf=? AND deleted_at IS NULL').bind(user.ownerKeys[0],user.ownerKeys[1],cpf).first<{id:number}>():await env.DB.prepare('SELECT id FROM clients WHERE owner_id IN (?,?) AND benefit_number=? AND deleted_at IS NULL').bind(user.ownerKeys[0],user.ownerKeys[1],benefit).first<{id:number}>();
- if(client&&!current.operation_id)await env.DB.prepare('UPDATE clients SET name=?,normalized_name=?,cpf=COALESCE(?,cpf),benefit_number=COALESCE(?,benefit_number),birth_date=?,phone=?,updated_at=? WHERE id=?').bind(d.name||base.name,norm(d.name||base.name),cpf||null,benefit||null,isoDate(d.birthDate||base.birthDate),phoneBr(d.phone||base.phone)||null,now,client.id).run();
- else if(!client)client=await env.DB.prepare('INSERT INTO clients (owner_id,name,normalized_name,cpf,benefit_number,birth_date,phone,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?) RETURNING id').bind(user.ownerKey,d.name||base.name,norm(d.name||base.name),cpf||null,benefit||null,isoDate(d.birthDate||base.birthDate),phoneBr(d.phone||base.phone)||null,now,now).first<{id:number}>();
+ if(client&&!current.operation_id)await env.DB.prepare('UPDATE clients SET name=?,normalized_name=?,cpf=COALESCE(?,cpf),benefit_number=COALESCE(?,benefit_number),birth_date=?,phone=?,updated_at=? WHERE id=?').bind(name,norm(name),cpf,benefit||null,isoDate(d.birthDate||base.birthDate),phoneBr(d.phone||base.phone)||null,now,client.id).run();
+ else if(!client)client=await env.DB.prepare('INSERT INTO clients (owner_id,name,normalized_name,cpf,benefit_number,birth_date,phone,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?) RETURNING id').bind(user.ownerKey,name,norm(name),cpf,benefit||null,isoDate(d.birthDate||base.birthDate),phoneBr(d.phone||base.phone)||null,now,now).first<{id:number}>();
  if(!client)throw new Error('Não foi possível concluir o cliente.');
  const operationNotes=JSON.stringify({agreement:d.agreement||'',contractType:d.contractType||d.product||'',dueDay:d.dueDay||'',productionIndicator:d.productionIndicator||'',adhesionFeeCents,advisoryFeeCents,bonusCents,commissionRate,commissionCustomRate:customCommissionRate>0?customCommissionRate:0,commissionInstallments:Number(d.commissionInstallments||1),commissionPaid:d.commissionPaid==='Sim',invoiceRequired:d.invoiceRequired==='Sim',quotaQuantity:Number(d.quotaQuantity||0),quotaUnitValueCents:moneyBr(d.quotaUnitValue),fipeValueCents:moneyBr(d.fipeValue),postSale:d.postSale,postSaleNotes:d.postSaleNotes||''});
  let operationId=Number(current.operation_id||0);
@@ -192,7 +188,7 @@ export async function PATCH(request:Request){
   if(!op)throw new Error('Não foi possível concluir a operação.');operationId=op.id;
   await env.DB.prepare("UPDATE deals SET client_id=?,operation_id=?,updated_at=? WHERE id=? AND status='processando_cadastro'").bind(client.id,operationId,now,id).run();
  }
- const updatedOperation=await updateOperationRecord(env.DB,user,operationId,{...d,name:d.name||base.name,...(cpf?{cpf}:{}),birthDate:d.birthDate||base.birthDate,phone:phoneBr(d.phone||base.phone),
+ const updatedOperation=await updateOperationRecord(env.DB,user,operationId,{...d,name,cpf,birthDate:d.birthDate||base.birthDate,phone:phoneBr(d.phone||base.phone),
   origin:operationOrigin,commissionRate,commissionPaid:d.commissionPaid,revenueDueDate:isoDate(d.commissionDueDate)||paidAt||isoDate(d.operationDate),
   status:operationStatus,paidAt,completedAt:new Date().toISOString()});
  const pendingRows=await env.DB.prepare("SELECT id,value_cents,expected_at,status,notes FROM commissions WHERE operation_id=? AND deleted_at IS NULL AND value_cents>0 AND status NOT IN ('recebida','paga','historica','cancelada') AND (rate_bps IS NOT NULL OR notes IN ('Taxa de adesão','Taxa de assessoria','Bonificação'))").bind(operationId).all<{id:number;value_cents:number;expected_at:string|null;status:string;notes:string|null}>();

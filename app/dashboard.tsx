@@ -2261,9 +2261,9 @@ function Kanban({
             <small>FINALIZAÇÃO DO CADASTRO</small>
             <h2 className="tf-finalize-title">FINALIZAÇÃO DO CADASTRO</h2>
             <span className="tf-finalize-status"><CheckCircle2/> Finalizado</span>
-            <h3>Complete todas as informações</h3>
+            <h3>Informe nome e CPF</h3>
             <p>
-              Ao concluir, o cliente e a operação serão registrados na base TF.
+              Os demais dados são opcionais e podem ser preenchidos ou atualizados depois.
             </p>
             {false && <div className="tf-form-grid">
               <label>Nome completo<input required value={details.name||""} onChange={e=>setDetails(x=>({...x,name:e.target.value}))}/></label>
@@ -2301,28 +2301,29 @@ function Kanban({
                 <header><small>01</small><h3>Dados do cliente</h3></header>
                 <div className="tf-form-grid">
                   <label>Nome<input required value={details.name||""} onChange={e=>setDetails(x=>({...x,name:e.target.value}))}/></label>
-                  <label>Data do cadastro<input required type="date" value={details.operationDate||""} onChange={e=>setDetails(x=>({...x,operationDate:e.target.value}))}/></label>
-                  <label className="tf-document-field">CPF ou benefício<span><select value={details.documentType||"CPF"} onChange={e=>setDetails(x=>({...x,documentType:e.target.value}))}><option>CPF</option><option>Benefício</option></select>{details.documentType==="Benefício"?<input required inputMode="numeric" value={details.benefit||""} onChange={e=>setDetails(x=>({...x,benefit:e.target.value.replace(/[^\d.-]/g,""),cpf:""}))} placeholder="Número do benefício"/>:<input required inputMode="numeric" maxLength={14} value={details.cpf||""} onChange={e=>setDetails(x=>({...x,cpf:maskCpf(e.target.value),benefit:""}))} placeholder="000.000.000-00"/>}</span></label>
-                  <label>Data de nascimento<input required inputMode="numeric" maxLength={10} value={details.birthDate||""} onChange={e=>setDetails(x=>({...x,birthDate:maskDate(e.target.value)}))} placeholder="DD/MM/AAAA"/></label>
+                  <label>Data do cadastro<input type="date" value={details.operationDate||""} onChange={e=>setDetails(x=>({...x,operationDate:e.target.value}))}/></label>
+                  <label>CPF<input required inputMode="numeric" maxLength={14} value={details.cpf||""} onChange={e=>setDetails(x=>({...x,cpf:maskCpf(e.target.value)}))} placeholder="000.000.000-00"/></label>
+                  <label>Número do benefício<input inputMode="numeric" value={details.benefit||""} onChange={e=>setDetails(x=>({...x,benefit:e.target.value.replace(/[^\d.-]/g,"")}))} placeholder="Opcional"/></label>
+                  <label>Data de nascimento<input inputMode="numeric" maxLength={10} value={details.birthDate||""} onChange={e=>setDetails(x=>({...x,birthDate:maskDate(e.target.value)}))} placeholder="DD/MM/AAAA"/></label>
                 </div>
               </section>
               <section className="tf-final-section">
                 <header><small>02</small><h3>Dados da operação</h3></header>
                 <div className="tf-form-grid">
-                  <SmartChoice label="Tipo de contrato" value={details.contractType||resolvedProduct(details)} options={contractTypeOptionsFor(details.agreement||"")} onChange={value=>setDetails(current=>({...current,contractType:value,product:value,operationType:""}))} helper="As opções acompanham o convênio selecionado."/>
-                  {/proteção auto/i.test(resolvedProduct(details))&&<label>Valor da tabela FIPE<CurrencyInput required inputMode="decimal" value={details.fipeValue||""} onChange={nextValue=>setDetails(x=>({...x,fipeValue:nextValue}))}  placeholder="R$ 0,00"/></label>}
-                  <FinalChoice label="Tipo de operação" field="operationType" details={details} setDetails={setDetails} options={operationOptionsFor(details.contractType||resolvedProduct(details))}/>
+                  <SmartChoice label="Tipo de contrato" required={false} value={details.contractType||resolvedProduct(details)} options={contractTypeOptionsFor(details.agreement||"")} onChange={value=>setDetails(current=>({...current,contractType:value,product:value,operationType:""}))} helper="As opções acompanham o convênio selecionado."/>
+                  {/proteção auto/i.test(resolvedProduct(details))&&<label>Valor da tabela FIPE<CurrencyInput inputMode="decimal" value={details.fipeValue||""} onChange={nextValue=>setDetails(x=>({...x,fipeValue:nextValue}))}  placeholder="R$ 0,00"/></label>}
+                  <FinalChoice label="Tipo de operação" field="operationType" details={details} setDetails={setDetails} options={operationOptionsFor(details.contractType||resolvedProduct(details))} required={false}/>
                   <SmartChoice label="Convênio" required={false} value={details.agreement||""} options={agreementOptions} onChange={value=>setDetails(current=>({...current,agreement:value,contractType:"",product:"",operationType:""}))} helper="Selecione o convênio ou cadastre um novo."/>
-                  <FinalChoice label="Banco / instituição" field="bank" details={details} setDetails={setDetails} options={finalBankOptions}/>
-                  <label>Valor do contrato<CurrencyInput required inputMode="decimal" value={details.value||""} onChange={nextValue=>setDetails(x=>({...x,value:nextValue}))}  placeholder="R$ 0,00"/></label>
+                  <FinalChoice label="Banco / instituição" field="bank" details={details} setDetails={setDetails} options={finalBankOptions} required={false}/>
+                  <label>Valor do contrato<CurrencyInput inputMode="decimal" value={details.value||""} onChange={nextValue=>setDetails(x=>({...x,value:nextValue}))}  placeholder="R$ 0,00"/></label>
                   <label>Valor da parcela<CurrencyInput inputMode="decimal" value={details.installment||""} onChange={nextValue=>setDetails(x=>({...x,installment:nextValue}))}  placeholder="R$ 0,00"/></label>
                   {/consórcio/i.test(resolvedProduct(details))&&<><label>Quantidade de cotas<input type="number" min="1" max="999" value={details.quotaQuantity||"1"} onChange={e=>setDetails(x=>({...x,quotaQuantity:e.target.value}))}/></label><label>Valor por cota<CurrencyInput inputMode="decimal" value={details.quotaUnitValue||""} onChange={nextValue=>setDetails(x=>({...x,quotaUnitValue:nextValue}))}  placeholder="R$ 0,00"/><output>Total das cotas: {brl(parseMoneyBr(details.quotaUnitValue)*Math.max(1,Number(details.quotaQuantity||1)))}</output></label></>}
                   <label>Prazo do contrato<input type="number" min="1" value={details.term||""} onChange={e=>setDetails(x=>({...x,term:e.target.value}))} placeholder="Ex.: 84"/></label>
                   <label>Dia do vencimento<input inputMode="numeric" maxLength={2} value={details.dueDay||""} onChange={e=>setDetails(x=>({...x,dueDay:e.target.value.replace(/\D/g,"").slice(0,2)}))} placeholder="Ex.: 10"/></label>
                   <SmartChoice label="Indicador / parceiro" required={false} value={details.productionIndicator||""} options={managedOptions("indicator",["Balcão TF","Indicação direta","Parceiro","Prospecção","WhatsApp",...members.map(member=>member.name)])} catalogKind="indicator" catalogOptions={catalogOptions} onCatalogChange={onCatalogChange} onChange={value=>setDetails(current=>({...current,productionIndicator:value}))} helper="Digite um nome e pressione Enter para cadastrar."/>
                   <SmartChoice label="Promotora" required={false} value={details.promoter==="__other"?details.promoterOther||"":details.promoter||""} options={managedOptions("promoter",finalPromoterOptions)} catalogKind="promoter" catalogOptions={catalogOptions} onCatalogChange={onCatalogChange} onChange={value=>setDetails(current=>({...current,promoter:value,promoterOther:""}))} helper="Digite um nome e pressione Enter para cadastrar."/>
-                  <SmartChoice label="Produção / origem / digitação" required value={details.producer||"Balcão TF"} options={managedOptions("production",[...productionSources,user.name,...members.map(member=>member.name)])} catalogKind="production" catalogOptions={catalogOptions} onCatalogChange={onCatalogChange} onChange={value=>setDetails(current=>({...current,producer:value,origin:hasGgCode(value)?"GG Veículos":current.origin||"TF"}))} helper="Código GG mantém o espelhamento do parceiro."/>
-                  <SmartChoice label="Parceiro / origem" required value={details.origin||"TF"} options={managedOptions("production",["TF","GG Veículos",...partnerNames])} catalogKind="production" catalogOptions={catalogOptions} onCatalogChange={onCatalogChange} onChange={value=>setDetails(current=>({...current,origin:value}))} helper="Não se aplica quando não houver parceiro."/>
+                  <SmartChoice label="Produção / origem / digitação" required={false} value={details.producer||"Balcão TF"} options={managedOptions("production",[...productionSources,user.name,...members.map(member=>member.name)])} catalogKind="production" catalogOptions={catalogOptions} onCatalogChange={onCatalogChange} onChange={value=>setDetails(current=>({...current,producer:value,origin:hasGgCode(value)?"GG Veículos":current.origin||"TF"}))} helper="Código GG mantém o espelhamento do parceiro."/>
+                  <SmartChoice label="Parceiro / origem" required={false} value={details.origin||"TF"} options={managedOptions("production",["TF","GG Veículos",...partnerNames])} catalogKind="production" catalogOptions={catalogOptions} onCatalogChange={onCatalogChange} onChange={value=>setDetails(current=>({...current,origin:value}))} helper="Não se aplica quando não houver parceiro."/>
                 </div>
               </section>
               <section className="tf-final-section">
@@ -2334,7 +2335,7 @@ function Kanban({
                   <label>Taxa de assessoria<CurrencyInput value={details.advisoryFee||""} onChange={value=>setDetails(x=>({...x,advisoryFee:value}))}/></label>
                   <label>Bonificação<CurrencyInput inputMode="decimal" value={details.bonus||""} onChange={nextValue=>setDetails(x=>({...x,bonus:nextValue}))}  placeholder="R$ 0,00"/></label>
                   <label>Comissão e demais receitas recebidas?<select value={details.commissionPaid||"Não"} onChange={e=>setDetails(x=>({...x,commissionPaid:e.target.value}))}><option>Não</option><option>Sim</option></select></label>
-                  <label>{details.commissionPaid==="Sim"?"Data do recebimento":"Agendar recebimento para cobrança"}<input required={Boolean(details.commissionRate||details.commissionCustomRate||details.adhesionFee||details.advisoryFee||details.bonus)} type="date" value={details.commissionDueDate||""} onChange={e=>setDetails(x=>({...x,commissionDueDate:e.target.value}))}/>{details.commissionPaid!=="Sim"&&<small className="tf-field-note">O sistema exibirá um lembrete no dia agendado.</small>}</label>
+                  <label>{details.commissionPaid==="Sim"?"Data do recebimento":"Agendar recebimento para cobrança"}<input type="date" value={details.commissionDueDate||""} onChange={e=>setDetails(x=>({...x,commissionDueDate:e.target.value}))}/>{details.commissionPaid!=="Sim"&&<small className="tf-field-note">O sistema exibirá um lembrete no dia agendado.</small>}</label>
                   {/consórcio/i.test(resolvedProduct(details))&&<label>Parcelas da comissão<input type="number" min="1" max="120" value={details.commissionInstallments||"1"} onChange={e=>setDetails(x=>({...x,commissionInstallments:e.target.value}))}/><output>Valor por parcela: {brl((operationValueForDetails(details)*(Number(String(details.commissionCustomRate||details.commissionRate||0).replace(",","."))/100))/Math.max(1,Number(details.commissionInstallments||1)))}</output></label>}
                   <label>POSSUI NOTA FISCAL?<select value={details.invoiceRequired||"Não"} onChange={e=>setDetails(x=>({...x,invoiceRequired:e.target.value}))}><option>Sim</option><option>Não</option></select><small className="tf-field-note">A nota será anexada posteriormente no módulo de Notas fiscais.</small></label>
                 </div>
@@ -2342,8 +2343,8 @@ function Kanban({
               <section className="tf-final-section tf-final-status">
                 <header><small>04</small><h3>Conclusão</h3></header>
                 <div className="tf-form-grid">
-                  <label>Situação do contrato<select required value={details.contractStatus||"Finalizado"} onChange={e=>setDetails(x=>({...x,contractStatus:e.target.value}))}><option>Finalizado</option><option>Concluído</option><option>Pendência</option></select></label>
-                  <label>Data da conclusão<input required={["Finalizado","Concluído"].includes(details.contractStatus||"Finalizado")} disabled={!(["Finalizado","Concluído"].includes(details.contractStatus||"Finalizado"))} type="date" value={details.paidDate||""} onChange={e=>setDetails(x=>({...x,paidDate:e.target.value}))}/></label>
+                  <label>Situação do contrato<select value={details.contractStatus||"Finalizado"} onChange={e=>setDetails(x=>({...x,contractStatus:e.target.value}))}><option>Finalizado</option><option>Concluído</option><option>Pendência</option></select></label>
+                  <label>Data da conclusão<input disabled={!(["Finalizado","Concluído"].includes(details.contractStatus||"Finalizado"))} type="date" value={details.paidDate||""} onChange={e=>setDetails(x=>({...x,paidDate:e.target.value}))}/></label>
                 </div>
               </section>
             </div>

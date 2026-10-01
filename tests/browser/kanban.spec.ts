@@ -47,6 +47,25 @@ test('optional client data stays separate and financial edits preserve the origi
   }finally{await db.close();}
 });
 
+test('final registration requires only name and CPF for every product',async({request})=>{
+  await login(request);
+  const products=['Proteção Auto','Financiamento','Consórcio','Crédito com garantia'];
+  const db=createDatabase();
+  try{
+    for(const [index,product] of products.entries()){
+      const name=`Cadastro mínimo ${product}`;
+      const cpf=`6600000000${index+1}`;
+      const deal=await create(request,{name,cpf,product});
+      const moved=await request.patch('/api/deals',{data:{id:deal.id,stage:'finalizado'}});
+      expect(moved.ok(),await moved.text()).toBeTruthy();
+      const finalized=await request.patch('/api/deals',{data:{id:deal.id,stage:'finalizado',details:{name,cpf}}});
+      expect(finalized.ok(),await finalized.text()).toBeTruthy();
+      expect(await finalized.json()).toMatchObject({stage:'finalizado',status:'concluido',needsCompletion:false});
+      expect(await db.prepare('SELECT value_cents,status FROM operations WHERE id=?').bind(deal.operationId).first()).toMatchObject({value_cents:0,status:'Finalizado'});
+    }
+  }finally{await db.close();}
+});
+
 test('a new service with the same CPF keeps a separate client and never replaces an older operation',async({request})=>{
   await login(request);
   const old=await create(request,{name:'Cliente com dois serviços',cpf:'77888999000',product:'Financiamento',financedValue:1000});
