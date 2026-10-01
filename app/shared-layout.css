@@ -1000,47 +1000,105 @@
 /* V113 · uma cor consistente para os cartões de cada etapa do atendimento. */
 .tf-app.theme-mono .tf-deal-card.deal-stage-0 {
   --deal-accent:#78bce8;
+  --deal-rgb:72,158,214;
   border-color:rgba(86,157,205,.58) !important;
   border-left:3px solid var(--deal-accent) !important;
-  background:linear-gradient(138deg,rgba(30,79,113,.88),rgba(13,29,40,.84) 82%) !important;
-  box-shadow:inset 0 1px rgba(180,224,250,.12),0 8px 20px rgba(0,0,0,.25) !important;
+  background:linear-gradient(138deg,rgba(35,101,143,.47),rgba(8,17,23,.58) 64%,rgba(17,45,62,.42)) !important;
+  box-shadow:inset 0 1px rgba(180,224,250,.15),0 10px 24px rgba(0,0,0,.24),-5px 0 18px rgba(72,158,214,.08) !important;
 }
 .tf-app.theme-mono .tf-deal-card.deal-stage-1 {
   --deal-accent:#e0ba6c;
+  --deal-rgb:215,168,82;
   border-color:rgba(198,151,70,.58) !important;
   border-left:3px solid var(--deal-accent) !important;
-  background:linear-gradient(138deg,rgba(96,72,31,.88),rgba(36,29,17,.86) 82%) !important;
-  box-shadow:inset 0 1px rgba(246,220,158,.11),0 8px 20px rgba(0,0,0,.25) !important;
+  background:linear-gradient(138deg,rgba(111,82,31,.46),rgba(21,17,10,.60) 64%,rgba(54,40,18,.40)) !important;
+  box-shadow:inset 0 1px rgba(246,220,158,.14),0 10px 24px rgba(0,0,0,.24),-5px 0 18px rgba(215,168,82,.07) !important;
 }
 .tf-app.theme-mono .tf-deal-card.deal-stage-2 {
   --deal-accent:#e18c79;
+  --deal-rgb:213,115,94;
   border-color:rgba(203,104,82,.58) !important;
   border-left:3px solid var(--deal-accent) !important;
-  background:linear-gradient(138deg,rgba(104,50,42,.88),rgba(41,23,21,.86) 82%) !important;
-  box-shadow:inset 0 1px rgba(247,184,165,.11),0 8px 20px rgba(0,0,0,.25) !important;
+  background:linear-gradient(138deg,rgba(112,49,42,.46),rgba(24,13,12,.60) 64%,rgba(57,27,24,.40)) !important;
+  box-shadow:inset 0 1px rgba(247,184,165,.14),0 10px 24px rgba(0,0,0,.24),-5px 0 18px rgba(213,115,94,.07) !important;
 }
 .tf-app.theme-mono .tf-deal-card.deal-stage-3 {
   --deal-accent:#c29be0;
+  --deal-rgb:165,117,202;
   border-color:rgba(151,104,187,.60) !important;
   border-left:3px solid var(--deal-accent) !important;
-  background:linear-gradient(138deg,rgba(75,48,99,.90),rgba(29,21,39,.86) 82%) !important;
-  box-shadow:inset 0 1px rgba(220,188,245,.11),0 8px 20px rgba(0,0,0,.25) !important;
+  background:linear-gradient(138deg,rgba(82,49,108,.48),rgba(18,12,25,.60) 64%,rgba(45,29,59,.42)) !important;
+  box-shadow:inset 0 1px rgba(220,188,245,.14),0 10px 24px rgba(0,0,0,.24),-5px 0 18px rgba(165,117,202,.08) !important;
 }
 .tf-app.theme-mono .tf-deal-card.deal-stage-4 {
   --deal-accent:#60a982;
+  --deal-rgb:72,177,112;
   border-color:#477763 !important;
   border-left:3px solid var(--deal-accent) !important;
-  background:linear-gradient(135deg,#234438,#14261f 88%) !important;
-  box-shadow:0 8px 22px rgba(0,0,0,.30) !important;
+  background:linear-gradient(138deg,rgba(29,95,57,.54),rgba(8,24,16,.62) 64%,rgba(18,53,33,.44)) !important;
+  box-shadow:inset 0 1px rgba(172,239,197,.13),0 10px 24px rgba(0,0,0,.27),-5px 0 18px rgba(72,177,112,.08) !important;
+}
+.tf-app.theme-mono .tf-deal-card[class*="deal-stage-"] {
+  isolation:isolate;
+  overflow:visible;
+  border-radius:11px;
+  backdrop-filter:blur(15px) saturate(1.2) !important;
+  -webkit-backdrop-filter:blur(15px) saturate(1.2) !important;
+}
+.tf-app.theme-mono .tf-deal-card[class*="deal-stage-"]::before {
+  content:"";
+  position:absolute;
+  inset:0;
+  border-radius:inherit;
+  background:
+    radial-gradient(circle at 92% -8%,rgba(var(--deal-rgb),.23),transparent 40%),
+    linear-gradient(105deg,rgba(var(--deal-rgb),.07),transparent 45%);
+  pointer-events:none;
+}
+.tf-app.theme-mono .tf-deal-card[class*="deal-stage-"] .tf-card-heading {
+  display:grid !important;
+  grid-template-columns:minmax(0,1fr) !important;
+  justify-items:start;
+  gap:6px;
+  padding:0 23px 2px 0 !important;
+}
+.tf-app.theme-mono .tf-deal-card[class*="deal-stage-"] .tf-card-heading>strong {
+  width:100%;
+  overflow:visible;
+  color:#fff !important;
+  font-size:10px !important;
+  letter-spacing:.015em;
+  text-overflow:clip;
+  white-space:normal;
 }
 .tf-app.theme-mono .tf-deal-card[class*="deal-stage-"] .tf-card-heading>.tf-card-product {
   border-color:color-mix(in srgb,var(--deal-accent) 38%,transparent) !important;
-  background:color-mix(in srgb,var(--deal-accent) 10%,rgba(4,8,6,.28)) !important;
+  background:color-mix(in srgb,var(--deal-accent) 12%,rgba(4,8,6,.30)) !important;
   color:color-mix(in srgb,var(--deal-accent) 88%,white) !important;
+  box-shadow:inset 0 1px rgba(255,255,255,.07);
 }
 .tf-app.theme-mono .tf-deal-card[class*="deal-stage-"] .tf-card-actions button {
   border-color:color-mix(in srgb,var(--deal-accent) 40%,rgba(255,255,255,.08));
+  background:color-mix(in srgb,var(--deal-accent) 8%,rgba(5,8,6,.28));
   color:color-mix(in srgb,var(--deal-accent) 88%,white);
+}
+.tf-app.theme-mono .tf-deal-card[class*="deal-stage-"] .tf-card-actions button:hover {
+  border-color:color-mix(in srgb,var(--deal-accent) 68%,rgba(255,255,255,.14));
+  background:color-mix(in srgb,var(--deal-accent) 17%,rgba(5,8,6,.34));
+}
+.tf-app.theme-mono .tf-kanban>article.stage-0 { --stage-accent:#78bce8; }
+.tf-app.theme-mono .tf-kanban>article.stage-1 { --stage-accent:#e0ba6c; }
+.tf-app.theme-mono .tf-kanban>article.stage-2 { --stage-accent:#e18c79; }
+.tf-app.theme-mono .tf-kanban>article.stage-3 { --stage-accent:#c29be0; }
+.tf-app.theme-mono .tf-kanban>article.stage-4 { --stage-accent:#75d49b; }
+.tf-app.theme-mono .tf-kanban>article[class*="stage-"]>header b {
+  color:color-mix(in srgb,var(--stage-accent) 78%,white);
+  text-shadow:0 0 14px color-mix(in srgb,var(--stage-accent) 24%,transparent);
+}
+.tf-app.theme-mono .tf-kanban>article[class*="stage-"]>header em {
+  border:1px solid color-mix(in srgb,var(--stage-accent) 26%,transparent);
+  background:color-mix(in srgb,var(--stage-accent) 10%,rgba(8,11,9,.22));
+  color:color-mix(in srgb,var(--stage-accent) 72%,white);
 }
 .tf-app.theme-mono .tf-deal-card.deal-stage-4.needs-completion {
   border-color:#53b67d !important;
