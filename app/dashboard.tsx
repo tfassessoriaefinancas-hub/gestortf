@@ -161,6 +161,13 @@ type DashboardUser={name:string;email:string;role:"admin"|"employee";memberId:nu
 type CatalogOption={id:number;kind:"indicator"|"promoter"|"production";label:string};
 type PostSaleTask={id:number;operationId:number;clientId:number;status:"pendente"|"concluido";completedAt:number|null;clientName:string;phone:string;product:string;bank:string;value:number;installment:number;term:number;completionDate:string;partner:string;postSaleNotes?:string;postSale?:string};
 type ActivityItem={id:number;type:"agendamento"|"compromisso"|"tarefa"|"lembrete";title:string;clientName:string;notes:string;dueAt:number|null;completedAt:number|null};
+function CloseButton({label="Fechar",className="",...props}:{label?:string}&React.ButtonHTMLAttributes<HTMLButtonElement>){
+  return <button {...props} type="button" className={`tf-close-control${className?` ${className}`:""}`} aria-label={label}><X aria-hidden="true"/></button>;
+}
+const localDateKey=(value:number|Date)=>{
+  const date=value instanceof Date?value:new Date(value);
+  return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,"0")}-${String(date.getDate()).padStart(2,"0")}`;
+};
 const cpfKey = (cpf?: string) => String(cpf || "").replace(/\D/g, "");
 const formatCpf = (cpf?: string) => {
   const d = cpfKey(cpf);
@@ -594,12 +601,14 @@ export default function Dashboard({
     commission = currentMonthOps.reduce((s, o) => s + o.commission, 0);
   const todayDate=(()=>{const date=new Date();return new Date(date.getTime()-date.getTimezoneOffset()*60000).toISOString().slice(0,10)})();
   const todayEnd=(()=>{const date=new Date();date.setHours(23,59,59,999);return date.getTime()})();
+  const todayActivities=useMemo(()=>activities.filter(item=>!item.completedAt&&item.dueAt&&localDateKey(item.dueAt)===todayDate),[activities,todayDate]);
   const dueActivities=useMemo(()=>activities.filter(item=>!item.completedAt&&item.dueAt&&item.dueAt<=todayEnd),[activities,todayEnd]);
+  const dueActivitySignature=useMemo(()=>dueActivities.map(item=>item.id).sort((a,b)=>a-b).join(","),[dueActivities]);
   const dueReceivables=useMemo(()=>receivables.filter(item=>item.dueDate&&item.dueDate<=todayDate),[receivables,todayDate]);
   const displayedReceivables=dueReminderRequired?dueReceivables:receivables;
   useEffect(()=>{if(!locked&&dueReceivables.length&&localStorage.getItem(`tf_receivables_seen_${todayDate}`)!=="1"){setDueReminderRequired(true);setShowReceivables(true)}},[locked,dueReceivables.length,todayDate]);
   useEffect(()=>{if(dueReminderRequired&&!dueReceivables.length){setDueReminderRequired(false);setShowReceivables(false)}},[dueReminderRequired,dueReceivables.length]);
-  useEffect(()=>{if(locked||!dueActivities.length||localStorage.getItem(`tf_activities_seen_${todayDate}`)==="1")return;const timer=window.setTimeout(()=>setShowActivityReminder(true),0);return()=>window.clearTimeout(timer)},[locked,dueActivities.length,todayDate]);
+  useEffect(()=>{if(locked||!dueActivities.length||localStorage.getItem(`tf_activities_seen_${todayDate}`)===dueActivitySignature)return;const timer=window.setTimeout(()=>setShowActivityReminder(true),0);return()=>window.clearTimeout(timer)},[locked,dueActivities.length,dueActivitySignature,todayDate]);
   const found = useMemo(
     () =>
       allClients.filter(
@@ -651,14 +660,7 @@ export default function Dashboard({
             />
             <span>ASSESSORIA E FINANÇAS</span>
           </button>
-          <button
-            type="button"
-            className="tf-menu-close"
-            aria-label="Fechar menu"
-            onClick={() => setMobileMenu(false)}
-          >
-            <X />
-          </button>
+          <CloseButton className="tf-menu-close" label="Fechar menu" onClick={() => setMobileMenu(false)}/>
         </div>
         <nav>
           {menu.filter(([id])=>can(id)).map(([id, MenuIcon, label]) => (
@@ -757,6 +759,7 @@ export default function Dashboard({
               monthPeriod={currentPeriod}
               activeDeals={deals.filter(deal=>deal.stage!=="finalizado")}
               activityCount={dueActivities.length}
+              todayActivityCount={todayActivities.length}
             />
           )}{" "}
           {view === "clientes" && (
@@ -787,7 +790,7 @@ export default function Dashboard({
       </section>
       {settingsOpen && <SettingsPanel close={() => setSettingsOpen(false)} serverAuthenticated={user.serverAuthenticated} />}{" "}
       {showReceivables&&<div className={`tf-modal-back${dueReminderRequired?" tf-receivable-blocking":""}`}><section className="tf-modal tf-receivables-modal">{!dueReminderRequired&&<button type="button" className="tf-modal-close" onClick={()=>setShowReceivables(false)}>×</button>}<small>FINANCEIRO</small><h2>{dueReminderRequired?"Você tem comissões a receber":"Comissões a receber"}</h2><p>{dueReminderRequired?"Confira quem deve pagar hoje ou possui pagamento atrasado.":"Valores previstos de comissões, taxas de adesão e assessorias."}</p><div>{displayedReceivables.map(item=><article key={item.id}><i><BadgeDollarSign/></i><span><b>{item.name}</b><small>{item.product} · {item.type}</small></span><strong>{brl(item.value)}</strong><time className={item.dueDate&&item.dueDate<todayDate?"overdue":""}>{item.dueDate?formatDateBr(item.dueDate):"Sem data"}</time><button type="button" onClick={()=>markCommissionReceived(item.id)}>Marcar recebido</button></article>)}</div>{dueReminderRequired&&<button type="button" className="tf-primary tf-receivable-ack" onClick={()=>{localStorage.setItem(`tf_receivables_seen_${todayDate}`,"1");setDueReminderRequired(false);setShowReceivables(false)}}>Visualizei os recebimentos</button>}</section></div>}{" "}
-      {showActivityReminder&&dueActivities.length>0&&<div className="tf-modal-back tf-activity-reminder-back"><section className="tf-modal tf-activity-reminder"><small>COMPROMISSOS E NEGÓCIOS</small><h2>Você tem {dueActivities.length===1?'uma atividade':`${dueActivities.length} atividades`} para acompanhar</h2><p>Confira os compromissos de hoje e o que estiver atrasado.</p><div>{dueActivities.slice(0,5).map(item=><article key={item.id}><CalendarClock/><span><b>{item.title}</b><small>{item.clientName||item.type} · {item.dueAt?new Date(item.dueAt).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):''}</small></span></article>)}</div><footer><button type="button" className="tf-secondary" onClick={()=>{localStorage.setItem(`tf_activities_seen_${todayDate}`,"1");setShowActivityReminder(false)}}>Visualizei</button><button type="button" className="tf-primary" onClick={()=>{localStorage.setItem(`tf_activities_seen_${todayDate}`,"1");setShowActivityReminder(false);setView('compromissos')}}>Abrir atividades</button></footer></section></div>}{" "}
+      {showActivityReminder&&dueActivities.length>0&&<div className="tf-modal-back tf-activity-reminder-back"><section className="tf-modal tf-activity-reminder"><small>COMPROMISSOS E NEGÓCIOS</small><h2>Você tem {dueActivities.length===1?'uma atividade':`${dueActivities.length} atividades`} para acompanhar</h2><p>Confira os compromissos de hoje e o que estiver atrasado.</p><div>{dueActivities.slice(0,5).map(item=><article key={item.id}><CalendarClock/><span><b>{item.title}</b><small>{item.clientName||item.type} · {item.dueAt?new Date(item.dueAt).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):''}</small></span></article>)}</div><footer><button type="button" className="tf-secondary" onClick={()=>{localStorage.setItem(`tf_activities_seen_${todayDate}`,dueActivitySignature);setShowActivityReminder(false)}}>Visualizei</button><button type="button" className="tf-primary" onClick={()=>{localStorage.setItem(`tf_activities_seen_${todayDate}`,dueActivitySignature);setShowActivityReminder(false);setView('compromissos')}}>Abrir atividades</button></footer></section></div>}{" "}
       {selected && <ClientSheet client={allClients.find(client=>client.id===selected.id)||selected} operations={allOps} close={() => setSelected(null)} refresh={()=>{setSelected(null);refreshData()}} />}{" "}
       {notice && <div className="tf-toast">✓ {notice}</div>}
     </main>
@@ -1108,6 +1111,7 @@ function Home({
   monthPeriod,
   activeDeals,
   activityCount,
+  todayActivityCount,
 }: {
   go: (v: View) => void;
   openMonth: (period:string) => void;
@@ -1117,6 +1121,7 @@ function Home({
   monthPeriod: string;
   activeDeals: Deal[];
   activityCount: number;
+  todayActivityCount: number;
 }) {
   const [selectedDistribution, setSelectedDistribution] = useState<string | null>(null);
   const [hoveredDistribution, setHoveredDistribution] = useState<string | null>(null);
@@ -1228,6 +1233,7 @@ function Home({
             Atendimentos, produção e resultados organizados em uma única visão.
           </p>
         </div>
+        {todayActivityCount>0&&<button type="button" className="tf-home-activity-alert" onClick={()=>go("compromissos")} aria-label={`Abrir ${todayActivityCount} ${todayActivityCount===1?"compromisso":"compromissos"} de hoje`}><i><CalendarClock/><span/></i><span><small>ATENÇÃO PARA HOJE</small><strong>Você tem {todayActivityCount} {todayActivityCount===1?"compromisso":"compromissos"} hoje</strong><em>Abra a agenda para conferir horários e detalhes.</em></span><ChevronRight/></button>}
       </section>
       <section className="tf-kpi-strip">
         <article className="tf-kpi-navigate">
