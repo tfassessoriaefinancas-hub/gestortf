@@ -35,7 +35,7 @@ export async function GET(){
 export async function POST(request:Request){
  const user=await getTfAccess();if(!user||!hasTfPermission(user,'atendimento'))return json({error:'Não autorizado'},401);
  const body=await request.json() as Record<string,string>,cpf=cleanCpf(String(body.cpf||''));
- const name=String(body.name||'').trim()||'Cliente sem nome',product=String(body.product||'').trim()||'Serviço não informado';
+ const name=(String(body.name||'').trim()||'Cliente sem nome').toLocaleUpperCase('pt-BR'),product=String(body.product||'').trim()||'Serviço não informado';
  if(cpf&&cpf.length!==11)return json({error:'Confira o CPF ou deixe o campo em branco.'},400);
  if(body.guaranteeType&&!['Veículo','Imobiliário'].includes(body.guaranteeType))return json({error:'Tipo de garantia inválido.'},400);
  const assignedUserId=await resolveAssignee(user,body.assignedUserId);
@@ -73,6 +73,7 @@ export async function PATCH(request:Request){
   const editableFields=['name','cpf','birthDate','phone','product','operationType','guaranteeType','vehiclePlate','vehicleValue','downPayment','financedValue','desiredCredit','loanValue'];
   const patch:Record<string,unknown>=Object.fromEntries(Object.entries(d).filter(([key])=>editableFields.includes(key)));
   if('name' in d&&!String(d.name||'').trim())return json({error:'Informe o nome do cliente.'},400);
+  if('name' in d)patch.name=String(d.name).trim().toLocaleUpperCase('pt-BR');
   if('cpf' in d){patch.cpf=cleanCpf(String(d.cpf||''));if(patch.cpf&&String(patch.cpf).length!==11)return json({error:'Confira o CPF ou deixe o campo em branco.'},400);}
   if('phone' in d)patch.phone=phoneBr(d.phone);
   if('birthDate' in d)patch.birthDate=isoDate(d.birthDate);
@@ -140,6 +141,26 @@ export async function PATCH(request:Request){
   await history(user.ownerKey,id,current.operation_id,'retorno_concluido','Retorno concluído.',base,payload);
   return json({ok:true,deal:{...payload,id,stage:current.stage,status:current.status,needsCompletion:Boolean(current.needs_completion),updatedAt:now}});
  }
+ if(id&&body.action==='additional_operation'){
+  const current=await ownedDeal(user,id);
+  if(!current?.client_id)return json({error:'Finalize o cadastro principal antes de adicionar outra operação.'},409);
+  const d=(body.details||{}) as Record<string,string>,now=Date.now(),today=new Date().toISOString().slice(0,10);
+  const product=String(d.contractType||d.product||'Operação adicional').trim()||'Operação adicional';
+  const operationType=String(d.operationType||product).trim()||product,rawOrigin=String(d.origin||'TF').trim()||'TF',origin=rawOrigin==='Sem parceiro'?'TF':rawOrigin;
+  const operationStatus=/pago|finalizado|concluído/i.test(String(d.contractStatus||''))?'Finalizado':String(d.contractStatus||'Finalizado'),paidAt=['Finalizado','Concluído'].includes(operationStatus)?(isoDate(d.paidDate)||today):null;
+  const selectedRate=Number(String(d.commissionRate||'0').replace(',','.')),customRate=Number(String(d.commissionCustomRate||'0').replace(',','.')),commissionRate=Number.isFinite(customRate)&&customRate>0?customRate:selectedRate;
+  try{
+   const operation=await env.DB.transaction(async client=>{
+    const inserted=(await client.query("INSERT INTO operations (owner_id,assigned_user_id,client_id,bank,promoter,original_product,category,producer,origin,value_cents,installment_cents,term,operation_date,paid_at,completed_at,status,notes,created_at,updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,NULL,'TF',0,0,NULL,$8,$9,$10,$11,'{}',$12,$12) RETURNING id",[user.ownerKey,current.assigned_user_id||null,current.client_id,d.bank||null,d.promoter||null,product,operationType,isoDate(d.operationDate)||today,paidAt,today,operationStatus,now])).rows[0];
+    const updated=await updateOperationRecord(env.DB,user,Number(inserted.id),{...d,product,operationType,origin,commissionRate,commissionPaid:d.commissionPaid,revenueDueDate:isoDate(d.commissionDueDate)||paidAt||isoDate(d.operationDate)||today,status:operationStatus,paidAt,completedAt:today},client);
+    await client.query("INSERT INTO post_sale_tasks (owner_id,operation_id,client_id,status,created_at,updated_at) VALUES ($1,$2,$3,'pendente',$4,$4) ON CONFLICT(operation_id) DO NOTHING",[user.ownerKey,inserted.id,current.client_id,now]);
+    await client.query("INSERT INTO deal_history (owner_id,deal_id,operation_id,event_type,description,after_json,source,created_at) VALUES ($1,$2,$3,'operacao_adicional',$4,$5,'Gestão TF',$6)",[user.ownerKey,id,inserted.id,`Operação adicional cadastrada: ${product}.`,JSON.stringify({product,operationType}),now]);
+    return updated;
+   });
+   const pending=await env.DB.prepare("SELECT id,value_cents,expected_at,status,notes FROM commissions WHERE operation_id=? AND deleted_at IS NULL AND value_cents>0 AND status NOT IN ('recebida','paga','historica','cancelada')").bind(operation.dbId).all<{id:number;value_cents:number;expected_at:string|null;status:string;notes:string|null}>();
+   return json({ok:true,operation,receivables:pending.results.map(item=>({id:item.id,operationId:operation.dbId,name:operation.clientName,value:Number(item.value_cents)/100,dueDate:item.expected_at||'',status:item.status,type:item.notes||'Comissão',product:operation.product}))},201);
+  }catch(error){if(error instanceof RecordUpdateError)return json({error:error.message},error.status);throw error;}
+ }
  const allowed=['atendimento','analise','indecisao','assinatura','finalizado','cancelado'];
  if(!id||!allowed.includes(stage))return json({error:'Etapa inválida.'},400);
  const current=await ownedDeal(user,id);
@@ -162,9 +183,10 @@ export async function PATCH(request:Request){
    return json({ok:true,...result});
   }catch(error){if(error instanceof RecordUpdateError)return json({error:error.message},error.status);throw error;}
  }
- const d=body.details as Record<string,string>,name=String(d.name||base.name||'').trim(),cpf=cleanCpf(String(d.cpf||base.cpf||'')),benefit=String(d.benefit||'').trim();
+ const d=body.details as Record<string,string>,name=String(d.name||base.name||'').trim().toLocaleUpperCase('pt-BR'),cpf=cleanCpf(String(d.cpf||base.cpf||'')),benefit=String(d.benefit||'').trim();
  if(!name)return json({error:'Informe o nome do cliente.'},400);
  if(cpf.length!==11)return json({error:'Confira o CPF antes de concluir.'},400);
+ const finalizedProduct=String(d.contractType||d.product||base.product||'Operação').trim()||'Operação',finalizedOperationType=String(d.operationType||base.operationType||finalizedProduct).trim()||finalizedProduct;
  const operationStatus=/pago|finalizado/i.test(String(d.contractStatus||''))?'Finalizado':String(d.contractStatus||'Finalizado'),paidAt=['Finalizado','Concluído'].includes(operationStatus)?(isoDate(d.paidDate)||new Date().toISOString().slice(0,10)):null,rawOrigin=String(d.origin||base.origin||'TF').trim()||'TF',operationOrigin=rawOrigin==='Sem parceiro'?'TF':rawOrigin;
  const selectedCommissionRate=Number(String(d.commissionRate||'0').replace(',','.')),customCommissionRate=Number(String(d.commissionCustomRate||'0').replace(',','.')),commissionRate=Number.isFinite(customCommissionRate)&&customCommissionRate>0?customCommissionRate:selectedCommissionRate,adhesionFeeCents=moneyBr(d.adhesionFee),advisoryFeeCents=moneyBr(d.advisoryFee),bonusCents=moneyBr(d.bonus);
  await env.DB.prepare("UPDATE deals SET status='aguardando_cadastro',updated_at=? WHERE id=? AND status='processando_cadastro' AND updated_at<?").bind(now,id,now-10*60*1000).run();
@@ -184,11 +206,11 @@ export async function PATCH(request:Request){
  const operationNotes=JSON.stringify({agreement:d.agreement||'',contractType:d.contractType||d.product||'',dueDay:d.dueDay||'',productionIndicator:d.productionIndicator||'',adhesionFeeCents,advisoryFeeCents,bonusCents,commissionRate,commissionCustomRate:customCommissionRate>0?customCommissionRate:0,commissionInstallments:Number(d.commissionInstallments||1),commissionPaid:d.commissionPaid==='Sim',invoiceRequired:d.invoiceRequired==='Sim',quotaQuantity:Number(d.quotaQuantity||0),quotaUnitValueCents:moneyBr(d.quotaUnitValue),fipeValueCents:moneyBr(d.fipeValue),postSale:d.postSale,postSaleNotes:d.postSaleNotes||''});
  let operationId=Number(current.operation_id||0);
  if(!operationId){
-  const op=await env.DB.prepare("INSERT INTO operations (owner_id,assigned_user_id,client_id,partner_id,bank,promoter,original_product,category,producer,origin,benefit_number,value_cents,installment_cents,term,operation_date,paid_at,completed_at,status,notes,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) RETURNING id").bind(user.ownerKey,current.assigned_user_id||null,client.id,partnerId,d.bank,d.promoter||null,d.product||base.product,d.operationType,d.producer,operationOrigin,benefit||null,moneyBr(d.value),moneyBr(d.installment),Number(d.term||0),isoDate(d.operationDate)||new Date().toISOString().slice(0,10),paidAt,new Date().toISOString(),operationStatus,operationNotes,now,now).first<{id:number}>();
+  const op=await env.DB.prepare("INSERT INTO operations (owner_id,assigned_user_id,client_id,partner_id,bank,promoter,original_product,category,producer,origin,benefit_number,value_cents,installment_cents,term,operation_date,paid_at,completed_at,status,notes,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) RETURNING id").bind(user.ownerKey,current.assigned_user_id||null,client.id,partnerId,d.bank,d.promoter||null,finalizedProduct,finalizedOperationType,d.producer,operationOrigin,benefit||null,moneyBr(d.value),moneyBr(d.installment),Number(d.term||0),isoDate(d.operationDate)||new Date().toISOString().slice(0,10),paidAt,new Date().toISOString(),operationStatus,operationNotes,now,now).first<{id:number}>();
   if(!op)throw new Error('Não foi possível concluir a operação.');operationId=op.id;
   await env.DB.prepare("UPDATE deals SET client_id=?,operation_id=?,updated_at=? WHERE id=? AND status='processando_cadastro'").bind(client.id,operationId,now,id).run();
  }
- const updatedOperation=await updateOperationRecord(env.DB,user,operationId,{...d,name,cpf,birthDate:d.birthDate||base.birthDate,phone:phoneBr(d.phone||base.phone),
+ const updatedOperation=await updateOperationRecord(env.DB,user,operationId,{...d,name,cpf,product:finalizedProduct,operationType:finalizedOperationType,operationDate:isoDate(d.operationDate)||new Date().toISOString().slice(0,10),birthDate:d.birthDate||base.birthDate,phone:phoneBr(d.phone||base.phone),
   origin:operationOrigin,commissionRate,commissionPaid:d.commissionPaid,revenueDueDate:isoDate(d.commissionDueDate)||paidAt||isoDate(d.operationDate),
   status:operationStatus,paidAt,completedAt:new Date().toISOString()});
  const pendingRows=await env.DB.prepare("SELECT id,value_cents,expected_at,status,notes FROM commissions WHERE operation_id=? AND deleted_at IS NULL AND value_cents>0 AND status NOT IN ('recebida','paga','historica','cancelada') AND (rate_bps IS NOT NULL OR notes IN ('Taxa de adesão','Taxa de assessoria','Bonificação'))").bind(operationId).all<{id:number;value_cents:number;expected_at:string|null;status:string;notes:string|null}>();
@@ -197,7 +219,7 @@ export async function PATCH(request:Request){
   await env.DB.prepare('UPDATE invoices SET deleted_at=?,updated_at=? WHERE owner_id IN (?,?) AND number=? AND deleted_at IS NULL').bind(now,now,user.ownerKeys[0],user.ownerKeys[1],String(base.invoiceNumber)).run();
  }
  await ensurePostSale(user,operationId,client.id);
- const payload={...base,...d,origin:operationOrigin,cpf:cpf||base.cpf||'',benefit};
+ const payload={...base,...d,product:finalizedProduct,operationType:finalizedOperationType,origin:operationOrigin,cpf:cpf||base.cpf||'',benefit};
  await env.DB.prepare("UPDATE deals SET client_id=?,operation_id=?,title=?,payload_json=?,stage='finalizado',status='concluido',needs_completion=0,updated_at=? WHERE id=?").bind(client.id,operationId,JSON.stringify(payload),JSON.stringify(payload),now,id).run();
  await history(user.ownerKey,id,operationId,'cadastro_finalizado','Cadastro final concluído. Produção e relatórios atualizados.',{status:current.status,needsCompletion:Boolean(current.needs_completion)},{stage:'finalizado',status:'concluido',needsCompletion:false});
  return json({ok:true,stage:'finalizado',status:'concluido',needsCompletion:false,clientId:client.id,operationId,receivables});

@@ -7,7 +7,7 @@ export const revisionKey = (resource: CrmResource) => `crm_revision:${resource}`
 export function resourcesForView(view: string, role: string, permissions: readonly string[]): CrmResource[] {
   const allowed = (permission: string) => role === 'admin' || permissions.includes(permission);
   const resources = new Set<CrmResource>();
-  if (['clientes', 'producao', 'relatorios', 'comissoes', 'financeiro', 'parceiros'].some(allowed)) resources.add('crm');
+  if (['clientes', 'producao', 'relatorios', 'comissoes', 'financeiro', 'parceiros', 'notas'].some(allowed)) resources.add('crm');
   if (['inicio', 'atendimento'].includes(view) && allowed('atendimento')) resources.add('deals');
   if (['atendimento', 'parceiros', 'usuarios'].includes(view) && allowed('parceiros')) resources.add('partners');
   if (['atendimento', 'usuarios'].includes(view) && role === 'admin') resources.add('team');

@@ -24,7 +24,7 @@ async function updateClient(client: DatabaseClient, id: number, ownerKeys: strin
   const result = await client.query('SELECT * FROM clients WHERE id=$1 AND owner_id=ANY($2::text[]) AND deleted_at IS NULL FOR UPDATE', [id, ownerKeys]);
   const row = result.rows[0];
   if (!row) throw new RecordUpdateError('Cliente não encontrado.', 404);
-  const name = has(patch, 'name') ? String(patch.name || '').trim() : row.name;
+  const name = (has(patch, 'name') ? String(patch.name || '').trim() : row.name).toLocaleUpperCase('pt-BR');
   if (!name) throw new RecordUpdateError('Informe o nome do cliente.');
   let cpf = row.cpf, benefit = row.benefit_number;
   if (has(patch, 'document')) { const d = digits(patch.document); cpf = d.length === 11 ? d : null; benefit = d.length === 11 ? row.benefit_number : d || null; }

@@ -4,7 +4,7 @@ import { createPortal } from "react-dom";
 import { productionSources, hasGgCode } from "../lib/production-source";
 import { parseMoney as parseMoneyBr, formatMoney as brl, formatMoneyInput, moneyToStorage } from "../lib/money";
 import { partnerAdditionalFinance, partnerFinance } from "../lib/operation-finance";
-import { bankCatalog, bankInfo, bankNames } from "../lib/banks";
+import { bankCatalog, bankInfo } from "../lib/banks";
 import { CRM_CHANGED, CRM_STORAGE_KEY, notifyCrmChanged } from "../lib/crm-events";
 import { startActiveRefresh } from "../lib/active-refresh";
 import { resourcesForView, type CrmResource, type CrmRevisions } from "../lib/crm-resources";
@@ -416,12 +416,13 @@ const operationValueForDetails=(details:Record<string,string>)=>{
   if(/consórcio/i.test(product))return parseMoneyBr(details.value)||parseMoneyBr(details.quotaUnitValue)*Math.max(1,Number(details.quotaQuantity||1));
   return parseMoneyBr(details.value);
 };
-const finalBankOptions = [
-  ...bankNames,
+const additionalBankNames = [
   "Banco do Brasil","Banco da Amazônia","Banco do Nordeste","Banestes","Santander","Banrisul","Banese","BRB","Banco Inter","Caixa Econômica Federal","Agibank","BTG Pactual","Banco Original","Bradesco","Nubank","PagBank","Banco BMG","Mercado Pago","QI Sociedade de Crédito","Banco Bari","C6 Bank","Itaú","PicPay","Banco Mercantil","Banco Safra","Omni Banco","Banco PAN","Banco Sofisa","Banco BV","Banco Daycoval","Citibank","Sicredi","Sicoob","Banco Ágil","Creditas","Facta Financeira","Lotus","Volkswagen Financial Services",
   "Allianz","Azul Seguros","Bradesco Seguros","HDI Seguros","Itaú Seguros","MAPFRE","Mitsui Sumitomo","Porto Seguro","Sompo Seguros","Suhai Seguradora","Tokio Marine","Zurich","Evogard",
   "Ademicon","Âncora Consórcios","BB Consórcios","Bradesco Consórcios","Caixa Consórcio","Canopus","Embracon","Honda Consórcios","Itaú Consórcios","Magalu Consórcios","MAPFRE Consórcios","Nacional Gazin","Porto Seguro Consórcio","Rodobens","Santander Consórcio","Servopa","Sicoob Consórcios","Sicredi Consórcios","Unifisa","Volkswagen Consórcio","Yamaha Consórcio",
 ];
+const numberedBankOptions=[...bankCatalog].sort((a,b)=>Number(a.code)-Number(b.code)).map(bank=>`${bank.code} — ${bank.name}`);
+const finalBankOptions=[...numberedBankOptions,...additionalBankNames.filter(name=>!bankCatalog.some(bank=>bank.name.localeCompare(name,'pt-BR',{sensitivity:'base'})===0)).sort((a,b)=>a.localeCompare(b,'pt-BR',{sensitivity:'base'}))];
 const finalPromoterOptions = ["BEVI", "Solution"];
 const menu: [View, LucideIcon, string][] = [
   ["inicio", House, "Início"],
@@ -457,6 +458,7 @@ export default function Dashboard({
     [postSales,setPostSales]=useState<PostSaleTask[]>([]),
     [activities,setActivities]=useState<ActivityItem[]>([]),
     [googleReviewUrl,setGoogleReviewUrl]=useState(""),
+    [postSaleMessageTemplate,setPostSaleMessageTemplate]=useState(""),
     [receivables,setReceivables]=useState<Receivable[]>([]),
     [invoices,setInvoices]=useState<InvoiceRecord[]>([]),
     [partners,setPartners]=useState<PartnerRecord[]>([{id:0,name:"GG Veículos"}]),
@@ -562,7 +564,7 @@ export default function Dashboard({
       if(resource==='partners'){const loaded=data.partners as PartnerRecord[];setPartners(loaded.some(partner=>partner.name.localeCompare("GG Veículos","pt-BR",{sensitivity:"base"})===0)?loaded:[{id:0,name:"GG Veículos",taxRate:0,invoiceRate:0,tfShare:50},...loaded]);}
       if(resource==='invoices')setInvoices(data.invoices);
       if(resource==='catalog')setCatalogOptions(data.options);
-      if(resource==='postSales'){setPostSales(data.tasks);setGoogleReviewUrl(data.googleReviewUrl||'');}
+      if(resource==='postSales'){setPostSales(data.tasks);setGoogleReviewUrl(data.googleReviewUrl||'');setPostSaleMessageTemplate(data.postSaleMessageTemplate||'');}
       if(resource==='activities')setActivities(data.activities);
       return true;
     };
@@ -751,10 +753,9 @@ export default function Dashboard({
               openMonth={(period)=>{setProductionPeriod(period);setView("producao")}}
               clientCount={allClients.length}
               operationCount={allOps.length}
-              monthRows={currentMonthOps}
               allRows={allOps}
               monthPeriod={currentPeriod}
-              activeDealCount={deals.filter(deal=>deal.stage!=="finalizado").length}
+              activeDeals={deals.filter(deal=>deal.stage!=="finalizado")}
               activityCount={dueActivities.length}
             />
           )}{" "}
@@ -776,11 +777,11 @@ export default function Dashboard({
           {view === "financeiro" && (
             <Finance rows={allOps} />
           )}{" "}
-          {view === "notas" && <Invoices invoices={invoices} />} {view === "bancos" && <Banks />}{" "}
+          {view === "notas" && <Invoices invoices={invoices} setInvoices={setInvoices} clients={allClients} />} {view === "bancos" && <Banks />}{" "}
           {view === "relatorios" && (
             <ReportsFiltered rows={allOps} clientsData={allClients} />
           )}{" "}
-          {view === "posvenda" && <PostSales tasks={postSales} setTasks={setPostSales} googleReviewUrl={googleReviewUrl} />}
+          {view === "posvenda" && <PostSales tasks={postSales} setTasks={setPostSales} googleReviewUrl={googleReviewUrl} messageTemplate={postSaleMessageTemplate} onTemplateSaved={setPostSaleMessageTemplate} />}
           {view==="usuarios"&&user.role==="admin"&&<AccessManagement members={teamMembers} setMembers={setTeamMembers} partners={partners}/>} {" "}
         </div>
       </section>
@@ -1087,14 +1088,14 @@ function Commitments({activities,setActivities,clients}:{activities:ActivityItem
   const submit=async(event:React.FormEvent)=>{event.preventDefault();if(!form)return;setSaving(true);setMessage('');const body={...form,dueAt:new Date(form.dueAt).getTime()},response=await fetch('/api/activities',{method:form.id?'PATCH':'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)}),data=await response.json();setSaving(false);if(!response.ok){setMessage(data.error||'Não foi possível salvar.');return}setActivities(rows=>form.id?rows.map(item=>item.id===data.activity.id?data.activity:item):[data.activity,...rows]);setForm(null)};
   const complete=async(item:ActivityItem)=>{const response=await fetch('/api/activities',{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({id:item.id,action:'complete',completed:!item.completedAt})}),data=await response.json();if(response.ok)setActivities(rows=>rows.map(row=>row.id===item.id?data.activity:row));else alert(data.error||'Não foi possível atualizar a atividade.')};
   const remove=async(item:ActivityItem)=>{if(!window.confirm(`Excluir “${item.title}”?`))return;const response=await fetch(`/api/activities?id=${item.id}`,{method:'DELETE'}),data=await response.json();if(response.ok)setActivities(rows=>rows.filter(row=>row.id!==item.id));else alert(data.error||'Não foi possível excluir a atividade.')};
-  const now=Date.now(),today=new Date(),sameDay=(value:number|null)=>Boolean(value)&&new Date(value!).toDateString()===today.toDateString();
+  const now=Date.now(),today=new Date(),sameDay=(value:number|null|undefined)=>typeof value==='number'&&new Date(value).toDateString()===today.toDateString();
   const rows=activities.filter(item=>filter==='completed'?Boolean(item.completedAt):!item.completedAt&&(filter==='pending'||sameDay(item.dueAt))).sort((a,b)=>filter==='completed'?Number(b.completedAt)-Number(a.completedAt):Number(a.dueAt)-Number(b.dueAt));
   const typeLabel:Record<ActivityItem['type'],string>={agendamento:'Agendamento de cliente',compromisso:'Compromisso',tarefa:'Tarefa',lembrete:'Lembrete'};
   return <>
     <Title over="ORGANIZAÇÃO DO ESCRITÓRIO" title="Compromissos e negócios" text="Agendamentos, tarefas e lembretes do trabalho reunidos em uma agenda." action="Nova atividade" onAction={startNew}/>
     <section className="tf-activity-summary"><article><CalendarClock/><span><small>PARA HOJE</small><b>{activities.filter(item=>!item.completedAt&&sameDay(item.dueAt)).length}</b></span></article><article><Clock3/><span><small>ATRASADAS</small><b>{activities.filter(item=>!item.completedAt&&item.dueAt&&item.dueAt<now&&!sameDay(item.dueAt)).length}</b></span></article><article><CheckCircle2/><span><small>CONCLUÍDAS</small><b>{activities.filter(item=>item.completedAt).length}</b></span></article></section>
     <div className="tf-activity-filters"><button className={filter==='pending'?'active':''} onClick={()=>setFilter('pending')}>Pendentes</button><button className={filter==='today'?'active':''} onClick={()=>setFilter('today')}>Hoje</button><button className={filter==='completed'?'active':''} onClick={()=>setFilter('completed')}>Concluídas</button></div>
-    <section className="tf-activity-list">{rows.map(item=>{const overdue=!item.completedAt&&item.dueAt&&item.dueAt<now;return <article key={item.id} className={`${overdue?'overdue ':''}${item.completedAt?'completed':''}`}><i>{item.type==='agendamento'?<UsersRound/>:item.type==='tarefa'?<CheckCircle2/>:item.type==='compromisso'?<Briefcase/>:<Bell/>}</i><div><small>{typeLabel[item.type]}</small><h3>{item.title}</h3>{item.clientName&&<b>Cliente: {item.clientName}</b>}{item.notes&&<p>{item.notes}</p>}</div><time><b>{item.dueAt?new Date(item.dueAt).toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'short'}):'Sem data'}</b><span>{item.dueAt?new Date(item.dueAt).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}):''}</span>{overdue&&<em>ATRASADO</em>}</time><footer><button onClick={()=>complete(item)}>{item.completedAt?'Reabrir':'Concluir'}</button><button onClick={()=>edit(item)}>Editar</button><button className="danger" onClick={()=>remove(item)}>Excluir</button></footer></article>})}{!rows.length&&<div className="tf-activity-empty"><CalendarClock/><b>Nenhuma atividade nesta lista</b><small>Cadastre um compromisso, tarefa, lembrete ou agendamento.</small><button className="tf-primary" onClick={startNew}>＋ Nova atividade</button></div>}</section>
+    <section className="tf-activity-list">{rows.map(item=>{const overdue=!item.completedAt&&item.dueAt&&item.dueAt<now;return <article key={item.id} className={`type-${item.type} ${overdue?'overdue ':''}${item.completedAt?'completed':''}`}><i>{item.type==='agendamento'?<UsersRound/>:item.type==='tarefa'?<CheckCircle2/>:item.type==='compromisso'?<Briefcase/>:<Bell/>}</i><div><small>{typeLabel[item.type]}</small><h3>{item.title}</h3>{item.clientName&&<b>Cliente: {item.clientName}</b>}{item.notes&&<p>{item.notes}</p>}</div><time><b>{item.dueAt?new Date(item.dueAt).toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'short'}):'Sem data'}</b><span>{item.dueAt?new Date(item.dueAt).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}):''}</span>{overdue&&<em>ATRASADO</em>}</time><footer><button onClick={()=>complete(item)}>{item.completedAt?'Reabrir':'Concluir'}</button><button onClick={()=>edit(item)}>Editar</button><button className="danger" onClick={()=>remove(item)}>Excluir</button></footer></article>})}{!rows.length&&<div className="tf-activity-empty"><CalendarClock/><b>Nenhuma atividade nesta lista</b><small>Cadastre um compromisso, tarefa, lembrete ou agendamento.</small><button className="tf-primary" onClick={startNew}>＋ Nova atividade</button></div>}</section>
     {form&&<div className="tf-modal-back"><form className="tf-modal tf-activity-form" onSubmit={submit}><button type="button" className="tf-modal-close" onClick={()=>setForm(null)}>×</button><small>{form.id?'EDITAR ATIVIDADE':'NOVA ATIVIDADE'}</small><h2>{form.id?'Atualizar compromisso':'Cadastrar compromisso ou tarefa'}</h2><p>Defina a data e o horário para receber o aviso no sistema.</p><label>Tipo<select value={form.type} onChange={event=>setForm(current=>current&&({...current,type:event.target.value as ActivityItem['type']}))}><option value="agendamento">Agendamento de cliente</option><option value="compromisso">Compromisso</option><option value="tarefa">Tarefa</option><option value="lembrete">Lembrete</option></select></label><label>Título<input required maxLength={160} value={form.title} onChange={event=>setForm(current=>current&&({...current,title:event.target.value}))} placeholder="Ex.: Ligar para o cliente"/></label><label>Cliente (opcional)<input list="tf-activity-clients" maxLength={160} value={form.clientName} onChange={event=>setForm(current=>current&&({...current,clientName:event.target.value}))} placeholder="Digite ou selecione o cliente"/><datalist id="tf-activity-clients">{clients.map(client=><option key={client.id} value={client.name}/>)}</datalist></label><label>Data e horário<input required type="datetime-local" value={form.dueAt} onChange={event=>setForm(current=>current&&({...current,dueAt:event.target.value}))}/></label><label className="tf-form-full">Observações<textarea maxLength={1200} value={form.notes} onChange={event=>setForm(current=>current&&({...current,notes:event.target.value}))} placeholder="Detalhes, endereço, materiais ou informações importantes"/></label>{message&&<em className="tf-form-error">{message}</em>}<div className="tf-modal-actions"><button type="button" className="tf-secondary" onClick={()=>setForm(null)}>Cancelar</button><button className="tf-primary" disabled={saving}>{saving?'Salvando…':'Salvar atividade'}</button></div></form></div>}
   </>;
 }
@@ -1103,45 +1104,45 @@ function Home({
   openMonth,
   clientCount,
   operationCount,
-  monthRows,
   allRows,
   monthPeriod,
-  activeDealCount,
+  activeDeals,
   activityCount,
 }: {
   go: (v: View) => void;
   openMonth: (period:string) => void;
   clientCount: number;
   operationCount: number;
-  monthRows: Operation[];
   allRows: Operation[];
   monthPeriod: string;
-  activeDealCount: number;
+  activeDeals: Deal[];
   activityCount: number;
 }) {
   const [selectedDistribution, setSelectedDistribution] = useState<string | null>(null);
   const [hoveredDistribution, setHoveredDistribution] = useState<string | null>(null);
   const [hoveredComparisonIndex, setHoveredComparisonIndex] = useState<number | null>(null);
-  const [previousPeriod, setPreviousPeriod] = useState("2026-08");
-  const [currentPeriod, setCurrentPeriod] = useState("2026-09");
+  const [previousPeriod, setPreviousPeriod] = useState(()=>{const date=new Date(`${monthPeriod}-01T00:00:00Z`);date.setUTCMonth(date.getUTCMonth()-1);return date.toISOString().slice(0,7)});
+  const [currentPeriod, setCurrentPeriod] = useState(monthPeriod);
   const comparisonMonths = [
     ["01", "Janeiro"], ["02", "Fevereiro"], ["03", "Março"], ["04", "Abril"],
     ["05", "Maio"], ["06", "Junho"], ["07", "Julho"], ["08", "Agosto"],
     ["09", "Setembro"], ["10", "Outubro"], ["11", "Novembro"], ["12", "Dezembro"],
   ];
   const comparisonYears = Array.from({ length: 8 }, (_, index) => String(2023 + index));
-  const groups = serviceCatalog.map(service=>{const matched=monthRows.filter(operation=>productionProducts.find(product=>product.name===service.name)?.match(operation.product)),used=Array.from(new Set(matched.map(operation=>operation.operationType||operation.product))).slice(0,2);return {name:service.name,tone:service.tone,items:(used.length?used:service.subtopics.slice(0,2)).map(topic=>[topic,used.length?`${matched.filter(operation=>(operation.operationType||operation.product)===topic).length} registrada(s)`:"Sem movimentação"] as [string,string])}}),
-    monthTotal = monthRows.reduce((s, o) => s + o.value, 0),
-    monthCommission = monthRows.reduce((s, o) => s + o.commission, 0),
-    monthCommissionPaid = monthRows.reduce((s,o)=>s+o.commissionReceived,0),
-    monthCommissionPending = monthRows.reduce((s,o)=>s+o.commissionPending,0),
-    monthClients = new Set(monthRows.map((o) => o.clientId)).size,
+  const currentMonthRows = allRows.filter((o) => o.date.startsWith(currentPeriod));
+  const activeDealCount=activeDeals.filter(deal=>{if(!deal.createdAt)return false;const date=new Date(deal.createdAt),local=new Date(date.getTime()-date.getTimezoneOffset()*60000);return local.toISOString().slice(0,7)===currentPeriod}).length;
+  const groups = serviceCatalog.map(service=>{const matched=currentMonthRows.filter(operation=>productionProducts.find(product=>product.name===service.name)?.match(operation.product)),used=Array.from(new Set(matched.map(operation=>operation.operationType||operation.product))).slice(0,2);return {name:service.name,tone:service.tone,items:(used.length?used:service.subtopics.slice(0,2)).map(topic=>[topic,used.length?`${matched.filter(operation=>(operation.operationType||operation.product)===topic).length} registrada(s)`:"Sem movimentação"] as [string,string])}}),
+    monthTotal = currentMonthRows.reduce((s, o) => s + o.value, 0),
+    monthCommission = currentMonthRows.reduce((s, o) => s + o.commission, 0),
+    monthCommissionPaid = currentMonthRows.reduce((s,o)=>s+o.commissionReceived,0),
+    monthCommissionPending = currentMonthRows.reduce((s,o)=>s+o.commissionPending,0),
+    monthClients = new Set(currentMonthRows.map((o) => o.clientId)).size,
     groupTotals = groups.map((g) => ({
       name: g.name,
-      value: monthRows
+      value: currentMonthRows
         .filter((o) => productionProducts.find(product=>product.name===g.name)?.match(o.product))
         .reduce((s, o) => s + o.value, 0),
-      commission: monthRows
+      commission: currentMonthRows
         .filter((o) => productionProducts.find(product=>product.name===g.name)?.match(o.product))
         .reduce((s, o) => s + o.commission, 0),
     })),
@@ -1152,10 +1153,10 @@ function Home({
     productTotals = productionProducts.map((g) => ({
       name: g.name,
       tone: g.tone,
-      value: monthRows
+      value: currentMonthRows
         .filter((o) => g.match(o.product))
         .reduce((s, o) => s + o.value, 0),
-      count: monthRows.filter((o) => g.match(o.product)).length,
+      count: currentMonthRows.filter((o) => g.match(o.product)).length,
     })),
     productSum = Math.max(
       productTotals.reduce((s, g) => s + g.value, 0),
@@ -1186,13 +1187,12 @@ function Home({
   const activeSlice = hoveredDistribution
     ? distribution.find((item) => item.name === hoveredDistribution) || selectedSlice
     : selectedSlice;
-  const monthReference = new Date(`${monthPeriod}-01T00:00:00Z`);
+  const monthReference = new Date(`${currentPeriod}-01T00:00:00Z`);
   monthReference.setUTCMonth(monthReference.getUTCMonth() - 1);
   const priorMonthPeriod = monthReference.toISOString().slice(0, 7);
   const priorMonthTotal = allRows.filter((operation) => operation.date.startsWith(priorMonthPeriod)).reduce((sum, operation) => sum + operation.value, 0);
   const monthDelta = priorMonthTotal > 0 ? ((monthTotal - priorMonthTotal) / priorMonthTotal) * 100 : null;
   const previousMonthRows = allRows.filter((o) => o.date.startsWith(previousPeriod));
-  const currentMonthRows = allRows.filter((o) => o.date.startsWith(currentPeriod));
   const periodLabel = (period: string) => {
     if (!period) return "Período";
     const label = new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(`${period}-01T00:00:00Z`));
@@ -1222,7 +1222,7 @@ function Home({
     <>
       <section className="tf-command-hero">
         <div className="tf-command-copy">
-          <small>PAINEL EXECUTIVO · {periodLabel(monthPeriod).toUpperCase()}</small>
+          <small>PAINEL EXECUTIVO · {periodLabel(currentPeriod).toUpperCase()}</small>
           <h1>Gestão TF</h1>
           <p>
             Atendimentos, produção e resultados organizados em uma única visão.
@@ -1231,7 +1231,7 @@ function Home({
       </section>
       <section className="tf-kpi-strip">
         <article className="tf-kpi-navigate">
-          <button type="button" onClick={()=>openMonth(monthPeriod)} aria-label={`Ver os ${monthClients} clientes do mês`}>
+          <button type="button" onClick={()=>openMonth(currentPeriod)} aria-label={`Ver os ${monthClients} clientes do mês`}>
             <small>CLIENTES DO MÊS</small>
             <strong>{monthClients}</strong>
             <span>Base histórica: {clientCount.toLocaleString("pt-BR")}</span>
@@ -1241,7 +1241,7 @@ function Home({
         <article>
           <small>PRODUÇÃO</small>
           <strong>{brl(monthTotal)}</strong>
-          <span>{monthRows.length} operações em {periodLabel(monthPeriod)}</span>
+          <span>{currentMonthRows.length} operações em {periodLabel(currentPeriod)}</span>
         </article>
         <article>
           <small>COMISSÕES</small>
@@ -1266,7 +1266,7 @@ function Home({
         <header className="tf-comparison-header">
           <div>
             <small>PRODUÇÃO COMPARATIVA</small>
-            <h2>{monthLabel(previousPeriod)} <span className="tf-versus">versus</span> {monthLabel(currentPeriod)}</h2>
+            <h2>{monthLabel(previousPeriod)} <span className="tf-versus">/</span> {monthLabel(currentPeriod)}</h2>
             <p>Compare a produção dos períodos escolhidos por produto.</p>
           </div>
           <div className="tf-comparison-total">
@@ -1433,7 +1433,7 @@ function Home({
               <div className="tf-pie-center">
                 <small>{activeSlice ? activeSlice.name : "PRODUÇÃO TOTAL"}</small>
                 <strong>{activeSlice ? brl(activeSlice.value) : brl(monthTotal)}</strong>
-                <b>{activeSlice ? `${activeSlice.percent}% do total` : monthDelta === null ? `${monthRows.length} operações` : `${monthDelta >= 0 ? "▲" : "▼"} ${Math.abs(monthDelta).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%`}</b>
+                <b>{activeSlice ? `${activeSlice.percent}% do total` : monthDelta === null ? `${currentMonthRows.length} operações` : `${monthDelta >= 0 ? "▲" : "▼"} ${Math.abs(monthDelta).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%`}</b>
                 <span>{activeSlice ? `${activeSlice.count} contrato${activeSlice.count === 1 ? "" : "s"}` : "VS. MÊS ANTERIOR"}</span>
               </div>
             </div>
@@ -1702,7 +1702,7 @@ function SmartChoice({label,value,onChange,options,required=true,helper,catalogK
     const response=await fetch(`/api/catalog-options?id=${option.id}`,{method:'DELETE'});
     if(response.ok){onCatalogChange?.({...option,label:''});if(option.label===value)onChange('');}else{const data=await response.json().catch(()=>({}));alert(data.error||'Não foi possível remover esta opção.');}
   };
-  return <label className="tf-smart-choice">{label}<span><input required={required} value={value} onFocus={()=>setOpen(true)} onBlur={()=>window.setTimeout(()=>setOpen(false),160)} onChange={event=>{onChange(event.target.value);setOpen(true)}} onKeyDown={event=>{if(event.key==="Escape")setOpen(false);if(event.key==="Enter"&&catalogKind){event.preventDefault();void saveOption();}}} placeholder="Digite ou selecione" autoComplete="off"/>{open&&<div className="tf-smart-options" role="listbox">{filtered.length?filtered.map(option=>{const custom=catalog.find(item=>item.label===option);return <span className="tf-smart-option" key={option}><button type="button" role="option" aria-selected={option===value} onMouseDown={event=>event.preventDefault()} onClick={()=>{onChange(option);setOpen(false)}}>{option}</button>{custom&&<button type="button" className="tf-smart-option-remove" aria-label={`Excluir ${option}`} onMouseDown={event=>event.preventDefault()} onClick={event=>{event.stopPropagation();void removeOption(custom)}}>×</button>}</span>}):<small>Nenhum nome encontrado.</small>}{catalogKind&&value.trim()&&!filtered.some(option=>option.toLocaleLowerCase("pt-BR")===normalized)&&<button type="button" className="tf-smart-add" onMouseDown={event=>event.preventDefault()} onClick={()=>void saveOption()}>＋ Cadastrar “{value.trim()}”</button>}</div>}</span>{helper&&<small>{helper}</small>}</label>;
+  return <label className="tf-smart-choice">{label}<span><input required={required} value={value} onFocus={()=>setOpen(true)} onBlur={()=>window.setTimeout(()=>setOpen(false),160)} onChange={event=>{onChange(event.target.value);setOpen(true)}} onKeyDown={event=>{if(event.key==="Escape")setOpen(false);if(event.key==="Enter"&&catalogKind){event.preventDefault();void saveOption();}}} placeholder="Digite ou selecione" autoComplete="off"/><i className="tf-smart-create-cue" aria-hidden="true"><Plus/></i>{open&&<div className="tf-smart-options" role="listbox">{filtered.length?filtered.map(option=>{const custom=catalog.find(item=>item.label===option);return <span className="tf-smart-option" key={option}><button type="button" role="option" aria-selected={option===value} onMouseDown={event=>event.preventDefault()} onClick={()=>{onChange(option);setOpen(false)}}>{option}</button>{custom&&<button type="button" className="tf-smart-option-remove" aria-label={`Excluir ${option}`} onMouseDown={event=>event.preventDefault()} onClick={event=>{event.stopPropagation();void removeOption(custom)}}>×</button>}</span>}):<small>Nenhum nome encontrado.</small>}{catalogKind&&value.trim()&&!filtered.some(option=>option.toLocaleLowerCase("pt-BR")===normalized)&&<button type="button" className="tf-smart-add" onMouseDown={event=>event.preventDefault()} onClick={()=>void saveOption()}>＋ Cadastrar “{value.trim()}”</button>}</div>}</span>{helper&&<small>{helper}</small>}</label>;
 }
 
 function FinalChoice({label,field,details,setDetails,options,required=true}:{label:string;field:string;details:Record<string,string>;setDetails:React.Dispatch<React.SetStateAction<Record<string,string>>>;options:string[];required?:boolean}){
@@ -1756,8 +1756,8 @@ function Kanban({
     [selectedProduct, setSelectedProduct] = useState("Financiamento"),
     [active, setActive] = useState<Deal | null>(null),
     [documentsDeal, setDocumentsDeal] = useState<Deal | null>(null),
-    [documentUploadOpen,setDocumentUploadOpen]=useState(false),
     [details, setDetails] = useState<Record<string, string>>({}),
+    [additionalOperations,setAdditionalOperations]=useState<Record<string,string>[]>([]),
     [menuId, setMenuId] = useState<number | null>(null),
     [returnDeal, setReturnDeal] = useState<Deal | null>(null),
     [returnForm, setReturnForm] = useState({returnAt:"",returnReason:"",returnNotes:"",phone:""}),
@@ -1769,6 +1769,7 @@ function Kanban({
     [clock,setClock]=useState(()=>Date.now()),
     [finalizing,setFinalizing]=useState(false),
     [kanbanOwner,setKanbanOwner]=useState<string>(user.role==="employee"?String(user.memberId):"owner"),
+    [dealOrder,setDealOrder]=useState<number[]>([]),
     [confirmAction, setConfirmAction] = useState<{
       deal: Deal;
       permanent: boolean;
@@ -1788,6 +1789,7 @@ function Kanban({
         setFormStep(1);
         setSelectedProduct("Financiamento");
         setActive(null);
+        setAdditionalOperations([]);
         setDocumentsDeal(null);
         setMenuId(null);
         setReturnDeal(null);
@@ -1808,7 +1810,7 @@ function Kanban({
     creatingRef.current=true;setCreating(true);setCreateError("");
     try {
       const financing=selectedProduct==="Financiamento",secured=selectedProduct==="Crédito com garantia";
-      const body={name:createForm.name.trim(),cpf:cpfKey(createForm.cpf),birthDate:dateToIso(createForm.birthDate),phone:maskPhone(createForm.phone),product:selectedProduct,
+      const body={name:createForm.name.trim().toLocaleUpperCase("pt-BR"),cpf:cpfKey(createForm.cpf),birthDate:dateToIso(createForm.birthDate),phone:maskPhone(createForm.phone),product:selectedProduct,
         operationType:secured?(createForm.guaranteeType==="Imobiliário"?"Garantia de imóvel":"Garantia de veículo"):createForm.operationType||operationOptionsFor(selectedProduct)[0],
         ...(secured?{guaranteeType:createForm.guaranteeType}:{}),
         ...(financing?{vehicleValue:moneyToStorage(createForm.vehicleValue),downPayment:moneyToStorage(createForm.downPayment),financedValue:moneyToStorage(createForm.financedValue)}:{desiredCredit:moneyToStorage(createForm.desiredCredit)}),
@@ -1825,11 +1827,13 @@ function Kanban({
   const nowDate=new Date(clock);
   const nowIso = new Date(clock-nowDate.getTimezoneOffset()*60000).toISOString().slice(0,16);
   const visibleDeals=deals.filter(d=>kanbanOwner==="owner"?!d.assignedUserId:d.assignedUserId===Number(kanbanOwner));
+  useEffect(()=>{const ids=visibleDeals.map(deal=>deal.id);let stored:number[]=[];try{stored=JSON.parse(localStorage.getItem(`tf_kanban_order_${kanbanOwner}`)||"[]")}catch{}setDealOrder([...stored.filter(id=>ids.includes(id)),...ids.filter(id=>!stored.includes(id))])},[kanbanOwner,deals]);
+  const reorderDeals=(sourceId:number,targetId:number)=>{setDealOrder(current=>{const next=current.filter(id=>id!==sourceId),targetIndex=next.indexOf(targetId);next.splice(targetIndex<0?next.length:targetIndex,0,sourceId);localStorage.setItem(`tf_kanban_order_${kanbanOwner}`,JSON.stringify(next));return next})};
   const pendingReturns = visibleDeals.filter((d)=>d.returnAt&&d.returnStatus!=="concluido");
   const todayReturns = pendingReturns.filter((d)=>d.returnAt!<=nowIso);
   const futureDeals=pendingReturns.filter(d=>d.returnAt!>nowIso).sort((a,b)=>a.returnAt!.localeCompare(b.returnAt!));
   const scheduledReceivables=[...receivables].filter(item=>item.dueDate).sort((a,b)=>a.dueDate.localeCompare(b.dueDate));
-  const pipelineDeals=visibleDeals.filter(d=>!pendingReturns.some(scheduled=>scheduled.id===d.id));
+  const pipelineDeals=visibleDeals.filter(d=>!pendingReturns.some(scheduled=>scheduled.id===d.id)).sort((a,b)=>{const first=dealOrder.indexOf(a.id),second=dealOrder.indexOf(b.id);return (first<0?Number.MAX_SAFE_INTEGER:first)-(second<0?Number.MAX_SAFE_INTEGER:second)});
   const openReturn = (d:Deal) => {
     setReturnDeal(d);
     setReturnForm({returnAt:d.returnAt||"",returnReason:d.returnReason||"",returnNotes:d.returnNotes||"",phone:formatPhone(d.phone)==="Não informado"?"":formatPhone(d.phone)});
@@ -1865,7 +1869,7 @@ function Kanban({
     const id=editDeal.id;
     editingRef.current=true;setEditing(true);setEditError("");
     try {
-      const normalizedEdit={name:editForm.name,cpf:cpfKey(editForm.cpf),birthDate:dateToIso(editForm.birthDate),phone:maskPhone(editForm.phone||""),product:editForm.product,
+      const normalizedEdit={name:editForm.name.toLocaleUpperCase("pt-BR"),cpf:cpfKey(editForm.cpf),birthDate:dateToIso(editForm.birthDate),phone:maskPhone(editForm.phone||""),product:editForm.product,
         ...(editForm.product==="Crédito com garantia"?{guaranteeType:editForm.guaranteeType,vehicleValue:moneyToStorage(editForm.vehicleValue)}:{}),
         ...(editForm.product==="Financiamento"?{vehicleValue:moneyToStorage(editForm.vehicleValue),downPayment:moneyToStorage(editForm.downPayment),financedValue:moneyToStorage(editForm.financedValue)}:{desiredCredit:moneyToStorage(editForm.desiredCredit)})};
       const r=await fetch('/api/deals',{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({id,action:'edit',details:normalizedEdit})});
@@ -1884,10 +1888,8 @@ function Kanban({
   };
   const move = async (d: Deal, stage: string) => {
     if (stage === "finalizado" && d.stage === "finalizado") {
-      const today=new Date(),todayIso=new Date(today.getTime()-today.getTimezoneOffset()*60000).toISOString().slice(0,10);
-      const savedBank=(d as Deal & {bank?:string}).bank||"",savedPromoter=(d as Deal & {promoter?:string}).promoter||"",savedOrigin=d.origin||"Sem parceiro";
       setActive(d);
-      const dueDate=new Date(today);dueDate.setDate(dueDate.getDate()+10);const dueDateIso=new Date(dueDate.getTime()-dueDate.getTimezoneOffset()*60000).toISOString().slice(0,10);
+      setAdditionalOperations([]);
       setDetails({
         name: d.name,
         documentType:"CPF",
@@ -1895,27 +1897,27 @@ function Kanban({
         benefit:"",
         birthDate: formatDateBr(d.birthDate),
         phone: formatPhone(d.phone) === "Não informado" ? "" : formatPhone(d.phone),
-        bank:finalBankOptions.includes(savedBank)?savedBank:savedBank?"__other":"",
-        bankOther:finalBankOptions.includes(savedBank)?"":savedBank,
-        agreement:d.agreement||agreementForProduct(d.product||""),
-        contractType:d.contractType||d.product||"",
-        product:productOptions.includes(d.product)?d.product:"__other",
-        productOther:productOptions.includes(d.product)?"":d.product,
-        operationType:d.operationType||"",
+        bank:"",
+        bankOther:"",
+        agreement:"",
+        contractType:"",
+        product:"",
+        productOther:"",
+        operationType:"",
         operationTypeOther:"",
         quotaQuantity:d.quotaQuantity||"1",
         quotaUnitValue:formatMoneyInput(d.quotaUnitValue),
         fipeValue:formatMoneyInput(d.fipeValue),
-        promoter:finalPromoterOptions.includes(savedPromoter)?savedPromoter:savedPromoter?"__other":"",
-        promoterOther:finalPromoterOptions.includes(savedPromoter)?"":savedPromoter,
-        producer:d.producer|| (savedOrigin==="GG Veículos"?"Cliente GG / Código GG":"Balcão TF"),
+        promoter:"",
+        promoterOther:"",
+        producer:"",
         producerOther:"",
-        origin:savedOrigin==="GG Veículos"?"GG Veículos":"TF",
+        origin:"",
         originOther:"",
-        contractStatus:/pago|finalizado/i.test(d.contractStatus||"")?"Finalizado":d.contractStatus||"Finalizado",
-        paidDate:d.paidDate||todayIso,
-        operationDate:d.operationDate||todayIso,
-        productionIndicator:d.productionIndicator||"Balcão",
+        contractStatus:"",
+        paidDate:"",
+        operationDate:"",
+        productionIndicator:"",
         installment:formatMoneyInput(d.installment),
         value:formatMoneyInput(d.value),
         term:d.term||"",
@@ -1923,17 +1925,17 @@ function Kanban({
         adhesionFee:formatMoneyInput(d.adhesionFee),
         advisoryFee:formatMoneyInput(d.advisoryFee),
         bonus:formatMoneyInput(d.bonus),
-        commissionRate:d.commissionRate||(/consórcio/i.test(d.product)?"4":/financiamento/i.test(d.product)?"3":""),
+        commissionRate:"",
         commissionCustomRate:d.commissionCustomRate||"",
         commissionInstallments:d.commissionInstallments||(/consórcio/i.test(d.product)?"4":"1"),
-        commissionPaid:d.commissionPaid||"Não",
-        commissionDueDate:d.commissionDueDate||dueDateIso,
-        invoiceRequired:d.invoiceRequired||"Não",
+        commissionPaid:"",
+        commissionDueDate:"",
+        invoiceRequired:"",
         invoiceNumber:d.invoiceNumber||"",
         invoiceValue:formatMoneyInput(d.invoiceValue),
-        invoiceIssuedAt:d.invoiceIssuedAt||todayIso,
-        invoicePaid:d.invoicePaid||"Não",
-        postSale:d.postSale||"Pendente",
+        invoiceIssuedAt:"",
+        invoicePaid:"",
+        postSale:"",
         postSaleNotes:d.postSaleNotes||"",
       });
       return;
@@ -1971,30 +1973,22 @@ function Kanban({
     if (!active || finalizing) return;
     setFinalizing(true);
     try {
-      const operationValue=operationValueForDetails(details);
-      const normalizedDetails = {
-        ...details,
-        bank:details.bank==="__other"?details.bankOther:details.bank,
-        product:details.contractType||(details.product==="__other"?details.productOther:details.product),
-        contractType:details.contractType||(details.product==="__other"?details.productOther:details.product),
-        operationType:details.operationType==="__other"?details.operationTypeOther:details.operationType,
-        promoter:details.promoter==="__other"?details.promoterOther:details.promoter,
-        producer:details.producer==="__other"?details.producerOther:details.producer,
-        origin:details.origin==="__other"?details.originOther:details.origin,
-        cpf: cpfKey(details.cpf),
-        birthDate: dateToIso(details.birthDate),
-        phone: maskPhone(details.phone || ""),
-        value: moneyToStorage(operationValue),
-        quotaQuantity:details.quotaQuantity||"1",
-        quotaUnitValue:moneyToStorage(details.quotaUnitValue),
-        fipeValue:moneyToStorage(details.fipeValue),
-        installment: moneyToStorage(details.installment),
-        adhesionFee:moneyToStorage(details.adhesionFee),
-        advisoryFee:moneyToStorage(details.advisoryFee),
-        bonus:moneyToStorage(details.bonus),
-        operationDate: dateToIso(details.operationDate),
-        paidDate:dateToIso(details.paidDate),
-      };
+      const normalizeOperation=(source:Record<string,string>)=>({
+        ...source,
+        name:(source.name||details.name||'').toLocaleUpperCase('pt-BR'),
+        bank:source.bank==="__other"?source.bankOther:source.bank,
+        product:source.contractType||(source.product==="__other"?source.productOther:source.product),
+        contractType:source.contractType||(source.product==="__other"?source.productOther:source.product),
+        operationType:source.operationType==="__other"?source.operationTypeOther:source.operationType,
+        promoter:source.promoter==="__other"?source.promoterOther:source.promoter,
+        producer:source.producer==="__other"?source.producerOther:source.producer,
+        origin:source.origin==="__other"?source.originOther:source.origin,
+        cpf:cpfKey(source.cpf||details.cpf),birthDate:dateToIso(source.birthDate||details.birthDate),phone:maskPhone(source.phone||details.phone||''),
+        value:moneyToStorage(operationValueForDetails(source)),quotaQuantity:source.quotaQuantity||"1",quotaUnitValue:moneyToStorage(source.quotaUnitValue),fipeValue:moneyToStorage(source.fipeValue),installment:moneyToStorage(source.installment),adhesionFee:moneyToStorage(source.adhesionFee),advisoryFee:moneyToStorage(source.advisoryFee),bonus:moneyToStorage(source.bonus),operationDate:dateToIso(source.operationDate),paidDate:dateToIso(source.paidDate),
+      });
+      const hasCurrent=Boolean(resolvedProduct(details)||details.bank||parseMoneyBr(details.value)||parseMoneyBr(details.installment));
+      const operations=[...additionalOperations,...(hasCurrent||!additionalOperations.length?[details]:[])];
+      const normalizedDetails=normalizeOperation(operations[0]);
       const r = await fetch("/api/deals", {
         method: "PATCH",
         headers: { "content-type": "application/json" },
@@ -2002,17 +1996,32 @@ function Kanban({
       });
       const x = await r.json();
       if (r.ok) {
+        const failures:string[]=[];
+        for(const extra of operations.slice(1)){
+          const response=await fetch('/api/deals',{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({id:active.id,action:'additional_operation',details:normalizeOperation(extra)})});
+          const result=await response.json();
+          if(response.ok&&Array.isArray(result.receivables))result.receivables.forEach((item:Receivable)=>onReceivableCreated(item));
+          else failures.push(result.error||`Não foi possível cadastrar ${resolvedProduct(extra)||'uma operação adicional'}.`);
+        }
         setDeals((xs) => xs.filter((d) => d.id !== active.id));
         if(Array.isArray(x.receivables))x.receivables.forEach((item:Receivable)=>onReceivableCreated(item));
         else if(x.receivable)onReceivableCreated(x.receivable);
         onDataChanged();
         setActive(null);
+        setAdditionalOperations([]);
+        if(failures.length)alert(`O cadastro principal foi salvo, mas houve falha em ${failures.length} operação(ões) adicional(is):\n${failures.join('\n')}`);
       } else alert(x.error || "Revise os campos.");
     } catch {
       alert("Não foi possível salvar o cadastro. Tente novamente.");
     } finally {
       setFinalizing(false);
     }
+  };
+  const queueAdditionalOperation=()=>{
+    const product=resolvedProduct(details);
+    if(!product)return alert('Selecione o tipo de contrato desta operação antes de adicionar outra.');
+    setAdditionalOperations(current=>[...current,{...details}]);
+    setDetails(current=>({...current,bank:'',bankOther:'',agreement:'',contractType:'',product:'',productOther:'',operationType:'',operationTypeOther:'',quotaQuantity:'1',quotaUnitValue:'',fipeValue:'',promoter:'',promoterOther:'',producer:'',producerOther:'',origin:'',originOther:'',contractStatus:'',paidDate:'',operationDate:'',productionIndicator:'',installment:'',value:'',term:'',dueDay:'',adhesionFee:'',advisoryFee:'',bonus:'',commissionRate:'',commissionCustomRate:'',commissionInstallments:'1',commissionPaid:'',commissionDueDate:'',invoiceRequired:'',postSale:'',postSaleNotes:''}));
   };
   return (
     <>
@@ -2073,6 +2082,14 @@ function Kanban({
                     onDragStart={(e) => {
                       e.dataTransfer.setData("text/plain", String(d.id));
                       e.dataTransfer.effectAllowed = "move";
+                    }}
+                    onDragOver={(e)=>e.preventDefault()}
+                    onDrop={(e)=>{
+                      e.preventDefault();e.stopPropagation();
+                      const sourceId=Number(e.dataTransfer.getData("text/plain")),source=pipelineDeals.find(item=>item.id===sourceId);
+                      if(!source||source.id===d.id)return;
+                      reorderDeals(source.id,d.id);
+                      if(source.stage!==stage)void move(source,stage);
                     }}
                     className={`tf-deal-card deal-stage-${i} ${stage === "atendimento" ? `deal-tone-${cardIndex % 6}` : ""} ${d.returnAt&&d.returnStatus!=="concluido"&&d.returnAt<=nowIso?'return-due':''} ${stage === "finalizado" && (d.needsCompletion || d.status !== "concluido") ? "needs-completion" : ""}`}
                   >
@@ -2171,7 +2188,6 @@ function Kanban({
                     ? "Novo atendimento"
                     : "Adicionar negócio"}
                 </button>
-                {stage==="atendimento"&&<button type="button" className="tf-upload-kanban" aria-label="Upload de documento" title="Upload de documento" onClick={()=>setDocumentUploadOpen(true)}><FileUp/></button>}
               </footer>
             </article>
           );
@@ -2181,7 +2197,6 @@ function Kanban({
         <header><div><small>AGENDA DE ATENDIMENTOS E COBRANÇAS</small><h2>Próximos contatos</h2><p>Retornos de clientes e receitas a cobrar ficam reunidos aqui pela data marcada.</p></div><b>{futureDeals.length+scheduledReceivables.length}</b></header>
         <div>{scheduledReceivables.map(item=><article className="tf-revenue-contact" key={`revenue-${item.id}`}><span><BadgeDollarSign/><small>{new Date(`${item.dueDate}T12:00:00`).toLocaleDateString('pt-BR',{day:'2-digit',month:'short'})}</small><b>{item.dueDate<new Date().toISOString().slice(0,10)?'ATRASADO':'COBRAR'}</b></span><div><b>{item.name}</b><small>{item.product} · {item.type}</small><p>Receita prevista de {brl(item.value)}</p></div><footer><button onClick={()=>onMarkReceived(item.id)}><CheckCircle2/> Marcar recebido</button></footer></article>)}{futureDeals.map(d=><article key={d.id}><span><Clock3/><small>{new Date(d.returnAt!).toLocaleDateString('pt-BR',{day:'2-digit',month:'short'})}</small><b>{new Date(d.returnAt!).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</b></span><div><b>{d.name}</b><small>{formatCpf(d.cpf)} · {d.product}</small><p>{d.returnReason}</p></div><footer><a href={calendarUrl(d)} target="_blank" rel="noreferrer"><CalendarDays/> Google Agenda <ExternalLink/></a><button onClick={()=>openReturn(d)}><Clock3/> Reagendar</button></footer></article>)}{!futureDeals.length&&!scheduledReceivables.length&&<div className="tf-scheduled-empty"><CalendarDays/><span><b>Nenhum contato futuro</b><small>Retornos e cobranças agendadas aparecerão aqui.</small></span></div>}</div>
       </section>
-      <QuickDocumentUploadInStage open={documentUploadOpen} onClose={()=>setDocumentUploadOpen(false)}/>
       {documentsDeal && <DealDocuments deal={documentsDeal} close={() => setDocumentsDeal(null)} />}
       {form && (
         <div className="tf-modal-back">
@@ -2192,7 +2207,7 @@ function Kanban({
             <p>{formStep===1?"Escolha o serviço do cliente.":"Todos os campos são opcionais e podem ser preenchidos depois."}</p>
             <label>Serviço<select name="product" value={selectedProduct} disabled={creating} onChange={e=>{setSelectedProduct(e.target.value);setCreateForm(current=>({...current,operationType:""}))}}>{productOptions.map(option=><option key={option}>{option}</option>)}</select></label>
             {formStep===1?<button className="tf-primary">Continuar</button>:<>
-              <label>Nome completo<input name="name" autoFocus placeholder="Opcional" value={createForm.name} onChange={e=>setCreateForm(current=>({...current,name:e.target.value}))}/></label>
+              <label>Nome completo<input name="name" autoFocus placeholder="Opcional" value={createForm.name} onChange={e=>setCreateForm(current=>({...current,name:e.target.value.toLocaleUpperCase("pt-BR")}))}/></label>
               {selectedProduct==="Crédito com garantia"?<label>Tipo de garantia<select name="guaranteeType" value={createForm.guaranteeType} onChange={e=>setCreateForm(current=>({...current,guaranteeType:e.target.value}))}><option>Veículo</option><option>Imobiliário</option></select></label>:<label>Tipo de operação<select name="operationType" value={createForm.operationType||operationOptionsFor(selectedProduct)[0]} onChange={e=>setCreateForm(current=>({...current,operationType:e.target.value}))}>{operationOptionsFor(selectedProduct).map(option=><option key={option}>{option}</option>)}</select></label>}
               <label>CPF<input name="cpf" inputMode="numeric" maxLength={14} placeholder="Opcional" value={createForm.cpf} onChange={e=>setCreateForm(current=>({...current,cpf:maskCpf(e.target.value)}))}/></label>
               <label>Data de nascimento<input name="birthDate" inputMode="numeric" maxLength={10} placeholder="DD/MM/AAAA · opcional" value={createForm.birthDate} onChange={e=>setCreateForm(current=>({...current,birthDate:maskDate(e.target.value)}))}/></label>
@@ -2218,7 +2233,7 @@ function Kanban({
             <button type="button" className="tf-modal-close" disabled={editing} onClick={()=>setEditDeal(null)}>×</button>
             <small>EDITAR ATENDIMENTO</small><h2>Dados do cliente</h2><p>Os dados complementares são opcionais.</p>
             <div className="tf-form-grid">
-              <label>Nome completo<input required autoFocus value={editForm.name||""} onChange={e=>setEditForm(x=>({...x,name:e.target.value}))}/></label>
+              <label>Nome completo<input required autoFocus value={editForm.name||""} onChange={e=>setEditForm(x=>({...x,name:e.target.value.toLocaleUpperCase("pt-BR")}))}/></label>
               <label>CPF<input inputMode="numeric" maxLength={14} value={editForm.cpf||""} onChange={e=>setEditForm(x=>({...x,cpf:maskCpf(e.target.value)}))}/></label>
               <label>Data de nascimento<input inputMode="numeric" maxLength={10} placeholder="DD/MM/AAAA" value={editForm.birthDate||""} onChange={e=>setEditForm(x=>({...x,birthDate:maskDate(e.target.value)}))}/></label>
               <label>Telefone / WhatsApp<input inputMode="tel" maxLength={15} value={editForm.phone||""} onChange={e=>setEditForm(x=>({...x,phone:maskPhone(e.target.value)}))}/></label>
@@ -2300,7 +2315,7 @@ function Kanban({
               <section className="tf-final-section">
                 <header><small>01</small><h3>Dados do cliente</h3></header>
                 <div className="tf-form-grid">
-                  <label>Nome<input required value={details.name||""} onChange={e=>setDetails(x=>({...x,name:e.target.value}))}/></label>
+                  <label>Nome<input required value={details.name||""} onChange={e=>setDetails(x=>({...x,name:e.target.value.toLocaleUpperCase("pt-BR")}))}/></label>
                   <label>Data do cadastro<input type="date" value={details.operationDate||""} onChange={e=>setDetails(x=>({...x,operationDate:e.target.value}))}/></label>
                   <label>CPF<input required inputMode="numeric" maxLength={14} value={details.cpf||""} onChange={e=>setDetails(x=>({...x,cpf:maskCpf(e.target.value)}))} placeholder="000.000.000-00"/></label>
                   <label>Número do benefício<input inputMode="numeric" value={details.benefit||""} onChange={e=>setDetails(x=>({...x,benefit:e.target.value.replace(/[^\d.-]/g,"")}))} placeholder="Opcional"/></label>
@@ -2310,11 +2325,11 @@ function Kanban({
               <section className="tf-final-section">
                 <header><small>02</small><h3>Dados da operação</h3></header>
                 <div className="tf-form-grid">
-                  <SmartChoice label="Tipo de contrato" required={false} value={details.contractType||resolvedProduct(details)} options={contractTypeOptionsFor(details.agreement||"")} onChange={value=>setDetails(current=>({...current,contractType:value,product:value,operationType:""}))} helper="As opções acompanham o convênio selecionado."/>
+                  <SmartChoice label="Tipo de contrato" required={false} value={details.contractType||""} options={contractTypeOptionsFor(details.agreement||"")} onChange={value=>setDetails(current=>({...current,contractType:value,product:value,operationType:""}))} helper="As opções acompanham o convênio selecionado."/>
                   {/proteção auto/i.test(resolvedProduct(details))&&<label>Valor da tabela FIPE<CurrencyInput inputMode="decimal" value={details.fipeValue||""} onChange={nextValue=>setDetails(x=>({...x,fipeValue:nextValue}))}  placeholder="R$ 0,00"/></label>}
                   <FinalChoice label="Tipo de operação" field="operationType" details={details} setDetails={setDetails} options={operationOptionsFor(details.contractType||resolvedProduct(details))} required={false}/>
                   <SmartChoice label="Convênio" required={false} value={details.agreement||""} options={agreementOptions} onChange={value=>setDetails(current=>({...current,agreement:value,contractType:"",product:"",operationType:""}))} helper="Selecione o convênio ou cadastre um novo."/>
-                  <FinalChoice label="Banco / instituição" field="bank" details={details} setDetails={setDetails} options={finalBankOptions} required={false}/>
+                  <FinalChoice label={/proteção auto/i.test(resolvedProduct(details))?"Associação":"Banco / instituição"} field="bank" details={details} setDetails={setDetails} options={finalBankOptions} required={false}/>
                   <label>Valor do contrato<CurrencyInput inputMode="decimal" value={details.value||""} onChange={nextValue=>setDetails(x=>({...x,value:nextValue}))}  placeholder="R$ 0,00"/></label>
                   <label>Valor da parcela<CurrencyInput inputMode="decimal" value={details.installment||""} onChange={nextValue=>setDetails(x=>({...x,installment:nextValue}))}  placeholder="R$ 0,00"/></label>
                   {/consórcio/i.test(resolvedProduct(details))&&<><label>Quantidade de cotas<input type="number" min="1" max="999" value={details.quotaQuantity||"1"} onChange={e=>setDetails(x=>({...x,quotaQuantity:e.target.value}))}/></label><label>Valor por cota<CurrencyInput inputMode="decimal" value={details.quotaUnitValue||""} onChange={nextValue=>setDetails(x=>({...x,quotaUnitValue:nextValue}))}  placeholder="R$ 0,00"/><output>Total das cotas: {brl(parseMoneyBr(details.quotaUnitValue)*Math.max(1,Number(details.quotaQuantity||1)))}</output></label></>}
@@ -2322,35 +2337,34 @@ function Kanban({
                   <label>Dia do vencimento<input inputMode="numeric" maxLength={2} value={details.dueDay||""} onChange={e=>setDetails(x=>({...x,dueDay:e.target.value.replace(/\D/g,"").slice(0,2)}))} placeholder="Ex.: 10"/></label>
                   <SmartChoice label="Indicador / parceiro" required={false} value={details.productionIndicator||""} options={managedOptions("indicator",["Balcão TF","Indicação direta","Parceiro","Prospecção","WhatsApp",...members.map(member=>member.name)])} catalogKind="indicator" catalogOptions={catalogOptions} onCatalogChange={onCatalogChange} onChange={value=>setDetails(current=>({...current,productionIndicator:value}))} helper="Digite um nome e pressione Enter para cadastrar."/>
                   <SmartChoice label="Promotora" required={false} value={details.promoter==="__other"?details.promoterOther||"":details.promoter||""} options={managedOptions("promoter",finalPromoterOptions)} catalogKind="promoter" catalogOptions={catalogOptions} onCatalogChange={onCatalogChange} onChange={value=>setDetails(current=>({...current,promoter:value,promoterOther:""}))} helper="Digite um nome e pressione Enter para cadastrar."/>
-                  <SmartChoice label="Produção / origem / digitação" required={false} value={details.producer||"Balcão TF"} options={managedOptions("production",[...productionSources,user.name,...members.map(member=>member.name)])} catalogKind="production" catalogOptions={catalogOptions} onCatalogChange={onCatalogChange} onChange={value=>setDetails(current=>({...current,producer:value,origin:hasGgCode(value)?"GG Veículos":current.origin||"TF"}))} helper="Código GG mantém o espelhamento do parceiro."/>
-                  <SmartChoice label="Parceiro / origem" required={false} value={details.origin||"TF"} options={managedOptions("production",["TF","GG Veículos",...partnerNames])} catalogKind="production" catalogOptions={catalogOptions} onCatalogChange={onCatalogChange} onChange={value=>setDetails(current=>({...current,origin:value}))} helper="Não se aplica quando não houver parceiro."/>
+                  <SmartChoice label="Produção / origem / digitação" required={false} value={details.producer||""} options={managedOptions("production",[...productionSources,user.name,...members.map(member=>member.name)])} catalogKind="production" catalogOptions={catalogOptions} onCatalogChange={onCatalogChange} onChange={value=>setDetails(current=>({...current,producer:value,origin:hasGgCode(value)?"GG Veículos":current.origin||""}))} helper="Código GG mantém o espelhamento do parceiro."/>
+                  <SmartChoice label="Parceiro / origem" required={false} value={details.origin||""} options={managedOptions("production",["TF","GG Veículos",...partnerNames])} catalogKind="production" catalogOptions={catalogOptions} onCatalogChange={onCatalogChange} onChange={value=>setDetails(current=>({...current,origin:value}))} helper="Não se aplica quando não houver parceiro."/>
                 </div>
               </section>
               <section className="tf-final-section">
                 <header><small>03</small><h3>Financeiro</h3></header>
                 <div className="tf-form-grid">
-                  <label>Valor bruto da comissão (%)<select value={details.commissionRate||"0"} onChange={e=>setDetails(x=>({...x,commissionRate:e.target.value}))}>{[0,1,2,3,4,5,6].map(rate=><option key={rate} value={String(rate)}>R{rate} · {rate}%</option>)}</select><output>Comissão calculada: {brl(operationValueForDetails(details)*(Number(String(details.commissionCustomRate||details.commissionRate||0).replace(",","."))/100))}</output></label>
+                  <label>Valor bruto da comissão (%)<select value={details.commissionRate||""} onChange={e=>setDetails(x=>({...x,commissionRate:e.target.value}))}><option value="">Selecionar percentual</option>{[0,1,2,3,4,5,6].map(rate=><option key={rate} value={String(rate)}>R{rate} · {rate}%</option>)}</select><output>Comissão calculada: {brl(operationValueForDetails(details)*(Number(String(details.commissionCustomRate||details.commissionRate||0).replace(",","."))/100))}</output></label>
                   <label>Percentual manual (%)<input inputMode="decimal" value={details.commissionCustomRate||""} onChange={e=>setDetails(x=>({...x,commissionCustomRate:e.target.value.replace(/[^\d,.]/g,"")}))} placeholder="Ex.: 2,75"/><output>{details.commissionCustomRate?`Percentual considerado: ${details.commissionCustomRate}%`:"Se preenchido, substitui a opção R."}</output></label>
                   <label>Taxa de adesão<CurrencyInput inputMode="decimal" value={details.adhesionFee||""} onChange={nextValue=>setDetails(x=>({...x,adhesionFee:nextValue}))}  placeholder="R$ 0,00"/></label>
                   <label>Taxa de assessoria<CurrencyInput value={details.advisoryFee||""} onChange={value=>setDetails(x=>({...x,advisoryFee:value}))}/></label>
                   <label>Bonificação<CurrencyInput inputMode="decimal" value={details.bonus||""} onChange={nextValue=>setDetails(x=>({...x,bonus:nextValue}))}  placeholder="R$ 0,00"/></label>
-                  <label>Comissão e demais receitas recebidas?<select value={details.commissionPaid||"Não"} onChange={e=>setDetails(x=>({...x,commissionPaid:e.target.value}))}><option>Não</option><option>Sim</option></select></label>
+                  <label>Comissão e demais receitas recebidas?<select value={details.commissionPaid||""} onChange={e=>setDetails(x=>({...x,commissionPaid:e.target.value}))}><option value="">Selecionar</option><option>Não</option><option>Sim</option></select></label>
                   <label>{details.commissionPaid==="Sim"?"Data do recebimento":"Agendar recebimento para cobrança"}<input type="date" value={details.commissionDueDate||""} onChange={e=>setDetails(x=>({...x,commissionDueDate:e.target.value}))}/>{details.commissionPaid!=="Sim"&&<small className="tf-field-note">O sistema exibirá um lembrete no dia agendado.</small>}</label>
                   {/consórcio/i.test(resolvedProduct(details))&&<label>Parcelas da comissão<input type="number" min="1" max="120" value={details.commissionInstallments||"1"} onChange={e=>setDetails(x=>({...x,commissionInstallments:e.target.value}))}/><output>Valor por parcela: {brl((operationValueForDetails(details)*(Number(String(details.commissionCustomRate||details.commissionRate||0).replace(",","."))/100))/Math.max(1,Number(details.commissionInstallments||1)))}</output></label>}
-                  <label>POSSUI NOTA FISCAL?<select value={details.invoiceRequired||"Não"} onChange={e=>setDetails(x=>({...x,invoiceRequired:e.target.value}))}><option>Sim</option><option>Não</option></select><small className="tf-field-note">A nota será anexada posteriormente no módulo de Notas fiscais.</small></label>
+                  <label>POSSUI NOTA FISCAL?<select value={details.invoiceRequired||""} onChange={e=>setDetails(x=>({...x,invoiceRequired:e.target.value}))}><option value="">Selecionar</option><option>Sim</option><option>Não</option></select><small className="tf-field-note">A nota será anexada posteriormente no módulo de Notas fiscais.</small></label>
                 </div>
               </section>
               <section className="tf-final-section tf-final-status">
                 <header><small>04</small><h3>Conclusão</h3></header>
                 <div className="tf-form-grid">
-                  <label>Situação do contrato<select value={details.contractStatus||"Finalizado"} onChange={e=>setDetails(x=>({...x,contractStatus:e.target.value}))}><option>Finalizado</option><option>Concluído</option><option>Pendência</option></select></label>
-                  <label>Data da conclusão<input disabled={!(["Finalizado","Concluído"].includes(details.contractStatus||"Finalizado"))} type="date" value={details.paidDate||""} onChange={e=>setDetails(x=>({...x,paidDate:e.target.value}))}/></label>
+                  <label>Situação do contrato<select value={details.contractStatus||""} onChange={e=>setDetails(x=>({...x,contractStatus:e.target.value}))}><option value="">Selecionar</option><option>Finalizado</option><option>Concluído</option><option>Pendência</option></select></label>
+                  <label>Data da conclusão<input disabled={!(["Finalizado","Concluído"].includes(details.contractStatus||""))} type="date" value={details.paidDate||""} onChange={e=>setDetails(x=>({...x,paidDate:e.target.value}))}/></label>
                 </div>
               </section>
             </div>
-            <button className="tf-primary" disabled={finalizing}>
-              {finalizing ? "Salvando cadastro…" : "Concluir cadastro e finalizar"}
-            </button>
+            {additionalOperations.length>0&&<section className="tf-additional-operations"><header><span><small>OPERAÇÕES DO MESMO CLIENTE</small><b>{additionalOperations.length} operação(ões) pronta(s) para salvar</b></span><small>Elas serão vinculadas ao cadastro principal.</small></header>{additionalOperations.map((operation,index)=><article key={`${resolvedProduct(operation)}-${index}`}><span><b>{resolvedProduct(operation)||'Operação'}</b><small>{[operation.bank,operation.operationType].filter(Boolean).join(' · ')||'Dados complementares em branco'}</small></span><strong>{brl(operationValueForDetails(operation))}</strong><button type="button" onClick={()=>setAdditionalOperations(current=>current.filter((_,itemIndex)=>itemIndex!==index))}>Remover</button></article>)}</section>}
+            <div className="tf-final-actions"><button type="button" className="tf-secondary" onClick={queueAdditionalOperation} disabled={finalizing}><Plus/> Salvar esta e adicionar outra operação</button><button className="tf-primary" disabled={finalizing}>{finalizing ? "Salvando cadastro…" : additionalOperations.length?"Finalizar todas as operações":"Concluir cadastro e finalizar"}</button></div>
           </form>
         </div>
       )}
@@ -2443,31 +2457,31 @@ function pdfFit(value:string,max:number){
   return value.length<=max?value:`${value.slice(0,Math.max(1,max-3))}...`;
 }
 function downloadPartnerReportPdf({partnerName,monthLabel,status,production,calculatedGross,net,tfValue,previousMonthLabel,previousProduction,previousCount,currentCount,previousTicket,currentTicket,variationLabel,analysis,rows,clientsData,partner,bonus}:{partnerName:string;monthLabel:string;status:string;production:number;calculatedGross:number;net:number;tfValue:number;previousMonthLabel:string;previousProduction:number;previousCount:number;currentCount:number;previousTicket:number;currentTicket:number;variationLabel:string;analysis:string;rows:Operation[];clientsData:Client[];partner:PartnerRecord;bonus:number}){
-  const W=595,H=842,cmd:string[]=[],gold=[.66,.45,.19],dark=[.08,.10,.08],muted=[.36,.38,.35],green=[.12,.48,.25];
+  const W=842,H=595,cmd:string[]=[],gold=[.66,.45,.19],dark=[.08,.10,.08],muted=[.36,.38,.35],green=[.12,.48,.25];
   const color=(rgb:number[])=>`${rgb.join(" ")} rg`,stroke=(rgb:number[])=>`${rgb.join(" ")} RG`;
   const text=(x:number,top:number,size:number,value:string,bold=false,rgb=dark)=>cmd.push(`BT /${bold?"F2":"F1"} ${size} Tf ${color(rgb)} ${x.toFixed(2)} ${(H-top).toFixed(2)} Td (${pdfEsc(value)}) Tj ET`);
   const rect=(x:number,top:number,w:number,h:number,fill:number[],border?:number[])=>{cmd.push(`${color(fill)} ${x} ${(H-top-h).toFixed(2)} ${w} ${h} re f`);if(border)cmd.push(`${stroke(border)} .6 w ${x} ${(H-top-h).toFixed(2)} ${w} ${h} re S`)};
   const line=(x1:number,y1:number,x2:number,y2:number,rgb=gold,width=1)=>cmd.push(`${stroke(rgb)} ${width} w ${x1.toFixed(2)} ${(H-y1).toFixed(2)} m ${x2.toFixed(2)} ${(H-y2).toFixed(2)} l S`);
   rect(0,0,W,H,[1,1,1]);
-  text(22,29,8,"TF ASSESSORIA E FINANCAS",true,gold);text(22,48,18,"Relatorio de parceiro",true,dark);text(22,65,10,partnerName,true,dark);text(22,80,8,monthLabel,false,muted);line(22,91,573,91,gold,1.4);
-  rect(458,25,115,30,status==="pago"?[.88,.96,.90]:[.98,.94,.84],status==="pago"?[.35,.65,.43]:gold);text(474,44,7,status==="pago"?"RELATORIO PAGO":"EM ABERTO",true,status==="pago"?green:gold);
+  text(26,26,8,"TF ASSESSORIA E FINANCAS",true,gold);text(26,44,17,"Relatorio de parceiro",true,dark);text(26,60,9,partnerName,true,dark);text(26,75,7.5,monthLabel,false,muted);line(26,86,816,86,gold,1.4);
+  rect(686,24,130,31,status==="pago"?[.88,.96,.90]:[.98,.94,.84],status==="pago"?[.35,.65,.43]:gold);text(704,44,7,status==="pago"?"RELATORIO PAGO":"EM ABERTO",true,status==="pago"?green:gold);
   const cards=[['VALOR FINANCIADO',brl(production)],['COMISSAO BRUTA',brl(calculatedGross)],['COMISSAO LIQUIDA',brl(net)],['REPASSE THIAGO - 50%',brl(tfValue)]];
-  cards.forEach(([label,value],index)=>{const x=22+index*139;rect(x,105,132,43,index===3?[.91,.96,.92]:[.96,.95,.92],[.84,.80,.70]);text(x+8,119,5.8,label,true,muted);text(x+8,139,10,value,true,index===3?green:gold)});
-  text(22,171,7,"COMPARATIVO MENSAL",true,gold);text(22,187,12,"Producao total",true,dark);text(485,185,11,variationLabel,true,variationLabel.startsWith("+")?green:[.68,.20,.18]);
-  const comparison=[{x:22,title:previousMonthLabel,value:previousProduction,count:previousCount,ticket:previousTicket},{x:213,title:monthLabel,value:production,count:currentCount,ticket:currentTicket}];
-  comparison.forEach((item,index)=>{rect(item.x,199,181,55,index?[.98,.95,.88]:[.95,.95,.94],index?gold:[.75,.76,.73]);text(item.x+8,213,6,pdfFit(item.title,28),true,muted);text(item.x+8,232,11,brl(item.value),true,index?gold:dark);text(item.x+8,246,5.8,`${item.count} contratos  |  Ticket medio ${brl(item.ticket)}`,false,muted)});
-  rect(404,199,169,55,[.97,.95,.89],gold);text(416,214,6,variationLabel.startsWith("+")?"CRESCIMENTO":"REDUCAO",true,gold);text(416,234,14,variationLabel,true,dark);text(416,247,5.8,`${brl(Math.abs(production-previousProduction))} de diferenca`,false,muted);
-  rect(22,266,551,76,[.985,.98,.96],[.84,.82,.77]);text(31,280,6,"EVOLUCAO DO PERIODO",true,muted);
-  const graphLeft=40,graphTop=294,graphW=515,graphH=34,points=[previousProduction,production],max=Math.max(1,...points),p1={x:graphLeft,y:graphTop+graphH-(previousProduction/max)*graphH},p2={x:graphLeft+graphW,y:graphTop+graphH-(production/max)*graphH};
-  line(graphLeft,graphTop+graphH,graphLeft+graphW,graphTop+graphH,[.82,.82,.80],.5);line(p1.x,p1.y,p2.x,p2.y,gold,2.2);cmd.push(`${color(gold)} ${p1.x-2} ${(H-p1.y-2).toFixed(2)} 4 4 re f`);cmd.push(`${color(gold)} ${p2.x-2} ${(H-p2.y-2).toFixed(2)} 4 4 re f`);text(graphLeft,338,5.5,pdfFit(previousMonthLabel,22),false,muted);text(graphLeft+graphW-70,338,5.5,pdfFit(monthLabel,22),false,muted);
-  rect(22,351,551,37,[.97,.96,.93],[.84,.82,.77]);text(31,365,6,"ANALISE DO PERIODO",true,gold);text(31,379,6,pdfFit(analysis,155),false,dark);
-  const headers=['Cliente','CPF','Banco','Produto','Valor','Bruta','ILA','Apos ILA','Nota','Liquida','Repasse TF'],widths=[75,50,42,55,49,46,48,49,46,48,43],tableTop=402,available=415,totalRows=Math.max(1,rows.length+(bonus>0?1:0)),rowH=Math.max(6.1,Math.min(14,(available-18)/totalRows)),fontSize=Math.max(3.6,Math.min(6,rowH*.43));
-  let x=22;headers.forEach((header,index)=>{rect(x,tableTop,widths[index],18,[.12,.13,.12]);text(x+2,tableTop+12,5.2,header,true,[1,1,1]);x+=widths[index]});
+  cards.forEach(([label,value],index)=>{const x=26+index*198;rect(x,98,190,43,index===3?[.91,.96,.92]:[.96,.95,.92],[.84,.80,.70]);text(x+9,112,6,label,true,muted);text(x+9,132,11,value,true,index===3?green:gold)});
+  text(26,160,7,"COMPARATIVO MENSAL",true,gold);text(26,176,12,"Producao total",true,dark);text(740,174,11,variationLabel,true,variationLabel.startsWith("+")?green:[.68,.20,.18]);
+  const comparison=[{x:26,title:previousMonthLabel,value:previousProduction,count:previousCount,ticket:previousTicket},{x:294,title:monthLabel,value:production,count:currentCount,ticket:currentTicket}];
+  comparison.forEach((item,index)=>{rect(item.x,187,258,53,index?[.98,.95,.88]:[.95,.95,.94],index?gold:[.75,.76,.73]);text(item.x+10,201,6,pdfFit(item.title,36),true,muted);text(item.x+10,219,11,brl(item.value),true,index?gold:dark);text(item.x+10,233,6,`${item.count} contratos  |  Ticket medio ${brl(item.ticket)}`,false,muted)});
+  rect(562,187,254,53,[.97,.95,.89],gold);text(574,201,6,variationLabel.startsWith("+")?"CRESCIMENTO":"REDUCAO",true,gold);text(574,220,14,variationLabel,true,dark);text(648,220,6.2,`${brl(Math.abs(production-previousProduction))} de diferenca`,false,muted);
+  rect(26,251,790,60,[.985,.98,.96],[.84,.82,.77]);text(36,265,6,"EVOLUCAO DO PERIODO",true,muted);
+  const graphLeft=48,graphTop=278,graphW=746,graphH=20,points=[previousProduction,production],max=Math.max(1,...points),p1={x:graphLeft,y:graphTop+graphH-(previousProduction/max)*graphH},p2={x:graphLeft+graphW,y:graphTop+graphH-(production/max)*graphH};
+  line(graphLeft,graphTop+graphH,graphLeft+graphW,graphTop+graphH,[.82,.82,.80],.5);line(p1.x,p1.y,p2.x,p2.y,gold,2.2);cmd.push(`${color(gold)} ${p1.x-2} ${(H-p1.y-2).toFixed(2)} 4 4 re f`);cmd.push(`${color(gold)} ${p2.x-2} ${(H-p2.y-2).toFixed(2)} 4 4 re f`);text(graphLeft,307,5.5,pdfFit(previousMonthLabel,22),false,muted);text(graphLeft+graphW-70,307,5.5,pdfFit(monthLabel,22),false,muted);
+  rect(26,322,790,34,[.97,.96,.93],[.84,.82,.77]);text(36,335,6,"ANALISE DO PERIODO",true,gold);text(150,343,6,pdfFit(analysis,185),false,dark);
+  const headers=['Cliente','CPF','Banco','Produto','Valor','Bruta','ILA','Apos ILA','Nota','Liquida','Repasse TF'],widths=[112,70,70,92,76,67,70,70,66,68,59],tableTop=369,available=190,totalRows=Math.max(1,rows.length+(bonus>0?1:0)),rowH=Math.max(6,Math.min(14,(available-18)/totalRows)),fontSize=Math.max(3.7,Math.min(6,rowH*.43));
+  let x=26;headers.forEach((header,index)=>{rect(x,tableTop,widths[index],18,[.12,.13,.12]);text(x+3,tableTop+12,5.2,header,true,[1,1,1]);x+=widths[index]});
   const tableRows=rows.map(row=>{const client=clientsData.find(item=>item.id===row.clientId),calculation=partnerOperationCalculation(row,partner);return [client?.name||'Cliente',formatCpf(client?.cpf||''),row.bank,row.product,brl(row.value),brl(calculation.gross),`${calculation.ilaRate.toLocaleString('pt-BR')}% ${brl(calculation.ilaValue)}`,brl(calculation.afterIla),`${calculation.invoiceRate.toLocaleString('pt-BR')}% ${brl(calculation.invoiceFee)}`,brl(calculation.net),brl(calculation.thiagoShare)]});
   if(bonus>0)tableRows.push(['Campanha GG Veiculos','-','Seguro','Bonificacao','-','-','0%','-','0%',brl(bonus),brl(partnerAdditionalFinance(bonus).thiagoShare)]);
   if(!tableRows.length)tableRows.push(['Nenhuma operacao no periodo.','','','','','','','','','','']);
-  tableRows.forEach((cells,rowIndex)=>{const top=tableTop+18+rowIndex*rowH;x=22;cells.forEach((cell,index)=>{rect(x,top,widths[index],rowH,rowIndex%2?[.975,.975,.968]:[1,1,1],[.88,.88,.86]);const maxChars=Math.max(4,Math.floor(widths[index]/(fontSize*.52)));text(x+2,top+rowH*.68,fontSize,pdfFit(String(cell),maxChars),index===0,dark);x+=widths[index]})});
-  text(22,832,5.5,`Gerado em ${new Date().toLocaleDateString('pt-BR')} - Gestao TF`,false,muted);text(515,832,5.5,"Pagina 1 de 1",false,muted);
+  tableRows.forEach((cells,rowIndex)=>{const top=tableTop+18+rowIndex*rowH;x=26;cells.forEach((cell,index)=>{rect(x,top,widths[index],rowH,rowIndex%2?[.975,.975,.968]:[1,1,1],[.88,.88,.86]);const maxChars=Math.max(4,Math.floor(widths[index]/(fontSize*.52)));text(x+2,top+rowH*.68,fontSize,pdfFit(String(cell),maxChars),index===0,dark);x+=widths[index]})});
+  text(26,584,5.5,`Gerado em ${new Date().toLocaleDateString('pt-BR')} - Gestao TF`,false,muted);text(756,584,5.5,"Pagina 1 de 1",false,muted);
   const content=cmd.join("\n"),objects=["",`<< /Type /Catalog /Pages 2 0 R >>`,`<< /Type /Pages /Kids [3 0 R] /Count 1 >>`,`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${W} ${H}] /Resources << /Font << /F1 5 0 R /F2 6 0 R >> >> /Contents 4 0 R >>`,`<< /Length ${content.length} >>\nstream\n${content}\nendstream`,`<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>`,`<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>`];
   let pdf="%PDF-1.4\n",offsets=[0];for(let index=1;index<objects.length;index++){offsets[index]=pdf.length;pdf+=`${index} 0 obj\n${objects[index]}\nendobj\n`}const xref=pdf.length;pdf+=`xref\n0 ${objects.length}\n0000000000 65535 f \n`;for(let index=1;index<objects.length;index++)pdf+=`${String(offsets[index]).padStart(10,"0")} 00000 n \n`;pdf+=`trailer\n<< /Size ${objects.length} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`;
   const blob=new Blob([pdf],{type:'application/pdf'}),url=URL.createObjectURL(blob),link=document.createElement('a'),safeName=partnerName.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9]+/g,'-').replace(/^-|-$/g,'').toLowerCase();link.href=url;link.download=`relatorio-${safeName||'parceiro'}-${monthLabel.replace(/\s+/g,'-').toLowerCase()}.pdf`;document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1500);
@@ -2671,14 +2685,17 @@ function Finance({ rows }: { rows:Operation[] }) {
     </>
   );
 }
-function Invoices({invoices}:{invoices:InvoiceRecord[]}) {
-  const periods=Array.from(new Set([...invoices.map(invoice=>invoice.issuedAt.slice(0,7)).filter(period=>/^\d{4}-\d{2}$/.test(period)),new Date().toISOString().slice(0,7)])).sort((a,b)=>b.localeCompare(a)),[period,setPeriod]=useState(periods[0]||new Date().toISOString().slice(0,7)),rows=invoices.filter(invoice=>invoice.issuedAt.startsWith(period)),paid=rows.filter(invoice=>/paga/i.test(invoice.status)),pending=rows.filter(invoice=>!/paga/i.test(invoice.status)),periodName=new Intl.DateTimeFormat('pt-BR',{month:'long',year:'numeric',timeZone:'UTC'}).format(new Date(`${period}-01T00:00:00Z`));
+function Invoices({invoices,setInvoices,clients}:{invoices:InvoiceRecord[];setInvoices:React.Dispatch<React.SetStateAction<InvoiceRecord[]>>;clients:Client[]}) {
+  const today=new Date().toISOString().slice(0,10),periods=Array.from(new Set([...invoices.map(invoice=>invoice.issuedAt.slice(0,7)).filter(period=>/^\d{4}-\d{2}$/.test(period)),today.slice(0,7)])).sort((a,b)=>b.localeCompare(a)),[period,setPeriod]=useState(periods[0]||today.slice(0,7)),[formOpen,setFormOpen]=useState(false),[saving,setSaving]=useState(false),[form,setForm]=useState({clientId:'',number:'',value:'',issuedAt:today,status:'pendente'}),[file,setFile]=useState<File|null>(null),[message,setMessage]=useState(''),rows=invoices.filter(invoice=>invoice.issuedAt.startsWith(period)),paid=rows.filter(invoice=>/paga/i.test(invoice.status)),pending=rows.filter(invoice=>!/paga/i.test(invoice.status)),periodName=new Intl.DateTimeFormat('pt-BR',{month:'long',year:'numeric',timeZone:'UTC'}).format(new Date(`${period}-01T00:00:00Z`));
+  const submit=async(event:React.FormEvent)=>{event.preventDefault();if(!file)return setMessage('Selecione o arquivo da nota fiscal.');setSaving(true);setMessage('');const data=new FormData();Object.entries(form).forEach(([key,value])=>data.append(key,key==='value'?String(moneyToStorage(value)):value));data.append('file',file);const response=await fetch('/api/invoices',{method:'POST',body:data}),result=await response.json();setSaving(false);if(!response.ok)return setMessage(result.error||'Não foi possível anexar a nota.');setInvoices(current=>[result.invoice,...current]);setPeriod(result.invoice.issuedAt.slice(0,7));setFormOpen(false);setFile(null);setForm({clientId:'',number:'',value:'',issuedAt:today,status:'pendente'});notifyCrmChanged()};
   return (
     <>
       <Title
         over="DOCUMENTOS FISCAIS"
         title="Notas fiscais"
-        text="Emissão, pagamento e arquivos PDF/XML."
+        text="Selecione o cliente, informe os valores e mantenha o arquivo fiscal anexado."
+        action="Anexar nota fiscal"
+        onAction={()=>{setMessage('');setFormOpen(true)}}
       />
       <section className="tf-panel">
         <div className="tf-filters">
@@ -2688,20 +2705,24 @@ function Invoices({invoices}:{invoices:InvoiceRecord[]}) {
           <span />
           <label className="tf-invoice-period">MÊS E ANO<select value={period} onChange={event=>setPeriod(event.target.value)}>{periods.map(item=><option key={item} value={item}>{new Intl.DateTimeFormat('pt-BR',{month:'long',year:'numeric',timeZone:'UTC'}).format(new Date(`${item}-01T00:00:00Z`))}</option>)}</select></label>
         </div>
-        {rows.length?<div className="tf-invoices">{rows.map(invoice=><div key={invoice.id}><b>NF {invoice.number}</b><span><strong>{invoice.clientName}</strong><small>{invoice.partnerName||'TF Assessoria e Finanças'}</small></span><b>{brl(invoice.value)}</b><em className={/paga/i.test(invoice.status)?'done':'pending'}>{/paga/i.test(invoice.status)?'Paga':'Pendente'}</em><span>{invoice.issuedAt?fmt(invoice.issuedAt):'Sem data'}</span></div>)}</div>:<div className="tf-table-empty"><ReceiptText/><h2>Nenhuma nota fiscal em {periodName}</h2><p>Quando uma operação finalizada possuir nota fiscal, ela aparecerá aqui automaticamente.</p></div>}
+        {rows.length?<div className="tf-invoices">{rows.map(invoice=><div key={invoice.id}><b>NF {invoice.number}</b><span><strong>{invoice.clientName}</strong><small>{invoice.fileName||invoice.partnerName||'TF Assessoria e Finanças'}</small></span><b>{brl(invoice.value)}</b><em className={/paga/i.test(invoice.status)?'done':'pending'}>{/paga/i.test(invoice.status)?'Paga':'Pendente'}</em><span>{invoice.issuedAt?fmt(invoice.issuedAt):'Sem data'}</span>{invoice.fileName&&<a href={`/api/invoices?id=${invoice.id}`} target="_blank" rel="noreferrer"><FileText/> Abrir arquivo</a>}</div>)}</div>:<div className="tf-table-empty"><ReceiptText/><h2>Nenhuma nota fiscal em {periodName}</h2><p>Anexe a primeira nota e vincule diretamente ao cliente.</p></div>}
       </section>
+      {formOpen&&<div className="tf-modal-back"><form className="tf-modal tf-invoice-form" onSubmit={submit}><button type="button" className="tf-modal-close" onClick={()=>setFormOpen(false)}>×</button><small>NOVA NOTA FISCAL</small><h2>Anexar nota ao cliente</h2><p>O arquivo ficará disponível no histórico fiscal.</p><label>Cliente<select required value={form.clientId} onChange={event=>setForm(current=>({...current,clientId:event.target.value}))}><option value="">Selecione o cliente</option>{[...clients].sort((a,b)=>a.name.localeCompare(b.name,'pt-BR',{sensitivity:'base'})).map(client=><option key={client.id} value={client.dbId||client.id}>{client.name} · {formatCpf(client.cpf)}</option>)}</select></label><div className="tf-form-grid"><label>Número da nota<input value={form.number} onChange={event=>setForm(current=>({...current,number:event.target.value}))} placeholder="Opcional"/></label><label>Valor<CurrencyInput value={form.value} onChange={value=>setForm(current=>({...current,value}))}/></label><label>Data de emissão<input type="date" value={form.issuedAt} onChange={event=>setForm(current=>({...current,issuedAt:event.target.value}))}/></label><label>Situação<select value={form.status} onChange={event=>setForm(current=>({...current,status:event.target.value}))}><option value="pendente">Pendente</option><option value="paga">Paga</option></select></label></div><label className="tf-invoice-file"><FileUp/><span><b>{file?.name||'Selecionar PDF, XML ou imagem'}</b><small>Arquivo de até 8 MB</small></span><input required type="file" accept=".pdf,.xml,image/*" onChange={event=>setFile(event.target.files?.[0]||null)}/></label>{message&&<em className="tf-form-error">{message}</em>}<div className="tf-modal-actions"><button type="button" className="tf-secondary" onClick={()=>setFormOpen(false)}>Cancelar</button><button className="tf-primary" disabled={saving}>{saving?'Anexando…':'Salvar nota fiscal'}</button></div></form></div>}
     </>
   );
 }
 function Banks() {
+  const [search,setSearch]=useState(''),searchRef=useRef<HTMLInputElement>(null),normalizedSearch=search.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase(),sortedBanks=[...bankCatalog].sort((a,b)=>Number(a.code)-Number(b.code)),visibleBanks=sortedBanks.filter(bank=>`${bank.code} ${bank.name} ${bank.service||''}`.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().includes(normalizedSearch));
   return (
     <>
       <Title
         over="CENTRAL DE ACESSOS"
         title="Bancos e financiamentos"
         text="Bancos, promotoras e plataformas de trabalho."
-        action="Cadastrar acesso"
+        action="Pesquisar banco"
+        onAction={()=>searchRef.current?.focus()}
       />
+      <section className="tf-bank-toolbar"><span><Landmark/><b>{sortedBanks.length} instituições organizadas por código</b></span><label><Search/><input ref={searchRef} value={search} onChange={event=>setSearch(event.target.value)} placeholder="Pesquisar código, banco ou serviço"/></label></section>
       <div className="tf-bank-grid">
         <section className="tf-panel">
           <PanelTitle over="GRUPOS DE TRABALHO" title="Abrir vários acessos" />
@@ -2721,8 +2742,9 @@ function Banks() {
         </section>
         <section className="tf-banks">
           <header className="tf-bank-catalog-heading"><span><small>CÓDIGO COMPE</small><b>CÓDIGO — BANCO</b></span><small>Centrais mantidas em fonte oficial</small></header>
-          {bankCatalog.map((bank) => (
+          {visibleBanks.map((bank,index) => (
             <article key={bank.code}>
+              <strong className="tf-bank-order">{String(index+1).padStart(2,'0')}</strong>
               <i style={{ background: bank.color }}>{bank.code}</i>
               <span>
                 <b>{bank.code} — {bank.name}</b>
@@ -2732,13 +2754,15 @@ function Banks() {
               <a href={bank.officialUrl} target="_blank" rel="noreferrer" aria-label={`Abrir atendimento oficial de ${bank.name}`}><ExternalLink /></a>
             </article>
           ))}
+          {!visibleBanks.length&&<div className="tf-table-empty"><Search/><h2>Nenhum banco encontrado</h2><p>Tente pesquisar por outro nome, código ou serviço.</p></div>}
         </section>
       </div>
     </>
   );
 }
 
-function postSaleMessage(task: PostSaleTask, googleReviewUrl: string) {
+const defaultPostSaleTemplate="Olá, {nome}! Aqui é o Thiago, da TF Assessoria & Finanças.\n\nSua operação foi concluída com sucesso. 🎉\n\n{detalhes}\n\n{orientacao}\n\n{central}\n\nCaso precise, continuo à disposição.{avaliacao}\n\nMuito obrigado pela confiança!\nThiago Oliveira\nTF Assessoria & Finanças";
+function postSaleMessage(task: PostSaleTask, googleReviewUrl: string, template=defaultPostSaleTemplate) {
   const name = task.clientName.split(/\s+/)[0] || task.clientName;
   const bank = bankInfo(task.bank);
   const central = bank?.phone ? `Central oficial ${task.bank}: ${bank.phone}` : `Canal oficial ${task.bank}: ${bank?.officialUrl || "consulte o site oficial da instituição"}`;
@@ -2750,11 +2774,13 @@ function postSaleMessage(task: PostSaleTask, googleReviewUrl: string) {
   else if (/consórcio/i.test(task.product)) guidance = "Acompanhe sua cota e as assembleias pelos canais oficiais da administradora.";
   else if (/juríd/i.test(task.product)) guidance = task.postSaleNotes || "O escritório responsável poderá orientar você sobre os próximos passos.";
   else if (task.postSaleNotes) guidance = task.postSaleNotes;
-  return `Olá, ${name}! Aqui é o Thiago, responsável pelo seu atendimento na TF Assessoria & Finanças.\n\nPassando para agradecer pela confiança e informar que sua operação foi concluída com sucesso. 🎉\n\n${details}\n\n${guidance}\n\n${central}\n\nCaso precise de alguma orientação, continuo à disposição.${googleReviewUrl ? `\n\nSe puder, avalie também como foi o meu atendimento:\n${googleReviewUrl}` : ""}\n\nMuito obrigado pela confiança!\nThiago Oliveira\nTF Assessoria & Finanças`;
+  const replacements:Record<string,string>={nome:name,cliente:task.clientName,produto:task.product,banco:task.bank,valor:brl(task.value),parcela:task.installment>0?brl(task.installment):"",prazo:task.term>0?`${task.term} meses`:"",detalhes:details,orientacao:guidance,central,avaliacao:googleReviewUrl?`\n\nSe puder, avalie também como foi o meu atendimento:\n${googleReviewUrl}`:""};
+  return (template.trim()||defaultPostSaleTemplate).replace(/\{([a-z]+)\}/gi,(_,key:string)=>replacements[key.toLocaleLowerCase("pt-BR")]??`{${key}}`);
 }
 
-function PostSales({ tasks, setTasks, googleReviewUrl }: { tasks: PostSaleTask[]; setTasks: React.Dispatch<React.SetStateAction<PostSaleTask[]>>; googleReviewUrl: string }) {
-  const [filter, setFilter] = useState<"pendente" | "todos">("pendente");
+function PostSales({ tasks, setTasks, googleReviewUrl, messageTemplate, onTemplateSaved }: { tasks: PostSaleTask[]; setTasks: React.Dispatch<React.SetStateAction<PostSaleTask[]>>; googleReviewUrl: string;messageTemplate:string;onTemplateSaved:(value:string)=>void }) {
+  const [filter, setFilter] = useState<"pendente" | "todos">("pendente"),[template,setTemplate]=useState(messageTemplate||defaultPostSaleTemplate),[templateOpen,setTemplateOpen]=useState(false),[templateSaving,setTemplateSaving]=useState(false),[templateNotice,setTemplateNotice]=useState("");
+  useEffect(()=>setTemplate(messageTemplate||defaultPostSaleTemplate),[messageTemplate]);
   const pending = tasks.filter((task) => task.status === "pendente");
   const visible = filter === "pendente" ? pending : tasks;
   const complete = async (task: PostSaleTask) => {
@@ -2763,14 +2789,16 @@ function PostSales({ tasks, setTasks, googleReviewUrl }: { tasks: PostSaleTask[]
     if (response.ok) setTasks((current) => current.map((item) => item.id === task.id ? { ...item, status: 'concluido', completedAt: data.task?.completedAt || Date.now() } : item));
     else alert(data.error || 'Não foi possível concluir o pós-venda.');
   };
+  const saveTemplate=async()=>{setTemplateSaving(true);setTemplateNotice("");const response=await fetch('/api/settings',{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({postSaleMessageTemplate:template})}),data=await response.json();setTemplateSaving(false);if(response.ok){onTemplateSaved(data.postSaleMessageTemplate||template);setTemplateNotice('Mensagem padrão salva.')}else setTemplateNotice(data.error||'Não foi possível salvar a mensagem.')};
   return <>
     <Title over="RELACIONAMENTO APÓS A VENDA" title="Pós-venda" text="Acompanhe os contatos que precisam ser feitos depois da conclusão." />
-    <section className="tf-post-sale-summary"><article><small>PENDÊNCIAS</small><strong>{pending.length}</strong><span>contatos aguardando</span></article><article><small>HISTÓRICO</small><strong>{tasks.length}</strong><span>operações acompanhadas</span></article><div><button className={filter === "pendente" ? "active" : ""} onClick={() => setFilter("pendente")}>Pendentes · {pending.length}</button><button className={filter === "todos" ? "active" : ""} onClick={() => setFilter("todos")}>Histórico · {tasks.length}</button></div></section>
+    <section className="tf-post-sale-summary"><article><small>PENDÊNCIAS</small><strong>{pending.length}</strong><span>contatos aguardando</span></article><article><small>HISTÓRICO</small><strong>{tasks.length}</strong><span>operações acompanhadas</span></article><div><button className={filter === "pendente" ? "active" : ""} onClick={() => setFilter("pendente")}>Pendentes · {pending.length}</button><button className={filter === "todos" ? "active" : ""} onClick={() => setFilter("todos")}>Histórico · {tasks.length}</button><button onClick={()=>setTemplateOpen(value=>!value)}><MessageCircle/> Mensagem padrão</button></div></section>
+    {templateOpen&&<section className="tf-post-sale-template"><header><span><small>WHATSAPP</small><h3>Mensagem padrão do pós-venda</h3></span><button type="button" onClick={()=>setTemplate(defaultPostSaleTemplate)}>Restaurar padrão</button></header><p>Use os campos entre chaves para personalizar automaticamente cada cliente.</p><textarea value={template} onChange={event=>setTemplate(event.target.value)} maxLength={4000}/><div className="tf-post-sale-variables">{['{nome}','{produto}','{banco}','{valor}','{parcela}','{prazo}','{detalhes}','{orientacao}','{central}','{avaliacao}'].map(item=><button type="button" key={item} onClick={()=>setTemplate(current=>`${current}${current.endsWith(' ')?'':' '}${item}`)}>{item}</button>)}</div><footer>{templateNotice&&<span>{templateNotice}</span>}<button type="button" className="tf-primary" disabled={templateSaving} onClick={saveTemplate}>{templateSaving?'Salvando…':'Salvar mensagem padrão'}</button></footer></section>}
     <section className="tf-post-sale-list">{visible.map((task) => <article key={task.id} className={task.status === "concluido" ? "completed" : "pending"}>
       <header><span><i><MessageCircle /></i><div><b>{task.clientName}</b><small>{formatPhone(task.phone)} · {task.partner}</small></div></span><em>{task.status === "pendente" ? "Pendente" : "Concluído"}</em></header>
       <div className="tf-post-sale-details"><span><small>PRODUTO</small><b>{task.product}</b></span><span><small>BANCO / INSTITUIÇÃO</small><BankIdentity value={task.bank} compact /></span><span><small>VALOR</small><b>{brl(task.value)}</b></span><span><small>PARCELA</small><b>{task.installment > 0 ? brl(task.installment) : "—"}</b></span><span><small>PRAZO</small><b>{task.term > 0 ? `${task.term} meses` : "—"}</b></span><span><small>CONCLUSÃO</small><b>{formatDateBr(task.completionDate)}</b></span></div>
       {task.postSaleNotes && <p className="tf-post-sale-note">{task.postSaleNotes}</p>}
-      <footer><a className="tf-post-sale-whatsapp" href={task.phone ? `https://wa.me/55${phoneKey(task.phone)}?text=${encodeURIComponent(postSaleMessage(task, googleReviewUrl))}` : undefined} target="_blank" rel="noreferrer" aria-disabled={!task.phone}><MessageCircle /> WhatsApp</a>{task.status === "pendente" ? <button className="tf-primary" onClick={() => complete(task)}><CheckCircle2 /> Pós-venda concluído com sucesso</button> : <span className="tf-post-sale-completed"><CheckCircle2 /> Concluído em {task.completedAt ? new Date(task.completedAt).toLocaleString("pt-BR") : "—"}</span>}</footer>
+      <footer><a className="tf-post-sale-whatsapp" href={task.phone ? `https://wa.me/55${phoneKey(task.phone)}?text=${encodeURIComponent(postSaleMessage(task, googleReviewUrl,template))}` : undefined} target="_blank" rel="noreferrer" aria-disabled={!task.phone}><MessageCircle /> Enviar mensagem no WhatsApp</a>{task.status === "pendente" ? <button className="tf-primary" onClick={() => complete(task)}><CheckCircle2 /> Pós-venda concluído com sucesso</button> : <span className="tf-post-sale-completed"><CheckCircle2 /> Concluído em {task.completedAt ? new Date(task.completedAt).toLocaleString("pt-BR") : "—"}</span>}</footer>
     </article>)}{!visible.length && <div className="tf-table-empty"><CheckCircle2 /><h2>{filter === "pendente" ? "Nenhum pós-venda pendente" : "Nenhum pós-venda registrado"}</h2><p>Quando uma operação for concluída, ela aparecerá nesta fila.</p></div>}</section>
   </>;
 }
@@ -3270,9 +3298,9 @@ function ClientSheet({ client, operations, close, refresh }: { client: Client; o
           ))}
         </div>
       </aside>
-      {clientForm&&<div className="tf-modal-back" onMouseDown={event=>event.stopPropagation()}><form className="tf-modal" onSubmit={saveClient}><button type="button" className="tf-modal-close" onClick={()=>setClientForm(null)}>×</button><small>EDITAR CLIENTE</small><h2>Dados cadastrais</h2><label>Nome completo<input required value={clientForm.name} onChange={event=>setClientForm({...clientForm,name:event.target.value})}/></label><label>CPF ou benefício<input required value={clientForm.document} onChange={event=>setClientForm({...clientForm,document:event.target.value})}/></label><label>Data de nascimento<input value={clientForm.birthDate} onChange={event=>setClientForm({...clientForm,birthDate:maskDate(event.target.value)})} placeholder="DD/MM/AAAA"/></label><label>Telefone<input value={clientForm.phone} onChange={event=>setClientForm({...clientForm,phone:maskPhone(event.target.value)})}/></label><button className="tf-primary" disabled={saving}>{saving?'Salvando…':'Salvar cliente'}</button></form></div>}
+      {clientForm&&<div className="tf-modal-back" onMouseDown={event=>event.stopPropagation()}><form className="tf-modal" onSubmit={saveClient}><button type="button" className="tf-modal-close" onClick={()=>setClientForm(null)}>×</button><small>EDITAR CLIENTE</small><h2>Dados cadastrais</h2><label>Nome completo<input required value={clientForm.name} onChange={event=>setClientForm({...clientForm,name:event.target.value.toLocaleUpperCase("pt-BR")})}/></label><label>CPF ou benefício<input required value={clientForm.document} onChange={event=>setClientForm({...clientForm,document:event.target.value})}/></label><label>Data de nascimento<input value={clientForm.birthDate} onChange={event=>setClientForm({...clientForm,birthDate:maskDate(event.target.value)})} placeholder="DD/MM/AAAA"/></label><label>Telefone<input value={clientForm.phone} onChange={event=>setClientForm({...clientForm,phone:maskPhone(event.target.value)})}/></label><button className="tf-primary" disabled={saving}>{saving?'Salvando…':'Salvar cliente'}</button></form></div>}
       {operationForm&&<div className="tf-modal-back" onMouseDown={event=>event.stopPropagation()}><form className="tf-modal tf-modal-wide tf-operation-editor" onSubmit={saveOperation}><button type="button" className="tf-modal-close" onClick={()=>setOperationForm(null)}>×</button><small>EDITAR OPERAÇÃO</small><h2>{client.name}</h2><p>Complete ou corrija qualquer informação desta produção.</p><div className="tf-form-grid">
-        <label>Nome do cliente<input required value={operationForm.details.name||''} onChange={event=>setOperationForm({...operationForm,details:{...operationForm.details,name:event.target.value}})}/></label>
+        <label>Nome do cliente<input required value={operationForm.details.name||''} onChange={event=>setOperationForm({...operationForm,details:{...operationForm.details,name:event.target.value.toLocaleUpperCase("pt-BR")}})}/></label>
         <label>CPF ou benefício<input required value={operationForm.details.document||''} onChange={event=>setOperationForm({...operationForm,details:{...operationForm.details,document:event.target.value}})}/></label>
         <label>Data de nascimento<input value={operationForm.details.birthDate||''} onChange={event=>setOperationForm({...operationForm,details:{...operationForm.details,birthDate:maskDate(event.target.value)}})} placeholder="DD/MM/AAAA"/></label>
         <label>Telefone / WhatsApp<input inputMode="tel" value={operationForm.details.phone||''} onChange={event=>setOperationForm({...operationForm,details:{...operationForm.details,phone:maskPhone(event.target.value)}})}/></label>

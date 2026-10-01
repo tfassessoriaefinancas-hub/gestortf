@@ -18,9 +18,11 @@ export async function GET() {
     LEFT JOIN partners p ON p.id=o.partner_id AND p.deleted_at IS NULL
     WHERE t.owner_id IN (?,?) AND c.deleted_at IS NULL AND o.deleted_at IS NULL${employeeScope}
     ORDER BY CASE WHEN t.status='pendente' THEN 0 ELSE 1 END,t.updated_at DESC,t.id DESC`).bind(...values).all<PostSaleRow>();
-  const setting = await env.DB.prepare('SELECT value FROM app_settings WHERE key=?').bind('google_review_url').first<{ value: string }>();
+  const settings = await env.DB.prepare('SELECT key,value FROM app_settings WHERE key IN (?,?)').bind('google_review_url','post_sale_message_template').all<{ key:string;value:string }>();
+  const setting=Object.fromEntries(settings.results.map(row=>[row.key,row.value]));
   return json({
-    googleReviewUrl: setting?.value || '',
+    googleReviewUrl: setting.google_review_url || '',
+    postSaleMessageTemplate: setting.post_sale_message_template || '',
     tasks: rows.results.map((row) => {
       let notes: Record<string, unknown> = {};
       try { notes = JSON.parse(row.notes || '{}'); } catch { /* legacy notes */ }

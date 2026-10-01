@@ -66,6 +66,20 @@ test('final registration requires only name and CPF for every product',async({re
   }finally{await db.close();}
 });
 
+test('one finalized client can receive additional operations without duplicating the client',async({request})=>{
+  await login(request);
+  const deal=await create(request,{name:'Cliente com operações adicionais',cpf:'66999999999',product:'FGTS'});
+  const finalized=await request.patch('/api/deals',{data:{id:deal.id,stage:'finalizado',details:{name:'Cliente com operações adicionais',cpf:'66999999999',contractType:'Contrato novo',value:1200}}});
+  expect(finalized.ok(),await finalized.text()).toBeTruthy();
+  const extra=await request.patch('/api/deals',{data:{id:deal.id,action:'additional_operation',details:{contractType:'Financiamento',operationType:'Financiamento',bank:'001 — Banco do Brasil',value:35000}}});
+  expect(extra.status(),await extra.text()).toBe(201);
+  const db=createDatabase();
+  try{
+    expect(await db.prepare('SELECT COUNT(*) AS count FROM clients WHERE cpf=? AND deleted_at IS NULL').bind('66999999999').first('count')).toBe(1);
+    expect(await db.prepare('SELECT COUNT(*) AS count FROM operations WHERE client_id=? AND deleted_at IS NULL').bind(deal.clientId).first('count')).toBe(2);
+  }finally{await db.close();}
+});
+
 test('a new service with the same CPF keeps a separate client and never replaces an older operation',async({request})=>{
   await login(request);
   const old=await create(request,{name:'Cliente com dois serviços',cpf:'77888999000',product:'Financiamento',financedValue:1000});
@@ -156,9 +170,7 @@ test('new card forms reset between clients, offer the requested amounts and shar
   await page.locator('[data-stage="analise"] > footer').getByRole('button',{name:'Adicionar negócio',exact:true}).click();
   await expect(page.locator('.tf-create-deal-modal')).toBeVisible();
   await page.locator('.tf-create-deal-modal .tf-modal-close').click();
-  await page.getByRole('button',{name:'Upload de documento',exact:true}).click();
-  await expect(page.getByRole('heading',{name:'Upload de CNH ou identidade',exact:true})).toBeVisible();
-  await page.locator('.tf-modal-back .tf-modal-close').click();
+  await expect(page.getByRole('button',{name:'Upload de documento',exact:true})).toHaveCount(0);
   expect(pageErrors).toEqual([]);
   await page.setViewportSize({width:390,height:844});
   expect(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1)).toBe(false);
