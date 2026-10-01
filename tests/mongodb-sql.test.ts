@@ -4,6 +4,7 @@ import ts from 'typescript';
 import { readFileSync, readdirSync } from 'node:fs';
 import { parseApplicationSql, compileSelect, updateExpressions } from '../lib/mongodb-sql.ts';
 import { mongoDocument } from '../lib/mongodb.ts';
+import { mongoSchema } from '../lib/mongodb-schema.ts';
 
 test('all static application queries are supported by the MongoDB grammar', () => {
   const paths: string[] = [];
@@ -50,4 +51,10 @@ test('BSON monetary fields reject fractions and unsafe numbers instead of losing
   const row = { id: 1, owner_id: 'owner', client_id: 2, created_at: 1, updated_at: 1, value_cents: 12345 };
   assert.equal(mongoDocument('operations', row).value_cents.toString(), '12345');
   for (const value of [1.1, Number.MAX_SAFE_INTEGER + 1, Infinity, '12345']) assert.throws(() => mongoDocument('operations', { ...row, value_cents: value }), /Inteiro inválido/);
+});
+
+test('the MongoDB contract keeps client CPF searchable without requiring uniqueness', () => {
+  const cpfIndexes = mongoSchema.tables.clients.indexes.filter(index => Object.hasOwn(index.fields, 'cpf'));
+  assert.deepEqual(cpfIndexes, [{ name: 'idx_clients_owner_cpf', fields: { owner_id: 1, cpf: 1 }, unique: false }]);
+  assert.ok(mongoSchema.migrations['006_allow_duplicate_client_cpf.sql']);
 });

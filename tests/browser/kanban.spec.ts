@@ -38,7 +38,10 @@ test('optional client data stays separate and financial edits preserve the origi
     expect(duplicate.status(),JSON.stringify(duplicateBody)).toBe(201);
     expect(duplicateBody.deal.clientId).not.toBe(100);
     expect(await db.prepare('SELECT COUNT(*) AS count FROM clients WHERE cpf=? AND deleted_at IS NULL').bind('11111111111').first('count')).toBe(2);
-    expect(await db.prepare('SELECT COUNT(*) AS count FROM clients WHERE cpf IS NULL AND id IN (?,?)').bind(first.clientId,second.clientId).first('count')).toBe(2);
+    const repeatedEdit=await request.patch('/api/deals',{data:{id:second.id,action:'edit',details:{cpf:'11111111111'}}});
+    expect(repeatedEdit.ok(),await repeatedEdit.text()).toBeTruthy();
+    expect(await db.prepare('SELECT COUNT(*) AS count FROM clients WHERE cpf=? AND deleted_at IS NULL').bind('11111111111').first('count')).toBe(3);
+    expect(await db.prepare('SELECT COUNT(*) AS count FROM clients WHERE cpf IS NULL AND id IN (?,?)').bind(first.clientId,second.clientId).first('count')).toBe(1);
     const invalid=await request.post('/api/deals',{data:{name:'CPF incompleto',cpf:'123',product:'FGTS'}});
     expect(invalid.status()).toBe(400);
   }finally{await db.close();}

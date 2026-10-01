@@ -9,6 +9,7 @@ import { CRM_CHANGED, CRM_STORAGE_KEY, notifyCrmChanged } from "../lib/crm-event
 import { startActiveRefresh } from "../lib/active-refresh";
 import { resourcesForView, type CrmResource, type CrmRevisions } from "../lib/crm-resources";
 import { createResourceSync } from "../lib/resource-sync";
+import { readApiPayload } from "../lib/api-response";
 import type { CanonicalOperation } from "../lib/operations";
 import {
   House,
@@ -1813,9 +1814,10 @@ function Kanban({
         ...(financing?{vehicleValue:moneyToStorage(createForm.vehicleValue),downPayment:moneyToStorage(createForm.downPayment),financedValue:moneyToStorage(createForm.financedValue)}:{desiredCredit:moneyToStorage(createForm.desiredCredit)}),
         assignedUserId:kanbanOwner==="owner"?null:Number(kanbanOwner)};
       const r=await fetch("/api/deals",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(body)});
-      const x=await r.json();
-      if(!r.ok)throw new Error(x.error||"Não foi possível iniciar o atendimento.");
-      setDeals(rows=>[x.deal,...rows.filter(row=>row.id!==x.deal.id)]);
+      const x=await readApiPayload<{deal?:Deal}>(r);
+      if(!r.ok||!x.deal)throw new Error(x.error||"Não foi possível iniciar o atendimento.");
+      const savedDeal=x.deal;
+      setDeals(rows=>[savedDeal,...rows.filter(row=>row.id!==savedDeal.id)]);
       setForm(false);setFormStep(1);setCreateForm({...emptyCreateForm});setSelectedProduct("Financiamento");onDataChanged();
     }catch(error){setCreateError(error instanceof Error?error.message:"Não foi possível salvar. Tente novamente.");}
     finally{creatingRef.current=false;setCreating(false);}
@@ -1867,9 +1869,10 @@ function Kanban({
         ...(editForm.product==="Crédito com garantia"?{guaranteeType:editForm.guaranteeType,vehicleValue:moneyToStorage(editForm.vehicleValue)}:{}),
         ...(editForm.product==="Financiamento"?{vehicleValue:moneyToStorage(editForm.vehicleValue),downPayment:moneyToStorage(editForm.downPayment),financedValue:moneyToStorage(editForm.financedValue)}:{desiredCredit:moneyToStorage(editForm.desiredCredit)})};
       const r=await fetch('/api/deals',{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({id,action:'edit',details:normalizedEdit})});
-      const x=await r.json();
-      if(!r.ok)throw new Error(x.error||'Não foi possível editar o atendimento.');
-      setDeals(rows=>rows.map(row=>row.id===id?{...row,...x.deal}:row));setEditDeal(null);onDataChanged();
+      const x=await readApiPayload<{deal?:Deal}>(r);
+      if(!r.ok||!x.deal)throw new Error(x.error||'Não foi possível editar o atendimento.');
+      const savedDeal=x.deal;
+      setDeals(rows=>rows.map(row=>row.id===id?{...row,...savedDeal}:row));setEditDeal(null);onDataChanged();
     }catch(error){setEditError(error instanceof Error?error.message:'Não foi possível salvar. Tente novamente.');}
     finally{editingRef.current=false;setEditing(false);}
   };

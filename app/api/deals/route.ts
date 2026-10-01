@@ -56,7 +56,11 @@ export async function POST(request:Request){
    return {...row,...payload,needsCompletion:false,clientId:customer.id,operationId:operation.id,source:'Kanban'};
   });
   return json({deal},201);
- }catch(error){if(error instanceof RecordUpdateError)return json({error:error.message},error.status);throw error;}
+ }catch(error){
+  if(error instanceof RecordUpdateError)return json({error:error.message},error.status);
+  console.error('Falha ao criar atendimento.',error);
+  return json({error:'Não foi possível cadastrar o atendimento agora. Tente novamente em alguns instantes.'},500);
+ }
 }
 
 export async function PATCH(request:Request){
@@ -94,7 +98,11 @@ export async function PATCH(request:Request){
     return {...payload,id,stage:locked.stage,status:locked.status,needsCompletion:Boolean(locked.needs_completion),updatedAt:now,clientId:locked.client_id,operationId:locked.operation_id,source:locked.source};
    });
    return json({ok:true,deal});
-  }catch(error){if(error instanceof RecordUpdateError)return json({error:error.message},error.status);throw error;}
+  }catch(error){
+   if(error instanceof RecordUpdateError)return json({error:error.message},error.status);
+   console.error('Falha ao editar atendimento.',error);
+   return json({error:'Não foi possível salvar as alterações agora. Tente novamente em alguns instantes.'},500);
+  }
  }
  if(id&&body.action==='schedule_return'){
   const current=await ownedDeal(user,id);

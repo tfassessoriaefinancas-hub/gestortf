@@ -7,6 +7,7 @@ import { compileSelect, parseApplicationSql, sqlConstant, updateExpressions } fr
 import type { ApplicationDatabase, DatabaseClient, DatabaseRow, DatabaseStatement, QueryResult } from './database-types.ts';
 
 const contractHash = createHash('sha256').update(JSON.stringify(mongoSchema)).digest('hex');
+const duplicateCpfLegacyContractHash = 'c132da683c88171e108c223b548b7454b93ea4b4ae7c0ae8d8e7f51b701593a8';
 type StoredDocument = DatabaseRow & { _id: string };
 const binding = (value: unknown): unknown => {
   if (value == null) return null;
@@ -133,9 +134,28 @@ export class MongoDatabase implements ApplicationDatabase, DatabaseClient {
     if (!this.connected) this.connected = this.client.connect().then(client => client.db(this.name)).catch(error => { this.connected = undefined; throw error; });
     return this.connected;
   }
+  private async upgradeCompatibleSchema(db: Db, marker: StoredDocument | null) {
+    if (marker?.hash !== duplicateCpfLegacyContractHash) return marker;
+    const clients = db.collection('clients');
+    const indexes = await clients.listIndexes().toArray();
+    if (indexes.some(index => index.name === 'clients_owner_cpf_unique')) {
+      try { await clients.dropIndex('clients_owner_cpf_unique'); }
+      catch (error) { if ((error as { code?: number }).code !== 27) throw error; }
+    }
+    await clients.createIndex({ owner_id: 1, cpf: 1 }, { name: 'idx_clients_owner_cpf' });
+    await db.collection('deals').updateMany({ stage: 'fechamento' }, { $set: { stage: 'assinatura' } });
+    await db.collection('deals').updateMany({ stage: 'contratado' }, { $set: { stage: 'finalizado' } });
+    await db.collection('operations').updateMany({ status: 'fechamento' }, { $set: { status: 'assinatura' } });
+    await db.collection('operations').updateMany({ status: 'contratado' }, { $set: { status: 'finalizado' } });
+    await db.collection<StoredDocument>('_tf_state').updateOne(
+      { _id: 'schema', hash: duplicateCpfLegacyContractHash },
+      { $set: { hash: contractHash, version: mongoSchema.version, migratedAt: Date.now() } },
+    );
+    return db.collection<StoredDocument>('_tf_state').findOne({ _id: 'schema' });
+  }
   private async assertReady() {
     if (!this.ready) this.ready = this.connection().then(async db => {
-      const marker = await db.collection<StoredDocument>('_tf_state').findOne({ _id: 'schema' });
+      const marker = await this.upgradeCompatibleSchema(db, await db.collection<StoredDocument>('_tf_state').findOne({ _id: 'schema' }));
       if (marker?.hash !== contractHash) throw new Error('Estrutura MongoDB não inicializada ou incompatível. Execute db:migrate:mongodb antes de ativar a base.');
       if (!/^tf_test_[a-f0-9]{16}$/.test(this.name)) {
         const migrated = await db.collection<StoredDocument>('_tf_state').findOne({ _id: 'data-migration' });
@@ -147,7 +167,7 @@ export class MongoDatabase implements ApplicationDatabase, DatabaseClient {
   }
   async initialize() {
     const db = await this.connection();
-    const marker = await db.collection<StoredDocument>('_tf_state').findOne({ _id: 'schema' });
+    const marker = await this.upgradeCompatibleSchema(db, await db.collection<StoredDocument>('_tf_state').findOne({ _id: 'schema' }));
     if (marker && marker.hash !== contractHash) throw new Error('A estrutura MongoDB existente é diferente; migração explícita necessária.');
     const existing = await db.listCollections({}, { nameOnly: true }).toArray();
     if (!marker) for (const collection of existing) {
