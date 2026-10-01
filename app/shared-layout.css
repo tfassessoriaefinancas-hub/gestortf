@@ -996,3 +996,64 @@
 @media(max-width:390px){
   .tf-post-sale-details { grid-template-columns:1fr; }
 }
+
+/* V113 · uma cor consistente para os cartões de cada etapa do atendimento. */
+.tf-app.theme-mono .tf-deal-card.deal-stage-0 {
+  --deal-accent:#78bce8;
+  border-color:rgba(86,157,205,.58) !important;
+  border-left:3px solid var(--deal-accent) !important;
+  background:linear-gradient(138deg,rgba(30,79,113,.88),rgba(13,29,40,.84) 82%) !important;
+  box-shadow:inset 0 1px rgba(180,224,250,.12),0 8px 20px rgba(0,0,0,.25) !important;
+}
+.tf-app.theme-mono .tf-deal-card.deal-stage-1 {
+  --deal-accent:#e0ba6c;
+  border-color:rgba(198,151,70,.58) !important;
+  border-left:3px solid var(--deal-accent) !important;
+  background:linear-gradient(138deg,rgba(96,72,31,.88),rgba(36,29,17,.86) 82%) !important;
+  box-shadow:inset 0 1px rgba(246,220,158,.11),0 8px 20px rgba(0,0,0,.25) !important;
+}
+.tf-app.theme-mono .tf-deal-card.deal-stage-2 {
+  --deal-accent:#e18c79;
+  border-color:rgba(203,104,82,.58) !important;
+  border-left:3px solid var(--deal-accent) !important;
+  background:linear-gradient(138deg,rgba(104,50,42,.88),rgba(41,23,21,.86) 82%) !important;
+  box-shadow:inset 0 1px rgba(247,184,165,.11),0 8px 20px rgba(0,0,0,.25) !important;
+}
+.tf-app.theme-mono .tf-deal-card.deal-stage-3 {
+  --deal-accent:#c29be0;
+  border-color:rgba(151,104,187,.60) !important;
+  border-left:3px solid var(--deal-accent) !important;
+  background:linear-gradient(138deg,rgba(75,48,99,.90),rgba(29,21,39,.86) 82%) !important;
+  box-shadow:inset 0 1px rgba(220,188,245,.11),0 8px 20px rgba(0,0,0,.25) !important;
+}
+.tf-app.theme-mono .tf-deal-card.deal-stage-4 {
+  --deal-accent:#60a982;
+  border-color:#477763 !important;
+  border-left:3px solid var(--deal-accent) !important;
+  background:linear-gradient(135deg,#234438,#14261f 88%) !important;
+  box-shadow:0 8px 22px rgba(0,0,0,.30) !important;
+}
+.tf-app.theme-mono .tf-deal-card[class*="deal-stage-"] .tf-card-heading>.tf-card-product {
+  border-color:color-mix(in srgb,var(--deal-accent) 38%,transparent) !important;
+  background:color-mix(in srgb,var(--deal-accent) 10%,rgba(4,8,6,.28)) !important;
+  color:color-mix(in srgb,var(--deal-accent) 88%,white) !important;
+}
+.tf-app.theme-mono .tf-deal-card[class*="deal-stage-"] .tf-card-actions button {
+  border-color:color-mix(in srgb,var(--deal-accent) 40%,rgba(255,255,255,.08));
+  color:color-mix(in srgb,var(--deal-accent) 88%,white);
+}
+.tf-app.theme-mono .tf-deal-card.deal-stage-4.needs-completion {
+  border-color:#53b67d !important;
+  background:linear-gradient(135deg,#183626,#0f1713 88%) !important;
+  animation:tf-green-pulse 1.15s ease-in-out infinite !important;
+}
+.tf-app.theme-mono .tf-deal-card.deal-stage-4.needs-completion .tf-card-pending-label {
+  border:1px solid rgba(142,235,177,.34);
+  background:rgba(122,226,160,.16);
+  color:#c2f7d5;
+}
+.tf-app.theme-mono .tf-deal-card.deal-stage-4.needs-completion .tf-card-finalize {
+  border-color:rgba(143,235,178,.58);
+  background:linear-gradient(135deg,rgba(76,190,118,.27),rgba(28,103,60,.19));
+  color:#d2f9df;
+}

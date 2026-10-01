@@ -2073,7 +2073,7 @@ function Kanban({
                 <b>{rows.length}</b>
               </div>
               <div className="tf-deal-stack">
-                {rows.map((d, cardIndex) => (
+                {rows.map((d) => (
                   <div
                     key={d.id}
                     data-deal-id={d.id}
@@ -2091,7 +2091,7 @@ function Kanban({
                       reorderDeals(source.id,d.id);
                       if(source.stage!==stage)void move(source,stage);
                     }}
-                    className={`tf-deal-card deal-stage-${i} ${stage === "atendimento" ? `deal-tone-${cardIndex % 6}` : ""} ${d.returnAt&&d.returnStatus!=="concluido"&&d.returnAt<=nowIso?'return-due':''} ${stage === "finalizado" && (d.needsCompletion || d.status !== "concluido") ? "needs-completion" : ""}`}
+                    className={`tf-deal-card deal-stage-${i} ${d.returnAt&&d.returnStatus!=="concluido"&&d.returnAt<=nowIso?'return-due':''} ${stage === "finalizado" && (d.needsCompletion || d.status !== "concluido") ? "needs-completion" : ""}`}
                   >
                     <button
                       type="button"
