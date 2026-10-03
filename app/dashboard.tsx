@@ -11,6 +11,7 @@ import { resourcesForView, type CrmResource, type CrmRevisions } from "../lib/cr
 import { createResourceSync } from "../lib/resource-sync";
 import { readApiPayload } from "../lib/api-response";
 import type { CanonicalOperation } from "../lib/operations";
+import FinancialCalculator from "./financial-calculator";
 import {
   House,
   UsersRound,
@@ -55,6 +56,7 @@ import {
   Paperclip,
   ScanText,
   Star,
+  Calculator,
   type LucideIcon,
 } from "lucide-react";
 
@@ -72,6 +74,7 @@ type View =
   | "bancos"
   | "relatorios"
   | "posvenda"
+  | "calculadora"
   | "usuarios";
 type Client = {
   id: number;
@@ -436,6 +439,7 @@ const menu: [View, LucideIcon, string][] = [
   ["compromissos", CalendarClock, "Compromissos e negócios"],
   ["atendimento", Columns3, "Atendimento"],
   ["bancos", Landmark, "Bancos e financiamentos"],
+  ["calculadora", Calculator, "Calculadora financeira"],
   ["clientes", UsersRound, "Clientes"],
   ["financeiro", ChartNoAxesCombined, "Financeiro / Comissões"],
   ["notas", ReceiptText, "Notas fiscais"],
@@ -766,6 +770,7 @@ export default function Dashboard({
             <ClientsFiltered data={found} operations={allOps} open={setSelected} />
           )}{" "}
           {view === "compromissos" && <Commitments activities={activities} setActivities={setActivities} clients={allClients} />}{" "}
+          {view === "calculadora" && <FinancialCalculator />}{" "}
           {view === "atendimento" && (
             <Kanban deals={deals} setDeals={updateDeals} user={user} members={teamMembers} partnerNames={partners.map(partner=>partner.name)} receivables={receivables} catalogOptions={catalogOptions} onCatalogChange={(option)=>setCatalogOptions(current=>option.label?[option,...current.filter(item=>item.id!==option.id)]:current.filter(item=>item.id!==option.id))} newDealRequest={newDealRequest} onMarkReceived={markCommissionReceived} onReceivableCreated={(item)=>setReceivables(items=>[item,...items.filter(existing=>existing.id!==item.id)])} onDataChanged={refreshData} />
           )}{" "}
@@ -2972,7 +2977,7 @@ function ReportsFiltered({
     </>
   );
 }
-const permissionLabels:Record<string,string>={inicio:'Início',clientes:'Clientes',atendimento:'Atendimento / Kanban',producao:'Produção',parceiros:'Parceiros',servicos:'Serviços',financeiro:'Financeiro / Comissões',notas:'Notas fiscais',bancos:'Bancos e financiamentos',relatorios:'Relatórios',posvenda:'Pós-venda'};
+const permissionLabels:Record<string,string>={inicio:'Início',clientes:'Clientes',atendimento:'Atendimento / Kanban',producao:'Produção',parceiros:'Parceiros',servicos:'Serviços',financeiro:'Financeiro / Comissões',notas:'Notas fiscais',bancos:'Bancos e financiamentos',calculadora:'Calculadora financeira',relatorios:'Relatórios',posvenda:'Pós-venda'};
 function AccessManagement({members,setMembers,partners}:{members:TeamMember[];setMembers:React.Dispatch<React.SetStateAction<TeamMember[]>>;partners:PartnerRecord[]}){
  const accessUrl=typeof window==='undefined'?'/signin-with-chatgpt':`${window.location.origin}/signin-with-chatgpt`;
  const empty={id:0,name:'',email:'',login:'',password:'',active:true,permissions:['inicio','atendimento'] as View[],partnerId:null as number|null};
