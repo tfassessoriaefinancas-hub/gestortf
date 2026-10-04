@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { ArrowDownToLine, CalendarDays, Calculator, CheckCircle2, CircleDollarSign, Info, Sparkles } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { ArrowDownToLine, CalendarDays, Calculator, CheckCircle2, CircleDollarSign, Download, Info, Link2, Sparkles } from "lucide-react";
 import { formatMoney, parseMoney } from "@/lib/money";
 import {
   addCalendarDays, anticipateInstallmentsByAnnualRate, buildAmortizationSchedule,
@@ -9,6 +9,7 @@ import {
 } from "@/lib/financial-calculator";
 
 type Order = "next" | "last";
+type InstallPrompt = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: "accepted" | "dismissed" }> };
 
 const localIso = (date = new Date()) => new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
 const plusDays = (days: number) => { const date = new Date(`${localIso()}T12:00:00`); date.setDate(date.getDate() + days); return localIso(date); };
@@ -32,7 +33,7 @@ function Field({ label, note, children }: { label: string; note?: string; childr
   return <label className="tf-fc-field"><span>{label}</span>{children}{note && <small>{note}</small>}</label>;
 }
 
-export default function FinancialCalculator() {
+export default function FinancialCalculator({ publicMode = false }: { publicMode?: boolean }) {
   const [principal, setPrincipal] = useState("");
   const [periods, setPeriods] = useState("48");
   const [payment, setPayment] = useState("");
@@ -41,6 +42,34 @@ export default function FinancialCalculator() {
   const [paymentDate, setPaymentDate] = useState(localIso());
   const [order, setOrder] = useState<Order>("last");
   const [quantity, setQuantity] = useState("1");
+  const [installPrompt, setInstallPrompt] = useState<InstallPrompt | null>(null);
+  const [actionMessage, setActionMessage] = useState("");
+
+  useEffect(() => {
+    if (!publicMode) return;
+    void navigator.serviceWorker?.register("/sw.js", { updateViaCache: "none" }).catch(() => {});
+    const receivePrompt = (event: Event) => { event.preventDefault(); setInstallPrompt(event as InstallPrompt); };
+    window.addEventListener("beforeinstallprompt", receivePrompt);
+    return () => window.removeEventListener("beforeinstallprompt", receivePrompt);
+  }, [publicMode]);
+
+  const publicUrl = typeof window === "undefined" ? "/calculadora" : `${window.location.origin}/calculadora`;
+  const shareCalculator = async () => {
+    try {
+      if (navigator.share) await navigator.share({ title: "Calculadora Financeira TF", text: "Simule a antecipação de parcelas com desconto de juros.", url: publicUrl });
+      else { await navigator.clipboard.writeText(publicUrl); setActionMessage("Link copiado."); }
+    } catch (error) { if ((error as Error).name !== "AbortError") setActionMessage("Copie o endereço da página para compartilhar."); }
+    window.setTimeout(() => setActionMessage(""), 2600);
+  };
+  const installCalculator = async () => {
+    if (installPrompt) {
+      await installPrompt.prompt();
+      const choice = await installPrompt.userChoice;
+      setInstallPrompt(null);
+      setActionMessage(choice.outcome === "accepted" ? "Instalação iniciada." : "Instalação cancelada.");
+    } else setActionMessage("No navegador, abra o menu e escolha ‘Instalar Calculadora TF’.");
+    window.setTimeout(() => setActionMessage(""), 3600);
+  };
 
   const values = useMemo(() => {
     let financed = parseMoney(principal);
@@ -85,7 +114,11 @@ export default function FinancialCalculator() {
   return <section className="tf-fc-page tf-fc-simple">
     <header className="tf-fc-hero">
       <div><small>SIMULAÇÃO DE LIQUIDAÇÃO ANTECIPADA</small><h1>Antecipar parcelas</h1><p>Descubra quanto o cliente pagará e qual será o desconto dos juros futuros.</p></div>
-      <div className="tf-fc-reference"><Calculator /><span><small>CÁLCULO</small><b>Automático e referencial</b></span></div>
+      <div className="tf-fc-header-actions">
+        <div className="tf-fc-reference"><Calculator /><span><small>CÁLCULO</small><b>Automático e referencial</b></span></div>
+        <button type="button" className="tf-fc-icon-action" onClick={shareCalculator} title="Compartilhar calculadora" aria-label="Compartilhar calculadora"><Link2 /></button>
+        {publicMode && <button type="button" className="tf-fc-icon-action install" onClick={installCalculator} title="Instalar no computador" aria-label="Instalar calculadora no computador"><Download /></button>}
+      </div>
     </header>
 
     <div className="tf-fc-simple-layout">
@@ -134,5 +167,6 @@ export default function FinancialCalculator() {
       <div className="tf-fc-simple-table"><header><span>Parcela</span><span>Vencimento</span><span>Antecipação</span><span>Valor original</span><span>Desconto</span><span>Valor a pagar</span></header>{anticipation.map(row => <article key={row.installment}><span><b>Parcela {row.installment}</b><small>{monthLabel(row.dueDate)}</small></span><span>{dateBr(row.dueDate)}</span><span>{row.daysEarly} dias antes</span><span>{formatMoney(row.nominal)}</span><span className="discount">− {formatMoney(row.discount)}</span><span className="pay">{formatMoney(row.presentValue)}</span></article>)}</div>
       <footer><CheckCircle2 /><p><b>Como foi calculado?</b><span>O sistema reconstruiu a taxa do contrato e descontou os juros futuros pelas datas reais dos vencimentos. É uma estimativa referencial; o boleto oficial pode variar conforme a regra da instituição.</span></p></footer>
     </section> : <div className="tf-fc-panel"><div className="tf-fc-empty"><CalendarDays /><p>Não existem parcelas futuras para a data de pagamento escolhida.</p></div></div>}
+    {actionMessage && <div className="tf-fc-toast">{actionMessage}</div>}
   </section>;
 }
