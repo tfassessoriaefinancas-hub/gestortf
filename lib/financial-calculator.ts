@@ -212,6 +212,17 @@ export function anticipateInstallments(schedule: ScheduleRow[], installments: nu
   });
 }
 
+export function anticipateInstallmentsByAnnualRate(schedule: ScheduleRow[], installments: number[], paymentDate: string, annualRate: number): AnticipationRow[] {
+  const selected = new Set(installments), rate = D(annualRate).div(100);
+  return schedule.filter(row => selected.has(row.installment)).map(row => {
+    const daysEarly = Math.max(0, daysBetween(paymentDate, row.dueDate, 'DIAS_CORRIDOS'));
+    const nominal = D(row.payment);
+    const present = daysEarly ? nominal.div(rate.plus(1).pow(D(daysEarly).div(365))) : nominal;
+    const presentInCents = present.toDecimalPlaces(2, Decimal.ROUND_CEIL);
+    return { installment: row.installment, dueDate: row.dueDate, nominal: roundMoney(nominal), presentValue: presentInCents.toNumber(), discount: nominal.toDecimalPlaces(2).minus(presentInCents).toNumber(), daysEarly };
+  });
+}
+
 function npv(rate: Decimal, cashFlows: CashFlow[]) {
   const first = cashFlows[0]?.date;
   if (!first) return D(0);

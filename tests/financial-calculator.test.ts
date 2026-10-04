@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  addCalendarMonths, anticipateInstallments, buildAmortizationSchedule, calculateCet,
+  addCalendarMonths, anticipateInstallments, anticipateInstallmentsByAnnualRate, buildAmortizationSchedule, calculateCet,
   effectiveAnnualRate, financedValueFromPayment, implicitMonthlyRate, payoffEstimate,
   periodsFromPayment, pricePayment, reconstructionError, xirr,
 } from '../lib/financial-calculator.ts';
@@ -53,4 +53,19 @@ test('payoff does not discount overdue installments and applies only informed ch
   const charged = payoffEstimate(schedule, '2026-03-15', 2, 0, { finePercent: 2, monthlyInterestPercent: 1, correctionPercent: 0, charges: 0 });
   assert.ok(charged.estimated > plain.estimated);
   assert.ok(charged.overdueCharges > 0);
+});
+
+test('the simplified anticipation flow reproduces the supplied one-installment reference', () => {
+  const rate = implicitMonthlyRate(46_373.47, 1_479, 48);
+  assert.ok(rate != null);
+  const schedule = buildAmortizationSchedule({ principal: 46_373.47, monthlyRate: rate!, periods: 48, payment: 1_479, system: 'PRICE', contractDate: '2026-09-28', firstDueDate: '2026-10-28' });
+  const annual = xirr([{ date: '2026-09-28', value: 46_373.47 }, ...schedule.map(row => ({ date: row.dueDate, value: -row.payment }))]);
+  assert.ok(annual != null);
+  const result = anticipateInstallmentsByAnnualRate(schedule, [48], '2026-10-05', annual!)[0];
+  assert.equal(result.daysEarly, 1454);
+  assert.equal(result.presentValue, 603.67);
+  assert.equal(result.discount, 875.33);
+  const twoFinal = anticipateInstallmentsByAnnualRate(schedule, [47, 48], '2026-10-05', annual!);
+  assert.equal(twoFinal.reduce((sum, row) => sum + row.presentValue, 0), 1_218.98);
+  assert.equal(twoFinal.reduce((sum, row) => sum + row.discount, 0), 1_739.02);
 });
