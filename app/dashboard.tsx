@@ -3,7 +3,7 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "rea
 import { createPortal } from "react-dom";
 import { productionSources, hasGgCode } from "../lib/production-source";
 import { parseMoney as parseMoneyBr, formatMoney as brl, formatMoneyInput, moneyToStorage } from "../lib/money";
-import { partnerAdditionalFinance, partnerFinance } from "../lib/operation-finance";
+import { importedPartnerFinance, partnerAdditionalFinance, partnerFinance } from "../lib/operation-finance";
 import { bankCatalog, bankInfo } from "../lib/banks";
 import { CRM_CHANGED, CRM_STORAGE_KEY, notifyCrmChanged } from "../lib/crm-events";
 import { startActiveRefresh } from "../lib/active-refresh";
@@ -2469,7 +2469,7 @@ const partnerSourceGroups=(rows:Operation[])=>[
 ];
 function partnerOperationCalculation(row:Operation,partner:PartnerRecord){
   const operationId=operationDatabaseId(row),adjustment=partner.adjustments?.find(item=>item.operationId===operationId);
-  return {operationId,...partnerFinance(row.grossCommission,adjustment?.ilaRate??row.ilaRate,adjustment?.invoiceRate??row.invoiceRate,adjustment?.tfShare??row.tfShare)};
+  return {operationId,...importedPartnerFinance(row.grossCommission,adjustment?.ilaRate??row.ilaRate,adjustment?.invoiceRate??row.invoiceRate,adjustment?.tfShare??row.tfShare,row.importedNet,row.importedRepasse)};
 }
 function pdfEsc(value:string){
   const normalized=value.replace(/[–—−]/g,"-").replace(/…/g,"...").replace(/[“”]/g,'"').replace(/[‘’]/g,"'");

@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { formatMoney, parseMoney, toCents } from '../lib/money.ts';
-import { operationFinance, partnerAdditionalFinance, partnerFinance, revenueAmounts, type CommissionRow } from '../lib/operation-finance.ts';
+import { importedPartnerFinance, operationFinance, partnerAdditionalFinance, partnerFinance, revenueAmounts, type CommissionRow } from '../lib/operation-finance.ts';
 
 test('reais keep cents in Brazilian and numeric input', () => {
   for (const [input, expected] of [['R$ 469,38', 469.38], ['1.261,59', 1261.59], ['17.900,00', 17900], ['42650.00', 42650]] as const) {
@@ -48,4 +48,12 @@ test('partial receipts and imported amounts survive without a new distribution r
 test('partner campaign additions use the existing share rule', () => {
   assert.deepEqual(partnerAdditionalFinance(100, 50), { net: 100, tfShare: 50, thiagoShare: 50, partnerShare: 50 });
   assert.deepEqual(partnerAdditionalFinance(125.5, 40), { net: 125.5, tfShare: 40, thiagoShare: 50.2, partnerShare: 75.3 });
+});
+
+test('imported partner statements preserve exact cents', () => {
+  const imported = importedPartnerFinance(7943.89, 5, 0, 50, 7546.69, 3773.35);
+  assert.equal(imported.net, 7546.69);
+  assert.equal(imported.thiagoShare, 3773.35);
+  assert.equal(imported.partnerShare, 3773.34);
+  assert.equal(imported.invoiceFee, 0);
 });
