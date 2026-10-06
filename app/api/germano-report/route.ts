@@ -32,7 +32,7 @@ export async function POST(request:Request){
   ).map(row=>({
     id:row.dbId,clientName:row.clientName,cpf:row.clientCpf,bank:row.bank,product:row.product,date:row.date,paidDate:row.paidDate,value:row.value,producer:row.producer,origin:row.origin,
     commissionRate:row.commissionRate,
-    ...importedPartnerFinance(row.grossCommission,row.ilaRate,row.invoiceRate,row.tfShare,row.importedNet,row.importedRepasse),
+    ...importedPartnerFinance(row.grossCommission,row.ilaRate,row.invoiceRate,row.tfShare,row.importedAfterIla,row.importedNet,row.importedRepasse),
   }));
   const bonusScope=requestedPartnerId>0?'(o.partner_id=? OR lower(COALESCE(o.origin,\'\'))=lower(?))':'(o.partner_id=? OR lower(COALESCE(o.origin,\'\')) LIKE \'%gg%\')';
   const bonusValues=requestedPartnerId>0?[user.ownerKeys[0],user.ownerKeys[1],partner.id,partner.name]:[user.ownerKeys[0],user.ownerKeys[1],partner.id];

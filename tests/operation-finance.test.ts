@@ -51,9 +51,11 @@ test('partner campaign additions use the existing share rule', () => {
 });
 
 test('imported partner statements preserve exact cents', () => {
-  const imported = importedPartnerFinance(7943.89, 5, 0, 50, 7546.69, 3773.35);
-  assert.equal(imported.net, 7546.69);
-  assert.equal(imported.thiagoShare, 3773.35);
-  assert.equal(imported.partnerShare, 3773.34);
-  assert.equal(imported.invoiceFee, 0);
+  const imported = importedPartnerFinance(1706.23, 26.06, 2.01, 50, 1261.59, 1236.23, 618.12);
+  assert.equal(imported.afterIla, 1261.59);
+  assert.equal(imported.ilaValue, 444.64);
+  assert.equal(imported.invoiceFee, 25.36);
+  assert.equal(imported.net, 1236.23);
+  assert.equal(imported.thiagoShare, 618.12);
+  assert.equal(imported.partnerShare, 618.11);
 });

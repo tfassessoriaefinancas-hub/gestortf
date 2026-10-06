@@ -2469,7 +2469,7 @@ const partnerSourceGroups=(rows:Operation[])=>[
 ];
 function partnerOperationCalculation(row:Operation,partner:PartnerRecord){
   const operationId=operationDatabaseId(row),adjustment=partner.adjustments?.find(item=>item.operationId===operationId);
-  return {operationId,...importedPartnerFinance(row.grossCommission,adjustment?.ilaRate??row.ilaRate,adjustment?.invoiceRate??row.invoiceRate,adjustment?.tfShare??row.tfShare,row.importedNet,row.importedRepasse)};
+  return {operationId,...importedPartnerFinance(row.grossCommission,adjustment?.ilaRate??row.ilaRate,adjustment?.invoiceRate??row.invoiceRate,adjustment?.tfShare??row.tfShare,row.importedAfterIla,row.importedNet,row.importedRepasse)};
 }
 function pdfEsc(value:string){
   const normalized=value.replace(/[–—−]/g,"-").replace(/…/g,"...").replace(/[“”]/g,'"').replace(/[‘’]/g,"'");

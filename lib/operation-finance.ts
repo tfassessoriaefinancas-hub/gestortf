@@ -84,25 +84,27 @@ export function partnerFinance(gross: number, ilaRate: number, invoiceRate: numb
 }
 
 /** Preserve cent-exact net and repasse amounts supplied by an imported statement. */
-export function importedPartnerFinance(gross: number, ilaRate: number, invoiceRate: number, tfShare: number, importedNet?: number | null, importedRepasse?: number | null) {
+export function importedPartnerFinance(gross: number, ilaRate: number, invoiceRate: number, tfShare: number, importedAfterIla?: number | null, importedNet?: number | null, importedRepasse?: number | null) {
   const calculated = partnerFinance(gross, ilaRate, invoiceRate, tfShare);
   if (importedNet == null || importedRepasse == null) return calculated;
+  const afterIla = importedAfterIla == null ? Number(importedNet) || 0 : Math.max(0, Number(importedAfterIla) || 0);
   const net = Math.max(0, Number(importedNet) || 0);
   const thiagoShare = Math.max(0, Math.min(net, Number(importedRepasse) || 0));
-  const importedIlaRateBps = gross > 0 ? Math.round((gross - net) * 10_000 / gross) : 0;
+  const importedIlaRateBps = gross > 0 ? Math.round((gross - afterIla) * 10_000 / gross) : 0;
+  const importedInvoiceRateBps = afterIla > 0 ? Math.round((afterIla - net) * 10_000 / afterIla) : 0;
   const importedTfShareBps = net > 0 ? Math.round(thiagoShare * 10_000 / net) : Math.round(tfShare * 100);
   const usesImportedRates = Math.round(ilaRate * 100) === importedIlaRateBps
-    && Math.round(invoiceRate * 100) === 0
+    && Math.round(invoiceRate * 100) === importedInvoiceRateBps
     && Math.round(tfShare * 100) === importedTfShareBps;
   if (!usesImportedRates) return calculated;
-  const ilaValue = Math.max(0, gross - net);
+  const ilaValue = Math.round(Math.max(0, gross - afterIla) * 100) / 100;
   return {
     ...calculated,
     ilaRate: gross > 0 ? ilaValue / gross * 100 : 0,
     ilaValue,
-    afterIla: net,
-    invoiceRate: 0,
-    invoiceFee: 0,
+    afterIla,
+    invoiceRate: afterIla > 0 ? (afterIla - net) / afterIla * 100 : 0,
+    invoiceFee: Math.round(Math.max(0, afterIla - net) * 100) / 100,
     net,
     tfShare: net > 0 ? thiagoShare / net * 100 : tfShare,
     thiagoShare,

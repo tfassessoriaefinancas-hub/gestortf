@@ -18,9 +18,11 @@ export type GgHistoryRecord = {
   producer: 'TF' | 'GG';
   origin: 'TF Assessoria e Finanças' | 'GG Veículos';
   grossCents: number;
+  afterIlaCents: number;
   netCents: number;
   repasseCents: number;
   ilaRateBps: number;
+  invoiceRateBps: number;
   tfShareBps: number;
 };
 
@@ -42,6 +44,7 @@ const moneyCents = (value: string) => {
 };
 const cleanBank = (value: string) => value.trim().replace(/\s+(?:TF|GG)$/i, '').replace(/\s+/g, ' ').replace(/^C6 BANK$/i, 'C6 Bank').trim();
 const cleanProduct = (value: string) => /refin/i.test(value) ? 'Refinanciamento' : /financ/i.test(value) ? 'Financiamento' : value.trim();
+const ggHistoryIlaRateBps = 2606;
 
 export function parseGgHistorySpreadsheet(text: string): GgHistorySheet {
   const records: GgHistoryRecord[] = [];
@@ -58,8 +61,10 @@ export function parseGgHistorySpreadsheet(text: string): GgHistorySheet {
     const producer = /^GG$/i.test(columns[10] || '') ? 'GG' : /^TF$/i.test(columns[10] || '') ? 'TF' : null;
     if (!producer) continue;
     const rawCpf = digits(columns[1]), cpf = rawCpf.length === 11 ? rawCpf : '';
-    const valueCents = moneyCents(columns[5] || ''), grossCents = moneyCents(columns[11] || ''), netCents = moneyCents(columns[12] || ''), repasseCents = moneyCents(columns[13] || '');
-    const ilaRateBps = grossCents > 0 ? Math.max(0, Math.min(10_000, Math.round((grossCents - netCents) * 10_000 / grossCents))) : 0;
+    const valueCents = moneyCents(columns[5] || ''), afterIlaCents = moneyCents(columns[11] || ''), netCents = moneyCents(columns[12] || ''), repasseCents = moneyCents(columns[13] || '');
+    const grossCents = afterIlaCents > 0 ? Math.round(afterIlaCents * 10_000 / (10_000 - ggHistoryIlaRateBps)) : 0;
+    const ilaRateBps = ggHistoryIlaRateBps;
+    const invoiceRateBps = afterIlaCents > 0 ? Math.max(0, Math.min(10_000, Math.round((afterIlaCents - netCents) * 10_000 / afterIlaCents))) : 0;
     const tfShareBps = netCents > 0 ? Math.max(0, Math.min(10_000, Math.round(repasseCents * 10_000 / netCents))) : 0;
     const key = cpf || normalizedName(name).replace(/[^a-z0-9]+/g, '-');
     records.push({
@@ -67,7 +72,7 @@ export function parseGgHistorySpreadsheet(text: string): GgHistorySheet {
       name: name.replace(/\s+/g, ' ').trim(), cpf, bank: cleanBank(columns[2] || ''), product: cleanProduct(columns[3] || ''),
       installmentCents: moneyCents(columns[4] || ''), valueCents, term: Number(columns[6] || 0) || 0,
       paidAt: dateBr(columns[7] || '') || operationDate, phone: columns[8] && columns[8] !== '-' ? columns[8] : '', operationDate,
-      producer, origin: producer === 'GG' ? 'GG Veículos' : 'TF Assessoria e Finanças', grossCents, netCents, repasseCents, ilaRateBps, tfShareBps,
+      producer, origin: producer === 'GG' ? 'GG Veículos' : 'TF Assessoria e Finanças', grossCents, afterIlaCents, netCents, repasseCents, ilaRateBps, invoiceRateBps, tfShareBps,
     });
   }
   return { records, bonus };
@@ -104,7 +109,7 @@ export async function importGgHistory(db: ApplicationDatabase, access: ImportAcc
       }
       if (!clientRow) continue;
       let operation = await queryOne<{ id: number; owner_id: string; notes: string | null; source_row: string | null }>(client, 'SELECT id,owner_id,notes,source_row FROM operations WHERE owner_id IN (?,?) AND (dedupe_fingerprint=? OR (client_id=? AND operation_date=? AND value_cents=?)) ORDER BY CASE WHEN dedupe_fingerprint=? THEN 0 ELSE 1 END,id LIMIT 1', [...access.ownerKeys, item.fingerprint, clientRow.id, item.operationDate, item.valueCents, item.fingerprint]);
-      const importedNotes = { ...(operationNotes(operation?.notes)), importedGrossCents: item.grossCents, importedNetCents: item.netCents, importedRepasseCents: item.repasseCents, importedFrom: 'Planilha GG junho-agosto 2026' };
+      const importedNotes = { ...(operationNotes(operation?.notes)), importedGrossCents: item.grossCents, importedAfterIlaCents: item.afterIlaCents, importedNetCents: item.netCents, importedRepasseCents: item.repasseCents, importedFrom: 'Planilha GG junho-agosto 2026' };
       if (!operation) {
         operation = await queryOne(client, "INSERT INTO operations (owner_id,client_id,partner_id,bank,original_product,category,producer,origin,value_cents,installment_cents,term,operation_date,paid_at,completed_at,status,notes,source_row,dedupe_fingerprint,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,'Finalizado',?,'Planilha GG junho-agosto 2026',?,?,?) RETURNING id,owner_id,notes,source_row", [clientRow.owner_id, clientRow.id, partner.id, item.bank || null, item.product || 'Operação', item.product || 'Operação', item.producer, item.origin, item.valueCents, item.installmentCents, item.term || null, item.operationDate, item.paidAt, item.paidAt, JSON.stringify(importedNotes), item.fingerprint, now, now]);
         summary.operationsCreated++;
@@ -129,7 +134,7 @@ export async function importGgHistory(db: ApplicationDatabase, access: ImportAcc
         }
       }
       for (const legacy of legacyRows) await run(client, 'UPDATE commissions SET deleted_at=?,updated_at=? WHERE id=?', [now, now, legacy.id]);
-      await run(client, 'INSERT INTO partner_operation_adjustments (owner_id,partner_id,operation_id,ila_rate_bps,invoice_rate_bps,tf_share_bps,created_at,updated_at) VALUES (?,?,?,?,0,?,?,?) ON CONFLICT(operation_id) DO UPDATE SET owner_id=excluded.owner_id,partner_id=excluded.partner_id,ila_rate_bps=excluded.ila_rate_bps,invoice_rate_bps=0,tf_share_bps=excluded.tf_share_bps,updated_at=excluded.updated_at', [access.ownerId, partner.id, operation.id, item.ilaRateBps, item.tfShareBps, now, now]);
+      await run(client, 'INSERT INTO partner_operation_adjustments (owner_id,partner_id,operation_id,ila_rate_bps,invoice_rate_bps,tf_share_bps,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?) ON CONFLICT(operation_id) DO UPDATE SET owner_id=excluded.owner_id,partner_id=excluded.partner_id,ila_rate_bps=excluded.ila_rate_bps,invoice_rate_bps=excluded.invoice_rate_bps,tf_share_bps=excluded.tf_share_bps,updated_at=excluded.updated_at', [access.ownerId, partner.id, operation.id, item.ilaRateBps, item.invoiceRateBps, item.tfShareBps, now, now]);
       summary.adjustmentsReconciled++;
     }
 

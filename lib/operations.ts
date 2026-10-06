@@ -53,6 +53,7 @@ export function operationFromRow(row: OperationRow) {
     vehicleYear: Number(row.vehicle_year || 0), vehicleValue: Number(row.vehicle_value_cents || 0) / 100,
     financedValue: Number(row.financed_value_cents || 0) / 100, desiredCredit: Number(row.desired_credit_cents || 0) / 100,
     downPayment: Number(row.down_payment_cents || 0) / 100,
+    importedAfterIla: extra.importedAfterIlaCents == null ? null : Number(extra.importedAfterIlaCents) / 100,
     importedNet: extra.importedNetCents == null ? null : Number(extra.importedNetCents) / 100,
     importedRepasse: extra.importedRepasseCents == null ? null : Number(extra.importedRepasseCents) / 100,
     ilaRate: Number(row.stored_ila_rate_bps || 0) === 2600 ? 26.6 : Number(row.stored_ila_rate_bps || 0) / 100,

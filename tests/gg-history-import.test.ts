@@ -12,7 +12,7 @@ test('parses GG history rows, payment dates, origins and campaign bonus', () => 
   const parsed = parseGgHistorySpreadsheet(text);
   assert.equal(parsed.records.length, 2);
   assert.deepEqual(parsed.records[0], {
-    fingerprint: 'gg-history-2026:12345678901:2026-08-03:2500000', name: 'CLIENTE TF', cpf: '12345678901', bank: 'C6 Bank', product: 'Financiamento', installmentCents: 100000, valueCents: 2500000, term: 48, paidAt: '2026-08-04', phone: '88 - 9 9999-9999', operationDate: '2026-08-03', producer: 'TF', origin: 'TF Assessoria e Finanças', grossCents: 100000, netCents: 98000, repasseCents: 49000, ilaRateBps: 200, tfShareBps: 5000,
+    fingerprint: 'gg-history-2026:12345678901:2026-08-03:2500000', name: 'CLIENTE TF', cpf: '12345678901', bank: 'C6 Bank', product: 'Financiamento', installmentCents: 100000, valueCents: 2500000, term: 48, paidAt: '2026-08-04', phone: '88 - 9 9999-9999', operationDate: '2026-08-03', producer: 'TF', origin: 'TF Assessoria e Finanças', grossCents: 135245, afterIlaCents: 100000, netCents: 98000, repasseCents: 49000, ilaRateBps: 2606, invoiceRateBps: 200, tfShareBps: 5000,
   });
   assert.equal(parsed.records[1].cpf, '');
   assert.equal(parsed.records[1].origin, 'GG Veículos');
