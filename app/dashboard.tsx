@@ -2462,9 +2462,10 @@ function Kanban({
 }
 const operationDatabaseId=(row:Operation)=>row.dbId||((row.id>=20_000_000)?row.id-20_000_000:0);
 const partnerSourceGroup=(row:Operation)=>/^TF$/i.test(row.producer)||/^TF Assessoria/i.test(row.origin)?'tf':'gg';
+const byPartnerPaidDate=(a:Operation,b:Operation)=>(a.paidDate||a.date||'9999-12-31').localeCompare(b.paidDate||b.date||'9999-12-31')||a.date.localeCompare(b.date)||(a.clientName||'').localeCompare(b.clientName||'','pt-BR',{sensitivity:'base'});
 const partnerSourceGroups=(rows:Operation[])=>[
-  {key:'tf',label:'Clientes da TF Assessoria e Finanças',rows:rows.filter(row=>partnerSourceGroup(row)==='tf')},
-  {key:'gg',label:'Clientes da GG Veículos',rows:rows.filter(row=>partnerSourceGroup(row)==='gg')},
+  {key:'tf',label:'Clientes da TF Assessoria e Finanças',rows:rows.filter(row=>partnerSourceGroup(row)==='tf').sort(byPartnerPaidDate)},
+  {key:'gg',label:'Clientes da GG Veículos',rows:rows.filter(row=>partnerSourceGroup(row)==='gg').sort(byPartnerPaidDate)},
 ];
 function partnerOperationCalculation(row:Operation,partner:PartnerRecord){
   const operationId=operationDatabaseId(row),adjustment=partner.adjustments?.find(item=>item.operationId===operationId);
@@ -2549,7 +2550,7 @@ function Partners({rows,clientsData,partners,onPartnerCreated,onPartnerUpdated}:
     <Title over="REDE COMERCIAL" title="Parceiros" text="Produção, clientes e comissões de cada parceiro." action="Novo parceiro" onAction={()=>setAdding(true)}/>
     <section className="tf-partner-month"><label>MÊS DO RELATÓRIO<select value={selectedMonth} onChange={event=>setSelectedMonth(event.target.value)}>{monthOptions.map(period=><option key={period} value={period}>{monthLabel(period)}</option>)}</select></label></section>
     <div className="tf-partner-list">{partners.map(partner=>{
-      const name=partner.name,partnerRows=rows.filter(row=>row.partnerId===partner.id||row.origin?.localeCompare(name,"pt-BR",{sensitivity:"base"})===0),currentRows=partnerRows.filter(row=>row.date.startsWith(selectedMonth)),previousRows=partnerRows.filter(row=>row.date.startsWith(previousMonth)),groups=partnerSourceGroups(currentRows);
+      const name=partner.name,partnerRows=rows.filter(row=>row.partnerId===partner.id||row.origin?.localeCompare(name,"pt-BR",{sensitivity:"base"})===0),currentRows=partnerSourceGroups(partnerRows.filter(row=>row.date.startsWith(selectedMonth))).flatMap(group=>group.rows),previousRows=partnerRows.filter(row=>row.date.startsWith(previousMonth)).sort(byPartnerPaidDate),groups=partnerSourceGroups(currentRows);
       const clientIds=Array.from(new Set(currentRows.map(row=>row.clientId))),partnerClients=clientIds.map(id=>clientsData.find(client=>client.id===id)).filter(Boolean) as Client[],currentValue=currentRows.reduce((sum,row)=>sum+row.value,0),currentCommission=currentRows.reduce((sum,row)=>sum+row.grossCommission,0),initials=name.split(/\s+/).slice(0,2).map(word=>word[0]).join("").toUpperCase(),expanded=expandedPartner===partner.id;
       return <article className={`tf-partner-executive${expanded?' expanded':''}`} key={name}>
         <header><span><i className={/GG Veículos/i.test(name)?"tf-partner-logo":""}>{/GG Veículos/i.test(name)?<img src="/gg-veiculos-logo.png" alt="GG Veículos"/>:initials}</i><span><h2>{name}</h2><small>Parceiro comercial · {monthLabel(selectedMonth)}</small></span></span><button type="button" className="tf-partner-expand" aria-expanded={expanded} onClick={()=>setExpandedPartner(expanded?null:partner.id)}><span>{partnerClients.length} clientes · {brl(currentValue)}</span><ChevronRight/></button><div className="tf-partner-access-actions">{partner.id>0?<><button type="button" onClick={()=>copyPartnerLink(partner.id)}><Copy/> Copiar link</button><a href={partnerAccessLink(partner.id)} target="_blank" rel="noreferrer"><ExternalLink/> Abrir acesso</a></>:<small>Link disponível após o cadastro</small>}</div></header>

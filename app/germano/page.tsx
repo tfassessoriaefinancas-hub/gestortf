@@ -17,6 +17,7 @@ const previousPeriod=(period:string)=>{const [year,month]=period.split('-').map(
 const formatCpf=(value:string)=>value.replace(/\D/g,'').replace(/(\d{3})(\d{3})(\d{3})(\d{2})/,'$1.$2.$3-$4');
 const formatDate=(value:string)=>/^\d{4}-\d{2}-\d{2}$/.test(value)?new Intl.DateTimeFormat('pt-BR',{timeZone:'UTC'}).format(new Date(`${value}T00:00:00Z`)):'—';
 const sourceGroup=(row:Operation)=>/^TF$/i.test(row.producer)||/^TF Assessoria/i.test(row.origin)?'tf':'gg';
+const byPaidDate=(a:Operation,b:Operation)=>(a.paidDate||a.date||'9999-12-31').localeCompare(b.paidDate||b.date||'9999-12-31')||a.date.localeCompare(b.date)||a.clientName.localeCompare(b.clientName,'pt-BR',{sensitivity:'base'});
 
 function PartnershipBrand({compact=false}:{compact?:boolean}){
   return <div className={`tf-germano-brand${compact?' compact':''}`}>
@@ -112,7 +113,7 @@ export default function GermanoPortal(){
   const variationLabel=`${report.variation>=0?'+':'−'}${Math.abs(report.variation).toLocaleString('pt-BR',{maximumFractionDigits:1})}%`;
   const printZoom=report.rows.length<=5?.82:report.rows.length<=10?.68:report.rows.length<=20?.52:report.rows.length<=35?.42:.34;
   const printStyle={'--print-zoom':printZoom,'--print-width':`${100/printZoom}%`} as CSSProperties;
-  const groupedRows=[{key:'tf',label:'Clientes da TF Assessoria e Finanças',rows:report.rows.filter(row=>sourceGroup(row)==='tf')},{key:'gg',label:'Clientes da GG Veículos',rows:report.rows.filter(row=>sourceGroup(row)==='gg')}];
+  const groupedRows=[{key:'tf',label:'Clientes da TF Assessoria e Finanças',rows:report.rows.filter(row=>sourceGroup(row)==='tf').sort(byPaidDate)},{key:'gg',label:'Clientes da GG Veículos',rows:report.rows.filter(row=>sourceGroup(row)==='gg').sort(byPaidDate)}];
   const exportCsv=()=>{const cells=(values:unknown[])=>values.map(value=>`"${String(value??'').replaceAll('"','""')}"`).join(';'),lines=[cells(['Origem','Cliente','CPF','Banco','Produto','Data da operação','Data do pagamento','Valor financiado','Comissão bruta','Comissão líquida','Repasse TF','Parte do parceiro'])];for(const group of groupedRows)for(const row of group.rows)lines.push(cells([group.label,row.clientName,formatCpf(row.cpf),row.bank,row.product,formatDate(row.date),formatDate(row.paidDate),brl(row.value),brl(row.gross),brl(row.net),brl(row.thiagoShare),brl(row.partnerShare)]));const blob=new Blob([`\uFEFF${lines.join('\r\n')}`],{type:'text/csv;charset=utf-8'}),url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download=`relatorio-gg-veiculos-${period}.csv`;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000)};
 
   return <main className="tf-germano-portal">
