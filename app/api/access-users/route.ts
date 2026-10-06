@@ -30,9 +30,9 @@ export async function POST(request:Request){
   if(!name||!/^\S+@\S+\.\S+$/.test(email))return json({error:'Informe nome e e-mail válidos.'},400);
   if(email===owner.email.toLowerCase())return json({error:'O administrador não pode ser alterado como subacesso.'},400);
   if(login && loginIdentifier(login)?.kind!=='login')return json({error:'O login deve conter duas ou mais palavras, como G Veiculos.'},400);
-  const password=String(body.password||'');
-  if(password.length<8||password.length>256)return json({error:'Defina uma senha entre 8 e 256 caracteres.'},400);
-  const partnerId=body.partnerId?Number(body.partnerId):null,permissions=partnerId?normalizePermissions(['inicio','parceiros','relatorios']):normalizePermissions(body.permissions),now=Date.now();
+  const password=String(body.password||''),partnerId=body.partnerId?Number(body.partnerId):null,minPasswordLength=partnerId?6:8;
+  if(password.length<minPasswordLength||password.length>256)return json({error:`Defina uma senha entre ${minPasswordLength} e 256 caracteres.`},400);
+  const permissions=partnerId?normalizePermissions(['inicio','parceiros','relatorios']):normalizePermissions(body.permissions),now=Date.now();
   try{
     const row=await persistMember(env.DB.prepare("INSERT INTO access_users (owner_id,name,email,login,permissions_json,partner_id,active,created_at,updated_at) VALUES (?,?,?,?,?,?,1,?,?) ON CONFLICT(owner_id,email) DO UPDATE SET name=excluded.name,login=excluded.login,permissions_json=excluded.permissions_json,partner_id=excluded.partner_id,active=1,updated_at=excluded.updated_at RETURNING id,name,email,login,permissions_json,partner_id,active").bind(owner.ownerKey,name,email,login||null,JSON.stringify(permissions),partnerId,now,now),password);
     return json({member:mapMember(row)},201);
@@ -52,8 +52,8 @@ export async function PATCH(request:Request){
   if(!name||!/^\S+@\S+\.\S+$/.test(email))return json({error:'Informe nome e e-mail válidos.'},400);
   if(email===owner.email.toLowerCase())return json({error:'O administrador não pode ser alterado como subacesso.'},400);
   if(login && loginIdentifier(login)?.kind!=='login')return json({error:'O login deve conter duas ou mais palavras, como G Veiculos.'},400);
-  const password=String(body.password||'');
-  if(password&&(password.length<8||password.length>256))return json({error:'Use uma senha entre 8 e 256 caracteres.'},400);
+  const password=String(body.password||''),minPasswordLength=partnerId?6:8;
+  if(password&&(password.length<minPasswordLength||password.length>256))return json({error:`Use uma senha entre ${minPasswordLength} e 256 caracteres.`},400);
   const account=await env.DB.prepare('SELECT id FROM users WHERE id=?').bind(`member:${id}`).first();
   if(active&&!account&&!password)return json({error:'Defina uma senha para ativar o acesso deste usuário.'},400);
   try{

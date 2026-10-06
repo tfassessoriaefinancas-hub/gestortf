@@ -1,5 +1,6 @@
 import { chatGPTSignOutPath, getTfAccess, requireChatGPTUser } from './chatgpt-auth';
 import Dashboard from './dashboard';
+import { redirect } from 'next/navigation';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,5 +19,6 @@ export default async function Home() {
         </section>
       </main>
     );
+  if (access.partnerId) redirect(`/germano?partner=${access.partnerId}`);
   return <Dashboard user={{ name: access.displayName, email: access.email, role: access.role, memberId: access.memberId, partnerId:access.partnerId, permissions: access.permissions, serverAuthenticated: access.serverAuthenticated }} />;
 }
