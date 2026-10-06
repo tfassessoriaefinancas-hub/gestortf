@@ -143,10 +143,10 @@ export async function importGgHistory(db: ApplicationDatabase, access: ImportAcc
       }
     }
 
-    const septemberTf = await queryAll<{ id: number; normalized_name: string }>(client, "SELECT o.id,c.normalized_name FROM operations o JOIN clients c ON c.id=o.client_id WHERE o.owner_id IN (?,?) AND o.deleted_at IS NULL AND substr(o.operation_date,1,7)='2026-09' AND (c.normalized_name LIKE '%mariana%dias%' OR c.normalized_name LIKE '%mikael%costa%reis%')", [...access.ownerKeys]);
+    const septemberTf = await queryAll<{ id: number; normalized_name: string }>(client, "SELECT o.id,c.normalized_name FROM operations o JOIN clients c ON c.id=o.client_id WHERE o.owner_id IN (?,?) AND o.deleted_at IS NULL AND substr(o.operation_date,1,7)='2026-09' AND (c.normalized_name LIKE '%marian%dias%' OR c.normalized_name LIKE '%mica%costa%reis%')", [...access.ownerKeys]);
     for (const operation of septemberTf) {
-      const isMikael = operation.normalized_name.includes('mikael');
-      await run(client, `UPDATE operations SET partner_id=?,producer='TF',origin='TF Assessoria e Finanças'${isMikael ? ",original_product='Crédito com garantia',category='Crédito com garantia'" : ''},updated_at=? WHERE id=?`, [partner.id, now, operation.id]);
+      const isMikael = operation.normalized_name.includes('mikael') || operation.normalized_name.includes('micael');
+      await run(client, `UPDATE operations SET partner_id=?,producer='TF',origin='TF Assessoria e Finanças'${isMikael ? ",bank='Onda',original_product='Crédito com garantia',category='Crédito com garantia'" : ''},updated_at=? WHERE id=?`, [partner.id, now, operation.id]);
       summary.septemberReconciled++;
     }
 
