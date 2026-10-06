@@ -85,8 +85,9 @@ test('both themes share responsive structure, full menu labels and an unobstruct
     const layouts: unknown[] = [];
     for (const theme of ['classic', 'mono', 'classic']) {
       if (!(await page.locator('.tf-app').getAttribute('class'))?.includes(`theme-${theme}`)) {
-        if (width <= 700) await page.getByRole('button', { name: 'Abrir menu', exact: true }).click();
-        await page.locator('.tf-side nav').getByRole('button', { name: theme === 'mono' ? 'Usar tema Preto Luxo' : 'Usar tema original', exact: true }).click();
+        await page.getByRole('button', { name: 'Configurações', exact: true }).click();
+        await page.getByRole('radio', { name: theme === 'mono' ? /Preto luxo/ : /Claro tradicional/ }).click();
+        await page.getByRole('button', { name: 'Fechar configurações', exact: true }).click();
       }
       await expect(page.locator('.tf-app')).toHaveClass(new RegExp(`theme-${theme}`));
       const search = page.getByPlaceholder('Buscar por nome ou CPF');

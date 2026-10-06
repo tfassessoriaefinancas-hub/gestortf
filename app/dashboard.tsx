@@ -76,6 +76,7 @@ type View =
   | "posvenda"
   | "calculadora"
   | "usuarios";
+type VisualTheme = "mono" | "classic";
 type Client = {
   id: number;
   dbId?: number;
@@ -459,6 +460,7 @@ export default function Dashboard({
     [query, setQuery] = useState(""),
     [mobileMenu, setMobileMenu] = useState(false),
     [settingsOpen, setSettingsOpen] = useState(false),
+    [visualTheme, setVisualTheme] = useState<VisualTheme>("mono"),
     [selected, setSelected] = useState<Client | null>(null),
     [notice, setNotice] = useState(""),
     [deals, setDeals] = useState<Deal[]>([]),
@@ -487,7 +489,7 @@ export default function Dashboard({
     setDeals(update);
   }, []);
   const refreshData = useCallback(() => { dealsMutationVersion.current += 1; notifyCrmChanged(); }, []);
-  const dark = true;
+  const dark = visualTheme === "mono";
   useEffect(() => {
     const onClick = (e: Event) => {
       const t = e.target as HTMLElement;
@@ -510,8 +512,8 @@ export default function Dashboard({
   useEffect(() => {
     setGateReady(true);
     setLocked(!user.serverAuthenticated && localStorage.getItem("tf_access_unlocked") !== "1");
-    localStorage.removeItem("tf_visual_theme");
-    localStorage.setItem("tf_dark_mode", "1");
+    const savedTheme=localStorage.getItem("tf_visual_theme");
+    setVisualTheme(savedTheme==="classic"?"classic":"mono");
     const refreshApp=()=>navigator.serviceWorker?.getRegistration().then(async(registration)=>{
       await registration?.update();
       registration?.waiting?.postMessage({type:"SKIP_WAITING"});
@@ -643,7 +645,7 @@ export default function Dashboard({
     );
   return (
     <main
-      className={`tf-app ${dark ? "dark" : "light"} theme-mono${mobileMenu ? " menu-open" : ""}`}
+      className={`tf-app ${dark ? "dark" : "light"} theme-${visualTheme}${mobileMenu ? " menu-open" : ""}`}
     >
       <aside className="tf-side" aria-label="Menu principal" id="tf-navigation">
         <div className="tf-brand">
@@ -793,7 +795,7 @@ export default function Dashboard({
           {view==="usuarios"&&user.role==="admin"&&<AccessManagement members={teamMembers} setMembers={setTeamMembers} partners={partners}/>} {" "}
         </div>
       </section>
-      {settingsOpen && <SettingsPanel close={() => setSettingsOpen(false)} serverAuthenticated={user.serverAuthenticated} />}{" "}
+      {settingsOpen && <SettingsPanel close={() => setSettingsOpen(false)} serverAuthenticated={user.serverAuthenticated} visualTheme={visualTheme} onThemeChange={(theme)=>{setVisualTheme(theme);localStorage.setItem("tf_visual_theme",theme)}} />}{" "}
       {showReceivables&&<div className={`tf-modal-back${dueReminderRequired?" tf-receivable-blocking":""}`}><section className="tf-modal tf-receivables-modal">{!dueReminderRequired&&<button type="button" className="tf-modal-close" onClick={()=>setShowReceivables(false)}>×</button>}<small>FINANCEIRO</small><h2>{dueReminderRequired?"Você tem comissões a receber":"Comissões a receber"}</h2><p>{dueReminderRequired?"Confira quem deve pagar hoje ou possui pagamento atrasado.":"Valores previstos de comissões, taxas de adesão e assessorias."}</p><div>{displayedReceivables.map(item=><article key={item.id}><i><BadgeDollarSign/></i><span><b>{item.name}</b><small>{item.product} · {item.type}</small></span><strong>{brl(item.value)}</strong><time className={item.dueDate&&item.dueDate<todayDate?"overdue":""}>{item.dueDate?formatDateBr(item.dueDate):"Sem data"}</time><button type="button" onClick={()=>markCommissionReceived(item.id)}>Marcar recebido</button></article>)}</div>{dueReminderRequired&&<button type="button" className="tf-primary tf-receivable-ack" onClick={()=>{localStorage.setItem(`tf_receivables_seen_${todayDate}`,"1");setDueReminderRequired(false);setShowReceivables(false)}}>Visualizei os recebimentos</button>}</section></div>}{" "}
       {showActivityReminder&&dueActivities.length>0&&<div className="tf-modal-back tf-activity-reminder-back"><section className="tf-modal tf-activity-reminder"><small>COMPROMISSOS E NEGÓCIOS</small><h2>Você tem {dueActivities.length===1?'uma atividade':`${dueActivities.length} atividades`} para acompanhar</h2><p>Confira os compromissos de hoje e o que estiver atrasado.</p><div>{dueActivities.slice(0,5).map(item=><article key={item.id}><CalendarClock/><span><b>{item.title}</b><small>{item.clientName||item.type} · {item.dueAt?new Date(item.dueAt).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):''}</small></span></article>)}</div><footer><button type="button" className="tf-secondary" onClick={()=>{localStorage.setItem(`tf_activities_seen_${todayDate}`,dueActivitySignature);setShowActivityReminder(false)}}>Visualizei</button><button type="button" className="tf-primary" onClick={()=>{localStorage.setItem(`tf_activities_seen_${todayDate}`,dueActivitySignature);setShowActivityReminder(false);setView('compromissos')}}>Abrir atividades</button></footer></section></div>}{" "}
       {selected && <ClientSheet
@@ -2990,7 +2992,7 @@ function AccessManagement({members,setMembers,partners}:{members:TeamMember[];se
  return <><Title over="EQUIPE E SEGURANÇA" title="Usuários e acessos" text="Cadastre funcionários ou parceiros e envie o link do sistema." action="Novo acesso" onAction={()=>setForm(empty)}/><section className="tf-access-layout"><div className="tf-access-list"><header><div><small>USUÁRIOS CADASTRADOS</small><h2>Equipe e parceiros</h2></div><b>{members.filter(m=>m.active).length} ativos</b></header>{[...members].sort((a,b)=>a.name.localeCompare(b.name,'pt-BR',{sensitivity:'base'})).map((member,index)=>{const permissions=visiblePermissions(member),partnerName=partners.find(partner=>partner.id===member.partnerId)?.name||member.partnerName;return <article key={member.id} className={`${!member.active?'inactive ':''}member-tone-${index%6}`}><i>{member.name.split(/\s+/).slice(0,2).map(n=>n[0]).join('').toUpperCase()}</i><div><b>{member.name}</b><small>{member.email}</small><p>{partnerName?`Parceiro · ${partnerName}`:permissions.length?permissions.join(' · '):'Somente acesso básico'}</p></div><em>{member.active?'Ativo':'Pausado'}</em><button onClick={()=>setForm({...member,password:''})}>Editar</button><button onClick={()=>toggleActive(member)}>{member.active?'Pausar':'Reativar'}</button><button className="danger" onClick={()=>deleteMember(member)}>Excluir usuário</button></article>})}{!members.length&&<div className="tf-access-empty"><UserRoundCog/><b>Nenhum subacesso criado</b><small>Cadastre o primeiro acesso ao lado.</small></div>}</div><form className="tf-access-form" onSubmit={save}><small>{form.id?'EDITAR ACESSO':'NOVO ACESSO'}</small><h2>{form.id?form.name:'Cadastrar usuário'}</h2><p>Use qualquer e-mail válido. Selecione um parceiro para limitar o acesso somente à produção dele.</p><div className="tf-access-share"><span><b>Link para entrar no Gestão TF</b><small>Depois de salvar, envie o convite diretamente por e-mail ou copie o link.</small></span><code>{accessUrl}</code><button type="button" onClick={copyAccessLink}><Copy/>{copied?'Link copiado':'Copiar link'}</button>{lastInvite&&<a href={`mailto:${lastInvite.email}?subject=${encodeURIComponent('Seu acesso ao Gestão TF')}&body=${encodeURIComponent(`Olá, ${lastInvite.name}! Seu acesso ao Gestão TF está pronto. Entre por este link: ${accessUrl}`)}`}><Send/>Enviar por e-mail</a>}</div><label>Nome<input required value={form.name} onChange={e=>setForm(x=>({...x,name:e.target.value}))} placeholder="Nome do usuário"/></label><label>E-mail de acesso<input required type="email" value={form.email} onChange={e=>setForm(x=>({...x,email:e.target.value}))} placeholder="nome@empresa.com"/></label><label>{form.id?"Nova senha (opcional)":"Senha de acesso"}<input type="password" autoComplete="new-password" minLength={8} maxLength={256} required={!form.id} value={form.password||''} onChange={e=>setForm(x=>({...x,password:e.target.value}))}/></label><label>Vincular a parceiro<select value={form.partnerId||''} onChange={event=>setForm(current=>({...current,partnerId:event.target.value?Number(event.target.value):null}))}><option value="">Equipe TF · acesso interno</option>{partners.filter(partner=>partner.id>0).map(partner=><option key={partner.id} value={partner.id}>{partner.name}</option>)}</select></label>{form.partnerId?<div className="tf-partner-access-note"><ShieldCheck/><span><b>Acesso restrito ao parceiro</b><small>Este usuário verá somente clientes, produção, relatórios e acertos desse parceiro.</small></span></div>:<fieldset><legend>Áreas autorizadas</legend>{Object.entries(permissionLabels).filter(([id])=>id!=='inicio').sort(([,a],[,b])=>a.localeCompare(b,'pt-BR',{sensitivity:'base'})).map(([id,label])=><label key={id}><input type="checkbox" checked={form.permissions.includes(id as View)} onChange={e=>setForm(x=>({...x,permissions:e.target.checked?[...x.permissions,id as View]:x.permissions.filter(p=>p!==id)}))}/><span><b>{label}</b>{id==='atendimento'&&<small>Kanban individual, sem visualizar o seu.</small>}</span></label>)}</fieldset>}{message&&<em>{message}</em>}<footer>{form.id&&<button type="button" onClick={()=>setForm(empty)}>Cancelar</button>}<button className="tf-primary" disabled={saving}>{saving?'Salvando...':'Salvar acesso'}</button></footer></form></section></>;
 }
 
-function SettingsPanel({ close, serverAuthenticated }: { close: () => void; serverAuthenticated?: boolean }) {
+function SettingsPanel({ close, serverAuthenticated, visualTheme, onThemeChange }: { close: () => void; serverAuthenticated?: boolean; visualTheme:VisualTheme; onThemeChange:(theme:VisualTheme)=>void }) {
   const [newTab, setNewTab] = useState(true);
   const [currentPassword,setCurrentPassword]=useState(""),[newPassword,setNewPassword]=useState(""),[passwordMessage,setPasswordMessage]=useState("");
   const [wa, setWa] = useState<any>(null),
@@ -3078,7 +3080,7 @@ function SettingsPanel({ close, serverAuthenticated }: { close: () => void; serv
   };
   const content = (
     <div
-      className="tf-settings-popover dark"
+      className={`tf-settings-popover ${visualTheme==="mono"?"dark":"light"}`}
       role="dialog"
       aria-modal="true"
       aria-labelledby="tf-settings-title"
@@ -3100,21 +3102,21 @@ function SettingsPanel({ close, serverAuthenticated }: { close: () => void; serv
           <small>PREFERÊNCIAS</small>
           <h2 id="tf-settings-title">Configurações</h2>
         </header>
-        <div className="tf-settings-row">
+        <div className="tf-theme-settings">
           <span>
-            <b>Modo noturno</b>
-            <small>Ativado permanentemente no Gestão TF</small>
+            <b>Aparência do sistema</b>
+            <small>Alterne quando quiser. A preferência fica salva somente neste navegador.</small>
           </span>
-          <button
-            type="button"
-            className="tf-switch active"
-            role="switch"
-            aria-checked="true"
-            aria-label="Modo noturno sempre ativado"
-            disabled
-          >
-            <i />
-          </button>
+          <div className="tf-theme-options" role="radiogroup" aria-label="Tema do sistema">
+            <button type="button" role="radio" aria-checked={visualTheme==="classic"} className={visualTheme==="classic"?"active":""} onClick={()=>onThemeChange("classic")}>
+              <i className="tf-theme-preview light-preview"><em/><em/><em/></i>
+              <span><b>Claro tradicional</b><small>Branco, limpo e profissional</small></span>
+            </button>
+            <button type="button" role="radio" aria-checked={visualTheme==="mono"} className={visualTheme==="mono"?"active":""} onClick={()=>onThemeChange("mono")}>
+              <i className="tf-theme-preview dark-preview"><em/><em/><em/></i>
+              <span><b>Preto luxo</b><small>O visual atual do sistema</small></span>
+            </button>
+          </div>
         </div>
         <form className="tf-google-review-settings" onSubmit={saveGoogleReview}>
           <header><span><b>Link de avaliação Google</b><small>Será incluído automaticamente nas mensagens de pós-venda.</small></span><Star /></header>

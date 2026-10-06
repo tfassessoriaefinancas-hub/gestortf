@@ -396,6 +396,32 @@
 }
 @media(max-width:420px) { .tf-post-sale-summary { grid-template-columns: 1fr; } .tf-post-sale-summary>div { grid-column: auto; } .tf-post-sale-details { grid-template-columns: 1fr; } }
 
+/* Seletor visual: permite comparar os temas sem alterar dados ou estrutura. */
+.tf-theme-settings { display:grid; gap:12px; padding:16px 0; border-top:1px solid var(--line); color:var(--ink); }
+.tf-theme-settings>span { display:grid; gap:5px; }
+.tf-theme-settings>span>b { font-size:14px; }
+.tf-theme-settings>span>small { color:var(--muted); font-size:11px; line-height:1.45; }
+.tf-theme-options { display:grid; grid-template-columns:1fr 1fr; gap:9px; }
+.tf-theme-options>button { display:grid; grid-template-columns:58px minmax(0,1fr); align-items:center; gap:10px; min-height:76px; padding:10px; border:1px solid var(--line); border-radius:12px; background:transparent; color:var(--ink); text-align:left; transition:border-color .16s ease,background .16s ease,transform .16s ease; }
+.tf-theme-options>button:hover { transform:translateY(-1px); border-color:color-mix(in srgb,#b8893f 55%,var(--line)); }
+.tf-theme-options>button.active { border-color:#b8893f; background:color-mix(in srgb,#b8893f 9%,transparent); box-shadow:0 0 0 2px color-mix(in srgb,#b8893f 12%,transparent); }
+.tf-theme-options>button>span { display:grid; min-width:0; gap:4px; }
+.tf-theme-options>button b { font-size:11px; }
+.tf-theme-options>button small { color:var(--muted); font-size:9px; line-height:1.3; }
+.tf-theme-preview { position:relative; display:grid; grid-template-columns:13px 1fr; grid-template-rows:12px 1fr; width:58px; height:48px; overflow:hidden; border:1px solid rgba(118,128,143,.28); border-radius:7px; box-shadow:0 4px 12px rgba(0,0,0,.12); }
+.tf-theme-preview::before { content:""; grid-row:1/-1; background:#f8fafc; border-right:1px solid #e2e8f0; }
+.tf-theme-preview::after { content:""; grid-column:2; background:#fff; border-bottom:1px solid #e2e8f0; }
+.tf-theme-preview>em { position:absolute; left:18px; right:5px; height:5px; border-radius:2px; background:#e9edf3; }
+.tf-theme-preview>em:nth-child(1) { top:18px; background:#d6e5f6; }
+.tf-theme-preview>em:nth-child(2) { top:27px; }
+.tf-theme-preview>em:nth-child(3) { top:36px; right:18px; }
+.tf-theme-preview.dark-preview { background:#111410; border-color:#4a4e47; }
+.tf-theme-preview.dark-preview::before { background:#0b0d0b; border-color:#343832; }
+.tf-theme-preview.dark-preview::after { background:#181b17; border-color:#343832; }
+.tf-theme-preview.dark-preview>em { background:#343932; }
+.tf-theme-preview.dark-preview>em:nth-child(1) { background:#765e31; }
+@media(max-width:540px) { .tf-theme-options { grid-template-columns:1fr; } }
+
 /* Compromissos e negócios: a mesma estrutura funciona nos dois temas. */
 .tf-activity-summary {
   display: grid;

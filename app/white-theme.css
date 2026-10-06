@@ -1,0 +1,161 @@
+/* Tema Claro Tradicional: identidade visual isolada, sem alterar a estrutura compartilhada. */
+.tf-app.theme-classic,
+.tf-app.theme-classic.light {
+  --gold:#9a6a22;
+  --ink:#172033;
+  --muted:#667085;
+  --line:#dfe4ec;
+  --paper:#f4f6f9;
+  --card:#ffffff;
+  --side:#ffffff;
+  --tf-money:#16794b;
+  background:#f4f6f9 !important;
+  color:var(--ink) !important;
+  color-scheme:light;
+}
+.tf-app.theme-classic::before { display:none !important; }
+.tf-app.theme-classic .tf-main { background:linear-gradient(180deg,#f8fafc 0,#f3f5f8 100%) !important; }
+.tf-app.theme-classic .tf-side {
+  border-right:1px solid #e2e7ee !important;
+  background:rgba(255,255,255,.98) !important;
+  box-shadow:8px 0 28px rgba(31,42,61,.05) !important;
+  color:#172033 !important;
+}
+.tf-app.theme-classic .tf-side .tf-brand { border-bottom-color:#e5e9ef !important; }
+.tf-app.theme-classic .tf-brand img { filter:none !important; }
+.tf-app.theme-classic .tf-side nav button { color:#667085 !important; }
+.tf-app.theme-classic .tf-side nav button i { color:#8a94a6 !important; }
+.tf-app.theme-classic .tf-side nav button:is(:hover,:focus-visible) {
+  background:#f3f6fa !important;
+  color:#26334a !important;
+}
+.tf-app.theme-classic .tf-side nav button.active {
+  border-color:#d8e3f2 !important;
+  background:linear-gradient(135deg,#edf4ff,#f7faff) !important;
+  color:#1e5fae !important;
+  box-shadow:inset 3px 0 #3978c5 !important;
+}
+.tf-app.theme-classic .tf-side nav button.active i { color:#276bbd !important; }
+.tf-app.theme-classic .tf-top {
+  border-bottom-color:#e1e6ed !important;
+  background:rgba(255,255,255,.94) !important;
+  box-shadow:0 5px 22px rgba(33,45,66,.055) !important;
+  backdrop-filter:blur(16px) !important;
+}
+.tf-app.theme-classic .tf-top>label,
+.tf-app.theme-classic .tf-top button:not(.tf-primary) {
+  border-color:#dce2ea !important;
+  background:#fff !important;
+  color:#536075 !important;
+  box-shadow:0 2px 8px rgba(30,42,62,.04) !important;
+}
+.tf-app.theme-classic .tf-top>label:focus-within { border-color:#8db2dd !important; box-shadow:0 0 0 3px rgba(57,120,197,.10) !important; }
+.tf-app.theme-classic .tf-top input { color:#172033 !important; }
+.tf-app.theme-classic .tf-top input::placeholder { color:#98a2b3 !important; }
+.tf-app.theme-classic .tf-primary,
+.tf-app.theme-classic .tf-welcome button:not(.tf-ghost),
+.tf-app.theme-classic .tf-kanban-tools button.active {
+  border-color:#a97b32 !important;
+  background:linear-gradient(135deg,#bd8b3e,#94651f) !important;
+  color:#fff !important;
+  text-shadow:none !important;
+  box-shadow:0 7px 18px rgba(148,101,31,.20),inset 0 1px rgba(255,255,255,.25) !important;
+}
+.tf-app.theme-classic :is(
+  .tf-command-hero,.tf-kpi-strip,.tf-operation-board,.tf-result-card,.tf-month-comparison,
+  .tf-quick-panel,.tf-panel,.tf-metric,.tf-filters,.tf-client-list,.tf-entity,
+  .tf-service-grid article,.tf-banks article,.tf-report-hero,.tf-partner-executive,
+  .tf-access-list,.tf-access-form,.tf-kanban>article,.tf-sheet,.tf-modal,.tf-settings,
+  .tf-kanban-owner,.tf-scheduled-board,.tf-production-operation-group,.tf-finance-performance>article,
+  .tf-activity-summary>article,.tf-activity-list>article,.tf-activity-empty,
+  .tf-post-sale-summary>article,.tf-post-sale-summary>div,.tf-post-sale-list>article,
+  .tf-post-sale-template,.tf-bank-toolbar,.tf-additional-operations,.tf-invoice-file
+) {
+  border-color:#dfe4ec !important;
+  background:#fff !important;
+  box-shadow:0 8px 26px rgba(31,42,61,.065) !important;
+  backdrop-filter:none !important;
+  -webkit-backdrop-filter:none !important;
+}
+.tf-app.theme-classic :is(.tf-command-hero,.tf-report-hero) {
+  background:linear-gradient(135deg,#ffffff,#f7f9fc) !important;
+  color:#172033 !important;
+}
+.tf-app.theme-classic :is(h1,h2,h3,h4,strong,b) { text-shadow:none !important; }
+.tf-app.theme-classic :is(.tf-title,.tf-command-copy,.tf-panel-title) :is(h1,h2,h3),
+.tf-app.theme-classic .tf-command-hero h1 { color:#172033 !important; }
+.tf-app.theme-classic :is(p,small,em,time,span) { text-shadow:none; }
+.tf-app.theme-classic :is(input,select,textarea) {
+  border-color:#d8dee8 !important;
+  background-color:#fff !important;
+  color:#172033 !important;
+  color-scheme:light !important;
+  box-shadow:none !important;
+}
+.tf-app.theme-classic :is(input,textarea)::placeholder { color:#98a2b3 !important; }
+.tf-app.theme-classic select option { background:#fff !important; color:#172033 !important; }
+.tf-app.theme-classic :is(input,select,textarea):focus {
+  border-color:#7ea7d6 !important;
+  box-shadow:0 0 0 3px rgba(49,110,181,.10) !important;
+  outline:0;
+}
+.tf-app.theme-classic :is(.tf-client-row,.tf-deal-card,.tf-op-table>div,.tf-invoices>div,.tf-commission>div) {
+  border-color:#e5e9ef !important;
+  background:#fff !important;
+  color:#26334a !important;
+}
+.tf-app.theme-classic :is(.tf-client-row,.tf-deal-card):hover { background:#f8fafc !important; }
+.tf-app.theme-classic .tf-kanban>article>header {
+  border-bottom-color:#e2e7ee !important;
+  background:#f7f9fc !important;
+}
+.tf-app.theme-classic .tf-deal-card[class*="deal-stage-"]::before { opacity:.7; }
+.tf-app.theme-classic .tf-activity-list>article::before {
+  background:linear-gradient(90deg,var(--activity-accent,var(--gold)) 0 4px,transparent 4px),linear-gradient(120deg,color-mix(in srgb,var(--activity-accent,var(--gold)) 5%,transparent),transparent 48%) !important;
+}
+.tf-app.theme-classic .tf-activity-list time { background:#f8fafc !important; border-color:#e1e6ed !important; }
+.tf-app.theme-classic .tf-filters button { color:#667085 !important; }
+.tf-app.theme-classic .tf-filters button.active { background:#edf4ff !important; color:#1e5fae !important; }
+.tf-app.theme-classic .tf-secondary,
+.tf-app.theme-classic :is(.tf-modal-actions,.tf-card-actions,footer)>button:not(.tf-primary) {
+  border-color:#d7dde6 !important;
+  background:#fff !important;
+  color:#536075 !important;
+}
+.tf-app.theme-classic .tf-secondary:hover,
+.tf-app.theme-classic :is(.tf-modal-actions,.tf-card-actions,footer)>button:not(.tf-primary):hover { background:#f4f7fa !important; color:#172033 !important; }
+.tf-app.theme-classic .tf-modal-back { background:rgba(31,42,61,.32) !important; backdrop-filter:blur(5px) !important; }
+.tf-app.theme-classic .tf-toast { background:#173f2b !important; color:#fff !important; }
+.tf-app.theme-classic .tf-menu-backdrop { background:rgba(31,42,61,.25) !important; }
+
+@media(max-width:700px) {
+  .tf-app.theme-classic .tf-side { box-shadow:0 16px 34px rgba(31,42,61,.13) !important; }
+  .tf-app.theme-classic .tf-mobile-menu { background:#fff !important; color:#344054 !important; }
+}
+
+/* O painel de configurações é renderizado fora de .tf-app. */
+.tf-settings-popover.light {
+  --ink:#172033;
+  --muted:#667085;
+  --line:#dfe4ec;
+  --paper:#f4f6f9;
+  --card:#fff;
+  --tf-money:#16794b;
+}
+.tf-settings-popover.light .tf-settings-card { border-color:#d9dfe8 !important; background:#fff !important; color:#172033 !important; }
+.tf-settings-popover.light :is(.tf-google-review-settings,.tf-password-settings,.tf-whatsapp-settings) {
+  border-color:#dfe4ec !important;
+  background:#f8fafc !important;
+  background-image:none !important;
+  box-shadow:none !important;
+}
+.tf-settings-popover.light :is(.tf-google-review-settings,.tf-password-settings,.tf-whatsapp-settings) :is(h3,b) { color:#172033 !important; }
+.tf-settings-popover.light :is(.tf-google-review-settings,.tf-password-settings,.tf-whatsapp-settings) :is(p,small,label) { color:#667085 !important; }
+.tf-settings-popover.light :is(input,select,textarea) {
+  border-color:#d7dde6 !important;
+  background:#fff !important;
+  color:#172033 !important;
+  color-scheme:light !important;
+}
+.tf-settings-popover.light .tf-webhook-box { border-color:#dfe4ec !important; background:#fff !important; }
+.tf-settings-popover.light .tf-webhook-box code { color:#536075 !important; }

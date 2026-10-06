@@ -148,7 +148,11 @@ test('new card forms reset between clients, offer the requested amounts and shar
   await expect(next).toBeHidden();
   const firstCard=page.locator(`[data-deal-id="${first.id}"]`),secondCard=page.locator(`[data-deal-id="${second.id}"]`);
   for(const theme of ['classic','mono']){
-    if(!(await page.locator('.tf-app').getAttribute('class'))?.includes(`theme-${theme}`))await page.locator('.tf-side nav').getByRole('button',{name:'Usar tema Preto Luxo',exact:true}).click();
+    if(!(await page.locator('.tf-app').getAttribute('class'))?.includes(`theme-${theme}`)){
+      await page.getByRole('button',{name:'Configurações',exact:true}).click();
+      await page.getByRole('radio',{name:theme==='mono'?/Preto luxo/:/Claro tradicional/}).click();
+      await page.getByRole('button',{name:'Fechar configurações',exact:true}).click();
+    }
     await expect(firstCard).toContainText('Imobiliário');
     await expect(firstCard.locator('.tf-card-heading')).toHaveText('Crédito com garantiaCliente visual imóvel');
     const product=await firstCard.locator('.tf-card-product').boundingBox(),name=await firstCard.locator('.tf-card-heading strong').boundingBox();
