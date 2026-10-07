@@ -128,8 +128,8 @@
 .tf-app.theme-classic .tf-kpi-strip article:nth-child(5) strong { color:#0e7490 !important; }
 .tf-app.theme-classic .tf-kpi-strip article em { color:var(--kpi-color,#2563eb) !important; }
 .tf-app.theme-classic .tf-partner-source-group.gg {
+  border-color:#f3b9bd !important;
   border-left-color:#d91f2b !important;
-  border-top-color:#f3b9bd !important;
   background:linear-gradient(90deg,#ffdfe1 0%,#fff1f2 58%,#fff8f8 100%) !important;
   color:#981b24 !important;
   box-shadow:inset 0 1px rgba(255,255,255,.8) !important;
