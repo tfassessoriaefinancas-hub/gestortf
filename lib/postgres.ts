@@ -50,6 +50,7 @@ export class PostgresStatement {
   }
   bind(...values: unknown[]) { return new PostgresStatement(this.database, this.sql, valuesForPostgres(values)); }
   async execute<T = Record<string, unknown>>(client?: DatabaseClient): Promise<StatementResult<T>> {
+    if (!client && /\bdeduction_(?:cents|description)\b/i.test(this.sql)) await this.database.ensurePartnerSettlementDeductions();
     if (!client && changedTable(this.sql)) return this.database.transaction(transaction => this.execute<T>(transaction));
     const result = await (client || this.database.pool).query(postgresSql(this.sql, this.database.schema), this.values);
     return { success: true as const, results: result.rows as T[], meta: { changes: result.command === 'SELECT' ? 0 : result.rowCount || 0, last_row_id: Number(result.rows[0]?.id || 0), duration: 0 } };
@@ -62,6 +63,7 @@ export class PostgresStatement {
   async run<T = Record<string, unknown>>() { return this.execute<T>(); }
   async raw<T = unknown[]>(): Promise<T[]> {
     if (changedTable(this.sql)) return (await this.execute<Record<string, unknown>>()).results.map(row => Object.values(row)) as T[];
+    if (/\bdeduction_(?:cents|description)\b/i.test(this.sql)) await this.database.ensurePartnerSettlementDeductions();
     const result = await this.database.pool.query({ text: postgresSql(this.sql, this.database.schema), values: this.values, rowMode: 'array' });
     return result.rows as T[];
   }
@@ -70,6 +72,7 @@ export class PostgresStatement {
 export class PostgresDatabase {
   readonly pool: pg.Pool;
   readonly schema: string;
+  private partnerSettlementDeductions?: Promise<void>;
   constructor(connectionString = process.env.DATABASE_URL, schema = databaseSchema()) {
     if (!connectionString) throw new Error('Configure DATABASE_URL para conectar ao PostgreSQL.');
     const url = new URL(connectionString);
@@ -82,6 +85,31 @@ export class PostgresDatabase {
     // Neon project limits; the pooler still handles concurrent clients.
     this.pool = new pg.Pool({ connectionString: url.toString(), enableChannelBinding: true, max: 1, maxUses: 100, idleTimeoutMillis: 5_000, connectionTimeoutMillis: 15_000, application_name: 'gestortf-nextjs' });
     this.pool.on('error', () => console.error('PostgreSQL: conexão ociosa encerrada; uma nova conexão será aberta.'));
+  }
+  async ensurePartnerSettlementDeductions() {
+    if (!this.partnerSettlementDeductions) this.partnerSettlementDeductions = (async () => {
+      const client = await this.pool.connect();
+      try {
+        await client.query('BEGIN');
+        await client.query('SELECT pg_advisory_xact_lock(712089231)');
+        await client.query(`SET LOCAL search_path TO ${quoteIdentifier(this.schema)}`);
+        await client.query('CREATE TABLE IF NOT EXISTS _schema_migrations (name text PRIMARY KEY,checksum text NOT NULL,applied_at bigint NOT NULL)');
+        const name = '007_partner_settlement_deduction.sql';
+        const checksum = '3b4ced4a75dac78e989b333177ec7964496c5f401fd5246dbd8a4b190a3ce7ec';
+        const existing = await client.query('SELECT checksum FROM _schema_migrations WHERE name=$1', [name]);
+        if (existing.rows.length && existing.rows[0].checksum !== checksum) throw new Error(`Migration changed after execution: ${name}`);
+        if (!existing.rows.length) {
+          await client.query('ALTER TABLE partner_settlements ADD COLUMN IF NOT EXISTS deduction_cents bigint NOT NULL DEFAULT 0');
+          await client.query('ALTER TABLE partner_settlements ADD COLUMN IF NOT EXISTS deduction_description text');
+          await client.query('INSERT INTO _schema_migrations (name,checksum,applied_at) VALUES ($1,$2,$3)', [name, checksum, Date.now()]);
+        }
+        await client.query('COMMIT');
+      } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+      } finally { client.release(); }
+    })().catch(error => { this.partnerSettlementDeductions = undefined; throw error; });
+    return this.partnerSettlementDeductions;
   }
   prepare(sql: string) { return new PostgresStatement(this, sql); }
   async batch<T = Record<string, unknown>>(statements: DatabaseStatement[]) {

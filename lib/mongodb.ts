@@ -8,6 +8,9 @@ import type { ApplicationDatabase, DatabaseClient, DatabaseRow, DatabaseStatemen
 
 const contractHash = createHash('sha256').update(JSON.stringify(mongoSchema)).digest('hex');
 const duplicateCpfLegacyContractHash = 'c132da683c88171e108c223b548b7454b93ea4b4ae7c0ae8d8e7f51b701593a8';
+// Contract that was live immediately before partner settlement deductions.
+// This is an additive upgrade: existing documents and their identifiers stay intact.
+const partnerDeductionLegacyContractHash = 'bcaeddccb27fc7ca699e9453c0a92d8a2560627fae60d67d7ca9cdc824c4b4f6';
 type StoredDocument = DatabaseRow & { _id: string };
 const binding = (value: unknown): unknown => {
   if (value == null) return null;
@@ -135,23 +138,36 @@ export class MongoDatabase implements ApplicationDatabase, DatabaseClient {
     return this.connected;
   }
   private async upgradeCompatibleSchema(db: Db, marker: StoredDocument | null) {
-    if (marker?.hash !== duplicateCpfLegacyContractHash) return marker;
-    const clients = db.collection('clients');
-    const indexes = await clients.listIndexes().toArray();
-    if (indexes.some(index => index.name === 'clients_owner_cpf_unique')) {
-      try { await clients.dropIndex('clients_owner_cpf_unique'); }
-      catch (error) { if ((error as { code?: number }).code !== 27) throw error; }
+    if (marker?.hash === duplicateCpfLegacyContractHash) {
+      const clients = db.collection('clients');
+      const indexes = await clients.listIndexes().toArray();
+      if (indexes.some(index => index.name === 'clients_owner_cpf_unique')) {
+        try { await clients.dropIndex('clients_owner_cpf_unique'); }
+        catch (error) { if ((error as { code?: number }).code !== 27) throw error; }
+      }
+      await clients.createIndex({ owner_id: 1, cpf: 1 }, { name: 'idx_clients_owner_cpf' });
+      await db.collection('deals').updateMany({ stage: 'fechamento' }, { $set: { stage: 'assinatura' } });
+      await db.collection('deals').updateMany({ stage: 'contratado' }, { $set: { stage: 'finalizado' } });
+      await db.collection('operations').updateMany({ status: 'fechamento' }, { $set: { status: 'assinatura' } });
+      await db.collection('operations').updateMany({ status: 'contratado' }, { $set: { status: 'finalizado' } });
+      await db.collection<StoredDocument>('_tf_state').updateOne(
+        { _id: 'schema', hash: duplicateCpfLegacyContractHash },
+        { $set: { hash: partnerDeductionLegacyContractHash, version: mongoSchema.version, migratedAt: Date.now() } },
+      );
+      marker = await db.collection<StoredDocument>('_tf_state').findOne({ _id: 'schema' });
     }
-    await clients.createIndex({ owner_id: 1, cpf: 1 }, { name: 'idx_clients_owner_cpf' });
-    await db.collection('deals').updateMany({ stage: 'fechamento' }, { $set: { stage: 'assinatura' } });
-    await db.collection('deals').updateMany({ stage: 'contratado' }, { $set: { stage: 'finalizado' } });
-    await db.collection('operations').updateMany({ status: 'fechamento' }, { $set: { status: 'assinatura' } });
-    await db.collection('operations').updateMany({ status: 'contratado' }, { $set: { status: 'finalizado' } });
-    await db.collection<StoredDocument>('_tf_state').updateOne(
-      { _id: 'schema', hash: duplicateCpfLegacyContractHash },
-      { $set: { hash: contractHash, version: mongoSchema.version, migratedAt: Date.now() } },
-    );
-    return db.collection<StoredDocument>('_tf_state').findOne({ _id: 'schema' });
+    if (marker?.hash === partnerDeductionLegacyContractHash) {
+      await db.collection('partner_settlements').updateMany(
+        { deduction_cents: { $exists: false } },
+        { $set: { deduction_cents: Long.ZERO, deduction_description: null } },
+      );
+      await db.collection<StoredDocument>('_tf_state').updateOne(
+        { _id: 'schema', hash: partnerDeductionLegacyContractHash },
+        { $set: { hash: contractHash, version: mongoSchema.version, migratedAt: Date.now() } },
+      );
+      marker = await db.collection<StoredDocument>('_tf_state').findOne({ _id: 'schema' });
+    }
+    return marker;
   }
   private async assertReady() {
     if (!this.ready) this.ready = this.connection().then(async db => {
