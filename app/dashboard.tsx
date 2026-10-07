@@ -2464,8 +2464,8 @@ const operationDatabaseId=(row:Operation)=>row.dbId||((row.id>=20_000_000)?row.i
 const partnerSourceGroup=(row:Operation)=>/^TF$/i.test(row.producer)||/^TF Assessoria/i.test(row.origin)?'tf':'gg';
 const byPartnerPaidDate=(a:Operation,b:Operation)=>(a.paidDate||a.date||'9999-12-31').localeCompare(b.paidDate||b.date||'9999-12-31')||a.date.localeCompare(b.date)||(a.clientName||'').localeCompare(b.clientName||'','pt-BR',{sensitivity:'base'});
 const partnerSourceGroups=(rows:Operation[])=>[
-  {key:'tf',label:'Clientes da TF Assessoria e Finanças',rows:rows.filter(row=>partnerSourceGroup(row)==='tf').sort(byPartnerPaidDate)},
-  {key:'gg',label:'Clientes da GG Veículos',rows:rows.filter(row=>partnerSourceGroup(row)==='gg').sort(byPartnerPaidDate)},
+  {key:'tf',label:'TF Assessoria e Finanças',rows:rows.filter(row=>partnerSourceGroup(row)==='tf').sort(byPartnerPaidDate)},
+  {key:'gg',label:'GG Veículos',rows:rows.filter(row=>partnerSourceGroup(row)==='gg').sort(byPartnerPaidDate)},
 ];
 function partnerOperationCalculation(row:Operation,partner:PartnerRecord){
   const operationId=operationDatabaseId(row),adjustment=partner.adjustments?.find(item=>item.operationId===operationId);
