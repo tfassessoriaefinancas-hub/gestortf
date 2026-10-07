@@ -119,19 +119,23 @@ export function partnerAdditionalFinance(value: number, tfShare = 50) {
   return { net, tfShare, thiagoShare, partnerShare: Math.max(0, net - thiagoShare) };
 }
 
-/** Apply monthly additions and partner debts without changing Thiago's earned repasse. */
-export function partnerSettlementFinance(baseNet: number, basePartnerShare: number, additional = 0, deduction = 0) {
+/** Campaign additions go to the partner; monthly deductions come from Thiago's repasse. */
+export function partnerSettlementFinance(baseNet: number, baseThiagoShare: number, basePartnerShare: number, additional = 0, deduction = 0) {
   const safeBaseNet = Math.max(0, Number(baseNet) || 0);
+  const safeBaseThiago = Math.max(0, Number(baseThiagoShare) || 0);
   const safeBasePartner = Math.max(0, Number(basePartnerShare) || 0);
   const safeAdditional = Math.max(0, Number(additional) || 0);
   const requestedDeduction = Math.max(0, Number(deduction) || 0);
-  const appliedDeduction = Math.min(requestedDeduction, safeBasePartner + safeAdditional);
+  const appliedDeduction = Math.min(requestedDeduction, safeBaseThiago);
   return {
     baseNet: safeBaseNet,
+    baseThiagoShare: safeBaseThiago,
+    basePartnerShare: safeBasePartner,
     additional: safeAdditional,
     deduction: requestedDeduction,
     appliedDeduction,
     creditNet: Math.max(0, safeBaseNet + safeAdditional - appliedDeduction),
-    partnerShare: Math.max(0, safeBasePartner + safeAdditional - appliedDeduction),
+    thiagoShare: Math.max(0, safeBaseThiago - appliedDeduction),
+    partnerShare: Math.max(0, safeBasePartner + safeAdditional),
   };
 }

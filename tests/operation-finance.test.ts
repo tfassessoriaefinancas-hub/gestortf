@@ -51,12 +51,18 @@ test('partner campaign additions use the existing share rule', () => {
   assert.deepEqual(partnerAdditionalFinance(1583.7, 0), { net: 1583.7, tfShare: 0, thiagoShare: 0, partnerShare: 1583.7 });
 });
 
-test('monthly additions and deductions affect only the partner settlement', () => {
-  assert.deepEqual(partnerSettlementFinance(2000, 1000, 500, 300), {
-    baseNet: 2000, additional: 500, deduction: 300, appliedDeduction: 300, creditNet: 2200, partnerShare: 1200,
+test('monthly additions go to the partner and deductions come from Thiago', () => {
+  const september = partnerSettlementFinance(11708.41, 5854.21, 5854.21, 0, 1000);
+  assert.equal(september.creditNet, 10708.41);
+  assert.equal(september.partnerShare, 5854.21);
+  assert.equal(september.thiagoShare, 4854.21);
+  assert.deepEqual(partnerSettlementFinance(2000, 1000, 1000, 500, 300), {
+    baseNet: 2000, baseThiagoShare: 1000, basePartnerShare: 1000, additional: 500, deduction: 300,
+    appliedDeduction: 300, creditNet: 2200, thiagoShare: 700, partnerShare: 1500,
   });
-  assert.deepEqual(partnerSettlementFinance(2000, 1000, 0, 1400), {
-    baseNet: 2000, additional: 0, deduction: 1400, appliedDeduction: 1000, creditNet: 1000, partnerShare: 0,
+  assert.deepEqual(partnerSettlementFinance(2000, 1000, 1000, 0, 1400), {
+    baseNet: 2000, baseThiagoShare: 1000, basePartnerShare: 1000, additional: 0, deduction: 1400,
+    appliedDeduction: 1000, creditNet: 1000, thiagoShare: 0, partnerShare: 1000,
   });
 });
 
