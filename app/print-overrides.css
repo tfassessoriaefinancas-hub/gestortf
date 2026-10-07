@@ -136,3 +136,24 @@
   .tf-germano-table td.partner-value { color: #245a34 !important; font-weight: 900 !important; }
   .tf-germano-report * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
 }
+
+/* V172: o relatório impresso da GG usa uma única folha; o gráfico continua apenas no painel. */
+@media print {
+  .tf-germano-chart { display: none !important; }
+  .tf-germano-comparison {
+    margin-top: 6px !important;
+    padding: 5px !important;
+    break-before: auto !important;
+    page-break-before: auto !important;
+    break-inside: avoid-page !important;
+    page-break-inside: avoid !important;
+  }
+  .tf-germano-months { margin: 4px 0 0 !important; }
+  .tf-germano-financial {
+    margin-top: 6px !important;
+    break-before: auto !important;
+    page-break-before: auto !important;
+    break-inside: avoid-page !important;
+    page-break-inside: avoid !important;
+  }
+}
