@@ -119,7 +119,12 @@ export async function reconcileGgHistoryFinancials(db: ApplicationDatabase, acce
     const adjustmentValues: unknown[] = [];
     for (const item of sheet.records) adjustmentValues.push(access.ownerId, partner.id, byFingerprint.get(item.fingerprint)!.id, item.ilaRateBps, item.invoiceRateBps, item.tfShareBps, now, now);
     await execute(`INSERT INTO partner_operation_adjustments (owner_id,partner_id,operation_id,ila_rate_bps,invoice_rate_bps,tf_share_bps,created_at,updated_at) VALUES ${sheet.records.map(() => '(?,?,?,?,?,?,?,?)').join(',')} ON CONFLICT(operation_id) DO UPDATE SET owner_id=excluded.owner_id,partner_id=excluded.partner_id,ila_rate_bps=excluded.ila_rate_bps,invoice_rate_bps=excluded.invoice_rate_bps,tf_share_bps=excluded.tf_share_bps,updated_at=excluded.updated_at`, adjustmentValues);
-    return { operationsReconciled: operations.length, commissionsReconciled: payable.length, adjustmentsReconciled: sheet.records.length, warnings: [] as string[] };
+
+    const septemberMicael = (await execute<{ id: number }>("SELECT o.id FROM operations o JOIN clients c ON c.id=o.client_id WHERE o.owner_id IN (?,?) AND c.owner_id IN (?,?) AND o.deleted_at IS NULL AND substr(o.operation_date,1,7)='2026-09' AND c.normalized_name LIKE '%mica%costa%reis%'", [...access.ownerKeys, ...access.ownerKeys])).results;
+    for (const operation of septemberMicael) {
+      await execute("UPDATE operations SET partner_id=?,producer='TF',origin='TF Assessoria e Finanças',bank='OMNI',original_product='Crédito com garantia',category='Crédito com garantia',updated_at=? WHERE id=?", [partner.id, now, operation.id]);
+    }
+    return { operationsReconciled: operations.length, commissionsReconciled: payable.length, adjustmentsReconciled: sheet.records.length, septemberReconciled: septemberMicael.length, warnings: [] as string[] };
   });
 }
 
@@ -193,7 +198,7 @@ export async function importGgHistory(db: ApplicationDatabase, access: ImportAcc
     const septemberTf = await queryAll<{ id: number; normalized_name: string }>(client, "SELECT o.id,c.normalized_name FROM operations o JOIN clients c ON c.id=o.client_id WHERE o.owner_id IN (?,?) AND o.deleted_at IS NULL AND substr(o.operation_date,1,7)='2026-09' AND (c.normalized_name LIKE '%marian%dias%' OR c.normalized_name LIKE '%mica%costa%reis%')", [...access.ownerKeys]);
     for (const operation of septemberTf) {
       const isMikael = operation.normalized_name.includes('mikael') || operation.normalized_name.includes('micael');
-      await run(client, `UPDATE operations SET partner_id=?,producer='TF',origin='TF Assessoria e Finanças'${isMikael ? ",bank='Onda',original_product='Crédito com garantia',category='Crédito com garantia'" : ''},updated_at=? WHERE id=?`, [partner.id, now, operation.id]);
+      await run(client, `UPDATE operations SET partner_id=?,producer='TF',origin='TF Assessoria e Finanças'${isMikael ? ",bank='OMNI',original_product='Crédito com garantia',category='Crédito com garantia'" : ''},updated_at=? WHERE id=?`, [partner.id, now, operation.id]);
       summary.septemberReconciled++;
     }
 
