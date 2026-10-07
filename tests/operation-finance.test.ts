@@ -48,6 +48,7 @@ test('partial receipts and imported amounts survive without a new distribution r
 test('partner campaign additions use the existing share rule', () => {
   assert.deepEqual(partnerAdditionalFinance(100, 50), { net: 100, tfShare: 50, thiagoShare: 50, partnerShare: 50 });
   assert.deepEqual(partnerAdditionalFinance(125.5, 40), { net: 125.5, tfShare: 40, thiagoShare: 50.2, partnerShare: 75.3 });
+  assert.deepEqual(partnerAdditionalFinance(1583.7, 0), { net: 1583.7, tfShare: 0, thiagoShare: 0, partnerShare: 1583.7 });
 });
 
 test('imported partner statements preserve exact cents', () => {
