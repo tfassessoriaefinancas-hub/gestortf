@@ -1625,7 +1625,7 @@ body,button,input,select{font-family:var(--font-ui),sans-serif}
 .tf-germano-adjustment td:first-child { font-weight:900; }
 
 /* V169 · relatório do parceiro em fluxo: clientes, gráfico e fechamento. */
-.tf-germano-print-logos{display:none}
+.tf-germano-report-heading>.tf-germano-print-logos{display:none!important}
 .tf-germano-clients,.tf-germano-financial{margin-top:18px}
 .tf-germano-section-title{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;margin-bottom:10px;padding:0 2px}
 .tf-germano-section-title span{display:grid;gap:4px}
