@@ -1091,6 +1091,7 @@ body,button,input,select{font-family:var(--font-ui),sans-serif}
 .tf-gate-card input::placeholder{color:#9f9d95;opacity:1}
 .tf-gate-card input:focus{border-color:#e0ba6e!important;box-shadow:0 0 0 3px rgba(224,186,110,.13),inset 0 1px rgba(255,255,255,.05)}
 .tf-gate-card input:-webkit-autofill,.tf-gate-card input:-webkit-autofill:hover,.tf-gate-card input:-webkit-autofill:focus{-webkit-text-fill-color:#f4efe5!important;-webkit-box-shadow:0 0 0 1000px #252820 inset!important;transition:background-color 9999s ease-out}
+.tf-partner-signin .tf-gate-card{border-color:rgba(95,199,129,.38);background:linear-gradient(145deg,rgba(23,39,29,.72),rgba(12,18,14,.72))}.tf-partner-signin .tf-gate-partner-brand img{width:min(250px,82%)!important;height:100px!important;border-radius:0!important;object-fit:contain!important;box-shadow:none!important;filter:drop-shadow(0 10px 24px rgba(0,0,0,.38))}.tf-partner-signin .tf-gate-card>small{color:#86d9a2!important}.tf-partner-signin .tf-gate-card h1{font-size:34px}.tf-partner-signin .tf-gate-card .tf-primary{border-color:#8de1aa!important;background:linear-gradient(135deg,#8cdda7,#3f9a61)!important;color:#102117!important}
 @media(max-width:460px){.tf-gate-brand strong{font-size:25px}.tf-gate-brand img{width:82px!important;height:82px!important}}
 
 /* V97 · finalização objetiva e créditos a receber */
