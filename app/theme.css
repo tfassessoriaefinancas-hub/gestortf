@@ -1707,3 +1707,24 @@ body,button,input,select{font-family:var(--font-ui),sans-serif}
   .tf-germano-client-totals small{color:#626a63!important;font-size:6pt!important}.tf-germano-client-totals strong{color:#694a1c!important;font-size:10pt!important}
   .tf-germano-client-totals>span.partner{border-color:#4b9f64!important;background:#e4f2e7!important}.tf-germano-client-totals>span.partner small{color:#245a34!important}.tf-germano-client-totals>span.partner strong{color:#173e24!important}
 }
+
+/* V171 · relatório GG completo em uma única folha A4. */
+@media print{
+  @page{size:A4 landscape;margin:4mm}
+  .tf-germano-report{width:172.4138%!important;max-width:none!important;zoom:.58!important;page-break-after:avoid!important;break-after:avoid-page!important}
+  .tf-germano-report-heading{grid-template-columns:105px minmax(0,1fr)!important;gap:10px!important;margin-bottom:3mm!important;padding-bottom:2mm!important}
+  .tf-germano-print-logos img{width:42px!important;height:29px!important}
+  .tf-germano-report-heading h2{font-size:17pt!important}.tf-germano-report-heading p{font-size:7.5pt!important}
+  .tf-germano-section-title{margin-bottom:1.5mm!important}.tf-germano-section-title h3{font-size:11pt!important}
+  .tf-germano-table table{font-size:8.2pt!important;line-height:1.08!important}
+  .tf-germano-table th,.tf-germano-table td{padding:1.25mm .9mm!important;font-size:8.2pt!important}
+  .tf-germano-table thead th{font-size:7.3pt!important}.tf-germano-source th{padding:1.35mm!important;font-size:8.6pt!important}.tf-germano-source th small{font-size:7pt!important}
+  .tf-germano-client-totals{gap:1.5mm!important;margin-top:1.5mm!important}.tf-germano-client-totals>span{padding:1.6mm 2mm!important}.tf-germano-client-totals strong{font-size:10.5pt!important}
+  .tf-germano-comparison{margin-top:2mm!important;padding:2mm!important;break-before:auto!important;page-break-before:auto!important;break-inside:avoid-page!important;page-break-inside:avoid!important}
+  .tf-germano-comparison>header h3{font-size:12pt!important}.tf-germano-months{gap:1.5mm!important;margin:1.5mm 0!important}.tf-germano-months article,.tf-germano-months aside{padding:1.7mm!important}.tf-germano-months strong{font-size:11pt!important}
+  .tf-germano-chart{padding:0!important}.tf-germano-chart>svg{height:43mm!important;max-height:43mm!important}.tf-germano-chart>div{margin:0!important}
+  .tf-germano-financial{margin-top:2mm!important}.tf-germano-financial .tf-germano-section-title{margin-bottom:1.5mm!important}
+  .tf-germano-cards{gap:1.3mm!important}.tf-germano-cards article{padding:1.6mm!important}.tf-germano-cards article strong{font-size:10pt!important}
+  .tf-germano-analysis{grid-template-columns:38mm minmax(0,1fr)!important;gap:2mm!important;margin-top:1.5mm!important;padding:1.8mm!important}.tf-germano-analysis>span{padding:1.5mm!important}.tf-germano-analysis p{font-size:7.2pt!important;line-height:1.2!important}
+  .tf-germano-report>footer{display:none!important}
+}
