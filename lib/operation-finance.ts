@@ -100,13 +100,13 @@ export function importedPartnerFinance(gross: number, ilaRate: number, invoiceRa
   const ilaValue = Math.round(Math.max(0, gross - afterIla) * 100) / 100;
   return {
     ...calculated,
-    ilaRate: gross > 0 ? ilaValue / gross * 100 : 0,
+    ilaRate,
     ilaValue,
     afterIla,
-    invoiceRate: afterIla > 0 ? (afterIla - net) / afterIla * 100 : 0,
+    invoiceRate,
     invoiceFee: Math.round(Math.max(0, afterIla - net) * 100) / 100,
     net,
-    tfShare: net > 0 ? thiagoShare / net * 100 : tfShare,
+    tfShare,
     thiagoShare,
     partnerShare: Math.round(Math.max(0, net - thiagoShare) * 100) / 100,
   };
