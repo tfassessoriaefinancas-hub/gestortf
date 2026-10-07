@@ -5,11 +5,12 @@ import { env } from './runtime';
 export { sameOrigin } from './request-origin';
 
 export const SESSION_COOKIE = 'tf_session';
+export const PARTNER_SESSION_COOKIE = 'tf_partner_session';
 const SESSION_SECONDS = 60 * 60 * 24 * 7;
 export const tokenHash = (token: string) => createHash('sha256').update(token).digest('hex');
 
-export async function getSessionUser() {
-  const token = (await cookies()).get(SESSION_COOKIE)?.value;
+export async function getSessionUser(cookieName = SESSION_COOKIE) {
+  const token = (await cookies()).get(cookieName)?.value;
   if (!token || !/^[a-f0-9]{64}$/.test(token)) return null;
   try {
     const row = await env.DB.prepare(`SELECT u.id,u.email,u.name,u.role FROM auth_sessions s
@@ -25,13 +26,13 @@ export async function getSessionUser() {
   }
 }
 
-export async function createSession(userId: string, request: Request) {
+export async function createSession(userId: string, request: Request, cookieName = SESSION_COOKIE) {
   const token = randomBytes(32).toString('hex'), now = Date.now();
   await env.DB.batch([
     env.DB.prepare('DELETE FROM auth_sessions WHERE expires_at<=?').bind(now),
     env.DB.prepare('INSERT INTO auth_sessions (token_hash,user_id,created_at,expires_at) VALUES (?,?,?,?)').bind(tokenHash(token), userId, now, now + SESSION_SECONDS * 1000),
   ]);
-  (await cookies()).set(SESSION_COOKIE, token, { httpOnly: true, secure: Boolean(process.env.VERCEL) || new URL(request.url).protocol === 'https:', sameSite: 'lax', path: '/', maxAge: SESSION_SECONDS });
+  (await cookies()).set(cookieName, token, { httpOnly: true, secure: Boolean(process.env.VERCEL) || new URL(request.url).protocol === 'https:', sameSite: 'lax', path: '/', maxAge: SESSION_SECONDS });
 }
 
 export async function ownerIdentity() {

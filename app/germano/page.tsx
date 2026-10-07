@@ -1,11 +1,10 @@
 'use client';
 import { formatMoney as brl } from '../../lib/money';
 import { partnerSettlementFinance } from '../../lib/operation-finance';
-import { CRM_CHANGED, CRM_STORAGE_KEY } from '../../lib/crm-events';
+import { CRM_CHANGED } from '../../lib/crm-events';
 import { startActiveRefresh } from '../../lib/active-refresh';
-import type { CrmRevisions } from '../../lib/crm-resources';
 
-import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 
 type Operation={id:number;clientName:string;cpf:string;bank:string;product:string;date:string;paidDate:string;value:number;producer:string;origin:string;gross:number;ilaRate:number;ilaValue:number;afterIla:number;invoiceRate:number;invoiceFee:number;net:number;thiagoShare:number;partnerShare:number};
 type PartnerSettlement={period:string;bonus:number;bonusDescription:string;deduction:number;deductionDescription:string};
@@ -36,33 +35,23 @@ function ChartPoint({point,value,label,tone}:{point:Point;value:number;label:str
 }
 
 export default function GermanoPortal(){
-  const [password,setPassword]=useState('');
   const [data,setData]=useState<PortalData|null>(null);
   const [period,setPeriod]=useState('');
   const [error,setError]=useState('');
   const [loading,setLoading]=useState(false);
-  const revision=useRef<{scope:string;value:string}|null>(null);
   const partnerId=typeof window==='undefined'?0:Number(new URLSearchParams(window.location.search).get('partner')||0);
-  const readRevision=async()=>{
-    const response=await fetch('/api/crm/changes',{cache:'no-store'});
-    if(!response.ok)throw new Error('Não foi possível verificar as atualizações.');
-    const versions=await response.json() as CrmRevisions;
-    return {scope:versions.scope,value:`${versions.crm}:${versions.partners}`};
-  };
 
-  const enter=async(event?:React.FormEvent,accessPassword=password)=>{
-    event?.preventDefault();setLoading(true);setError('');
+  const enter=async()=>{
+    setLoading(true);setError('');
     try {
-      const current=await readRevision();
-      const response=await fetch('/api/germano-report',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({password:accessPassword,partnerId})});
+      const response=await fetch('/api/germano-report',{method:'POST',cache:'no-store',headers:{'content-type':'application/json'},body:JSON.stringify({partnerId})});
       const payload=await response.json();
       if(!response.ok){setError(payload.error||'Não foi possível entrar.');return}
-      revision.current=current;
-      sessionStorage.setItem('tf_germano_access','1');setData(payload);setPeriod(payload.periods[0]||new Date().toISOString().slice(0,7));
+      setData(payload);setPeriod(payload.periods[0]||new Date().toISOString().slice(0,7));
     } catch {setError('Não foi possível carregar o relatório. Tente novamente.');}
     finally {setLoading(false);}
   };
-  useEffect(()=>{if(partnerId||sessionStorage.getItem('tf_germano_access')==='1'){setPassword(partnerId?'':'GG');void enter(undefined,partnerId?'':'GG')}},[partnerId]);
+  useEffect(()=>{void enter()},[partnerId]);
   const authenticated = Boolean(data);
   useEffect(() => {
     if (!authenticated) return;
@@ -72,24 +61,17 @@ export default function GermanoPortal(){
       if (disposed || refreshing || document.visibilityState === 'hidden' || navigator.onLine === false) return;
       refreshing = true;
       try {
-        const current=await readRevision();
-        if(disposed)return;
-        if(revision.current&&revision.current.scope!==current.scope){window.location.reload();return;}
-        if(revision.current?.value===current.value)return;
         const response = await fetch('/api/germano-report', { method: 'POST', cache: 'no-store', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ partnerId }) });
         if (response.ok) {
           const current = await response.json();
           if (!disposed) setData(current);
         }
-        if(response.ok&&!disposed)revision.current=current;
       } catch { /* Preserve the visible report while the connection is unavailable. */ }
       finally { refreshing = false; }
     };
-    const storage = (event: StorageEvent) => { if (event.key === CRM_STORAGE_KEY) void refresh(); };
     const stopRefresh = startActiveRefresh(refresh);
     window.addEventListener(CRM_CHANGED, refresh);
-    window.addEventListener('storage', storage);
-    return () => { disposed = true; stopRefresh(); window.removeEventListener(CRM_CHANGED, refresh); window.removeEventListener('storage', storage); };
+    return () => { disposed = true; stopRefresh(); window.removeEventListener(CRM_CHANGED, refresh); };
   }, [authenticated, partnerId]);
 
   const report=useMemo(()=>{
@@ -117,7 +99,7 @@ export default function GermanoPortal(){
   const exportCsv=()=>{const cells=(values:unknown[])=>values.map(value=>`"${String(value??'').replaceAll('"','""')}"`).join(';'),lines=[cells(['Origem','Cliente','CPF','Banco','Produto','Data da operação','Data do pagamento','Valor financiado','Comissão bruta','Crédito líquido','Repasse Thiago','Repasse parceiro'])];for(const group of groupedRows)for(const row of group.rows)lines.push(cells([group.label,row.clientName,formatCpf(row.cpf),row.bank,row.product,formatDate(row.date),formatDate(row.paidDate),brl(row.value),brl(row.gross),brl(row.net),brl(row.thiagoShare),brl(row.partnerShare)]));if(report.settlementFinance.additional)lines.push(cells(['Ajuste do parceiro','Valor adicional','','Adicional',report.settlement?.bonusDescription||'Bônus / campanha','','','','',brl(report.settlementFinance.additional),brl(0),brl(report.settlementFinance.additional)]));if(report.settlementFinance.appliedDeduction)lines.push(cells(['Ajuste do parceiro','Valor deduzido','','Dedução',report.settlement?.deductionDescription||'Débito / antecipação','','','','',`- ${brl(report.settlementFinance.appliedDeduction)}`,brl(0),`- ${brl(report.settlementFinance.appliedDeduction)}`]));lines.push(cells(['TOTAL DO PERÍODO','','','','','','',brl(report.production),brl(report.gross),brl(report.net),brl(report.thiago),brl(report.partnerShare)]));const blob=new Blob([`\uFEFF${lines.join('\r\n')}`],{type:'text/csv;charset=utf-8'}),url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download=`relatorio-gg-veiculos-${period}.csv`;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000)};
 
   return <main className="tf-germano-portal">
-    <header className="tf-germano-top"><PartnershipBrand compact/><span><small>PORTAL DO PARCEIRO · PARCERIA TF + GG</small><h1>{data.partner.name}</h1><p>Consulta completa de produção e comissões</p></span><label>MÊS DO RELATÓRIO<select value={period} onChange={event=>setPeriod(event.target.value)}>{data.periods.map(item=><option key={item} value={item}>{monthName(item)}</option>)}</select></label><button type="button" onClick={()=>{sessionStorage.removeItem('tf_germano_access');const partner=data.partner.id||partnerId;window.location.href=`/signout-with-chatgpt?return_to=${encodeURIComponent(`/germano${partner?`?partner=${partner}`:''}`)}`}}>Sair</button></header>
+    <header className="tf-germano-top"><PartnershipBrand compact/><span><small>PORTAL DO PARCEIRO · PARCERIA TF + GG</small><h1>{data.partner.name}</h1><p>Consulta completa de produção e comissões</p></span><label>MÊS DO RELATÓRIO<select value={period} onChange={event=>setPeriod(event.target.value)}>{data.periods.map(item=><option key={item} value={item}>{monthName(item)}</option>)}</select></label><button type="button" onClick={()=>{const partner=data.partner.id||partnerId;window.location.href=`/signout-with-chatgpt?scope=partner&return_to=${encodeURIComponent(`/germano${partner?`?partner=${partner}`:''}`)}`}}>Sair</button></header>
     <section className="tf-germano-report">
       <div className="tf-germano-report-heading"><div className="tf-germano-print-logos" aria-hidden="true"><img src="/tf-logo-no-bg.png" alt=""/><span>+</span><img src="/gg-veiculos-logo.png" alt=""/></div><span><small>RELATÓRIO DA PARCERIA TF + GG</small><h2>{data.partner.name}</h2><p>{monthName(period)} · Relatório de produção e repasses</p></span><div><button type="button" onClick={exportCsv}>Exportar dados</button><button type="button" onClick={()=>window.print()}>Imprimir relatório</button></div></div>
       <section className="tf-germano-clients"><header className="tf-germano-section-title"><span><small>01 · CLIENTES</small><h3>Clientes e operações do período</h3></span><b>{report.contracts.length} {report.contracts.length===1?'cliente':'clientes'}</b></header>

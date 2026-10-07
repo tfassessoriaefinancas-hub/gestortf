@@ -178,6 +178,29 @@ test('server authentication rejects anonymous access and manages employee sessio
   }finally{await employee.dispose();await secondSession.dispose();}
 });
 
+test('partner portal uses an isolated session and rejects the administrator login',async({request,playwright})=>{
+  await login(request);
+  const partnerResponse=await request.post('/api/partners',{data:{name:'GG Veículos'}});
+  expect([200,201]).toContain(partnerResponse.status());
+  const partner=(await partnerResponse.json()).partner;
+  const memberResponse=await request.post('/api/access-users',{data:{name:'GG Veículos',login:'ggveiculos',email:'gg.portal@example.com',password:'484950',partnerId:partner.id}});
+  expect(memberResponse.status(),await memberResponse.text()).toBe(201);
+  expect((await request.post('/api/germano-report',{data:{partnerId:partner.id}})).status()).toBe(401);
+
+  const portal=await playwright.request.newContext({baseURL:origin});
+  try{
+    const adminAttempt=await portal.post('/api/auth/login',{headers:{origin},data:{login:'admin@example.com',password:'test-only-password',partnerAccess:true,partnerId:partner.id}});
+    expect(adminAttempt.status()).toBe(401);
+    const partnerLogin=await portal.post('/api/auth/login',{headers:{origin},data:{login:'ggveiculos',password:'484950',partnerAccess:true,partnerId:partner.id}});
+    expect(partnerLogin.ok(),await partnerLogin.text()).toBeTruthy();
+    const report=await portal.post('/api/germano-report',{data:{partnerId:partner.id}});
+    expect(report.ok(),await report.text()).toBeTruthy();
+    expect((await portal.get('/api/crm/data')).status()).toBe(401);
+    expect((await portal.post('/api/auth/logout?scope=partner',{headers:{origin}})).ok()).toBeTruthy();
+    expect((await portal.post('/api/germano-report',{data:{partnerId:partner.id}})).status()).toBe(401);
+  }finally{await portal.dispose();}
+});
+
 test('PostgreSQL batches roll back and document bytes survive reconnection',async()=>{
   let db=createDatabase();
   try{

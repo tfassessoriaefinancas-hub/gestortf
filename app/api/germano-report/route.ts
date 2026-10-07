@@ -2,6 +2,7 @@ import { env } from '@/lib/runtime';
 import { readOperations } from '@/lib/operations';
 import { importedPartnerFinance } from '@/lib/operation-finance';
 import { hasGgCode } from '@/lib/production-source';
+import { getSessionUser, PARTNER_SESSION_COOKIE } from '@/lib/auth-session';
 import { getTfAccess, hasTfPermission } from '../../chatgpt-auth';
 
 const json=(data:unknown,status=200)=>Response.json(data,{status,headers:{'cache-control':'no-store, no-cache, must-revalidate','pragma':'no-cache'}});
@@ -9,12 +10,15 @@ const json=(data:unknown,status=200)=>Response.json(data,{status,headers:{'cache
 type PartnerRow={id:number;owner_id:string;name:string};
 
 export async function POST(request:Request){
-  const user=await getTfAccess();
-  if(!user)return json({error:'Entre no sistema para acessar o relatório.'},401);
+  const session=await getSessionUser(PARTNER_SESSION_COOKIE),user=session?await getTfAccess(session):null;
+  if(!user)return json({error:'Entre com o usuário e a senha da GG Veículos.'},401);
+  if(!user.partnerId)return json({error:'Este acesso não está vinculado à GG Veículos.'},403);
   if(!hasTfPermission(user,'relatorios')&&!hasTfPermission(user,'parceiros'))return json({error:'Acesso não autorizado.'},403);
 
   let requestedPartnerId=0;
   try { const body=await request.json() as Record<string,unknown>; requestedPartnerId=Number(body.partnerId||0); } catch { requestedPartnerId=Number(new URL(request.url).searchParams.get('partner')||0); }
+  if(requestedPartnerId&&requestedPartnerId!==user.partnerId)return json({error:'Acesso não autorizado para este parceiro.'},403);
+  requestedPartnerId=user.partnerId;
   let partner=requestedPartnerId>0
     ?await env.DB.prepare("SELECT id,owner_id,name FROM partners WHERE id=? AND owner_id IN (?,?) AND active=1 AND deleted_at IS NULL").bind(requestedPartnerId,user.ownerKeys[0],user.ownerKeys[1]).first<PartnerRow>()
     :await env.DB.prepare("SELECT id,owner_id,name FROM partners WHERE owner_id IN (?,?) AND active=1 AND deleted_at IS NULL AND (lower(name) LIKE '%gg veículos%' OR lower(name) LIKE '%germano%' OR lower(name) LIKE '%gg%') ORDER BY CASE WHEN lower(name) LIKE '%gg veículos%' THEN 0 WHEN lower(name) LIKE '%germano%' THEN 1 ELSE 2 END LIMIT 1").bind(user.ownerKeys[0],user.ownerKeys[1]).first<PartnerRow>();
@@ -23,7 +27,7 @@ export async function POST(request:Request){
     partner=source||null;
   }
   if(!partner)return json({error:'Parceiro GG Veículos não encontrado.'},404);
-  if(!user.ownerKeys.includes(partner.owner_id)||(user.role!=='admin'&&user.partnerId!==partner.id))return json({error:'Acesso não autorizado.'},403);
+  if(!user.ownerKeys.includes(partner.owner_id)||user.partnerId!==partner.id)return json({error:'Acesso não autorizado.'},403);
 
   const rows=await readOperations(env.DB,user);
   const operations=rows.filter(row=>requestedPartnerId>0
