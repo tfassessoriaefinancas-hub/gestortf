@@ -1623,3 +1623,71 @@ body,button,input,select{font-family:var(--font-ui),sans-serif}
 .tf-germano-adjustment.positive td { background:rgba(47,139,77,.12); color:#a8e7bb; }
 .tf-germano-adjustment.negative td { background:rgba(157,61,61,.13); color:#efabab; }
 .tf-germano-adjustment td:first-child { font-weight:900; }
+
+/* V169 · relatório do parceiro em fluxo: clientes, gráfico e fechamento. */
+.tf-germano-print-logos{display:none}
+.tf-germano-clients,.tf-germano-financial{margin-top:18px}
+.tf-germano-section-title{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;margin-bottom:10px;padding:0 2px}
+.tf-germano-section-title span{display:grid;gap:4px}
+.tf-germano-section-title small{color:#dcb86e;font-size:9px;font-weight:900;letter-spacing:1.2px}
+.tf-germano-section-title h3{margin:0;color:#f2efe7;font:700 20px var(--font-display),Georgia,serif}
+.tf-germano-section-title>b{padding:7px 11px;border:1px solid rgba(218,184,112,.25);border-radius:999px;background:rgba(218,184,112,.08);color:#e3c27d;font-size:9px;font-weight:900;text-transform:capitalize}
+.tf-germano-clients .tf-germano-table{margin-top:0}
+.tf-germano-comparison{margin-top:22px}
+.tf-germano-financial{padding:20px;border:1px solid rgba(255,255,255,.14);border-radius:15px;background:linear-gradient(145deg,rgba(36,43,34,.4),rgba(8,12,8,.28))}
+.tf-germano-financial .tf-germano-cards{margin:0}
+.tf-germano-financial .tf-germano-analysis{margin-bottom:0}
+@media(max-width:600px){.tf-germano-section-title{align-items:flex-start;flex-direction:column;gap:8px}.tf-germano-financial{padding:14px}}
+
+/* A4 paisagem, sem redução artificial: tabela legível na primeira parte e fechamento na sequência. */
+@media print{
+  @page{size:A4 landscape;margin:9mm}
+  html,body{width:auto!important;height:auto!important;margin:0!important;overflow:visible!important;background:#fff!important}
+  .tf-germano-top{display:none!important}
+  .tf-germano-portal{display:block!important;min-height:0!important;padding:0!important;background:#fff!important;color:#172019!important}
+  .tf-germano-report{display:block!important;width:100%!important;max-width:none!important;padding:0!important;border:0!important;background:#fff!important;color:#172019!important;box-shadow:none!important;backdrop-filter:none!important;zoom:1!important;transform:none!important}
+  .tf-germano-report-heading{display:grid!important;grid-template-columns:118px minmax(0,1fr);align-items:center;gap:14px;margin:0 0 7mm!important;padding:0 0 4mm!important;border-bottom:2px solid #b58a43;break-after:avoid-page!important}
+  .tf-germano-report-heading>.tf-germano-print-logos{display:flex!important;align-items:center;justify-content:flex-start;gap:7px}
+  .tf-germano-print-logos img{width:48px!important;height:34px!important;object-fit:contain!important;filter:none!important}
+  .tf-germano-print-logos span{color:#9b733b;font-size:13px;font-weight:900}
+  .tf-germano-report-heading>span small{color:#79551e!important;font-size:7.5pt!important;letter-spacing:.9pt!important}
+  .tf-germano-report-heading h2{margin:1mm 0 .5mm!important;color:#172019!important;font-size:19pt!important;line-height:1!important}
+  .tf-germano-report-heading p{margin:0!important;color:#5e655f!important;font-size:8pt!important}
+  .tf-germano-report-heading>div:last-child{display:none!important}
+  .tf-germano-clients,.tf-germano-financial{margin:0!important;padding:0!important;border:0!important;background:#fff!important;box-shadow:none!important;break-inside:auto!important}
+  .tf-germano-section-title{margin:0 0 3mm!important;padding:0!important;break-after:avoid-page!important}
+  .tf-germano-section-title small{color:#79551e!important;font-size:7pt!important}
+  .tf-germano-section-title h3{color:#172019!important;font-size:13pt!important}
+  .tf-germano-section-title>b{padding:1.5mm 2.5mm!important;border-color:#cdb990!important;background:#f5efe2!important;color:#68491b!important;font-size:7pt!important}
+  .tf-germano-table{width:100%!important;margin:0!important;overflow:visible!important;border:1px solid #bfc5bf!important;border-radius:0!important;background:#fff!important;break-inside:auto!important}
+  .tf-germano-table table{width:100%!important;min-width:0!important;table-layout:fixed!important;border-collapse:collapse!important;font-size:6.4pt!important;line-height:1.18!important}
+  .tf-germano-table thead{display:table-header-group!important}
+  .tf-germano-table tbody{display:table-row-group!important}
+  .tf-germano-table tr{break-inside:avoid-page!important;page-break-inside:avoid!important}
+  .tf-germano-table th,.tf-germano-table td{padding:2.2mm 1.1mm!important;border-right:1px solid #d7dbd7!important;border-top:1px solid #d7dbd7!important;color:#202720!important;font-size:6.4pt!important;white-space:normal!important;overflow-wrap:anywhere!important;vertical-align:middle!important}
+  .tf-germano-table thead th{background:#263129!important;color:#fff!important;font-size:5.9pt!important;font-weight:800!important}
+  .tf-germano-table th:nth-child(1),.tf-germano-table td:nth-child(1){width:11%}.tf-germano-table th:nth-child(2),.tf-germano-table td:nth-child(2){width:8%}.tf-germano-table th:nth-child(3),.tf-germano-table td:nth-child(3){width:6%}.tf-germano-table th:nth-child(4),.tf-germano-table td:nth-child(4){width:8%}.tf-germano-table th:nth-child(5),.tf-germano-table td:nth-child(5){width:6%}.tf-germano-table th:nth-child(6),.tf-germano-table td:nth-child(6){width:8%}.tf-germano-table th:nth-child(7),.tf-germano-table td:nth-child(7){width:8%}.tf-germano-table th:nth-child(8),.tf-germano-table td:nth-child(8){width:8%}.tf-germano-table th:nth-child(9),.tf-germano-table td:nth-child(9){width:8%}.tf-germano-table th:nth-child(10),.tf-germano-table td:nth-child(10){width:8%}.tf-germano-table th:nth-child(11),.tf-germano-table td:nth-child(11){width:8%}.tf-germano-table th:nth-child(12),.tf-germano-table td:nth-child(12){width:6.5%}.tf-germano-table th:nth-child(13),.tf-germano-table td:nth-child(13){width:6.5%}
+  .tf-germano-source th{width:auto!important;padding:2.3mm!important;border-left:3px solid #5a8cb8!important;background:#eaf2f8!important;color:#214b6e!important;font-size:8pt!important}
+  .tf-germano-source.gg th{border-left-color:#4b9f64!important;background:#e7f4eb!important;color:#245a34!important}
+  .tf-germano-source th small{font-size:6.5pt!important}
+  .tf-germano-table tbody tr:not(.tf-germano-source):nth-child(odd) td{background:#f7f8f6!important}
+  .tf-germano-table td.partner-value{color:#176c36!important;font-weight:900!important}
+  .tf-germano-adjustment.positive td{background:#edf8f0!important;color:#245a34!important}.tf-germano-adjustment.negative td{background:#fbefef!important;color:#813232!important}
+  .tf-germano-comparison{margin:0!important;padding:4mm!important;border:1px solid #c9cec9!important;border-radius:3mm!important;background:#f8f9f7!important;box-shadow:none!important;backdrop-filter:none!important;break-before:page!important;page-break-before:always!important;break-inside:avoid-page!important}
+  .tf-germano-comparison>header h3{margin:.5mm 0 0!important;color:#172019!important;font-size:14pt!important}.tf-germano-comparison>header small{color:#79551e!important;font-size:7pt!important}.tf-germano-comparison>header>b{font-size:9pt!important}
+  .tf-germano-months{grid-template-columns:repeat(3,1fr)!important;gap:3mm!important;margin:3mm 0!important}
+  .tf-germano-months article,.tf-germano-months aside{min-height:0!important;padding:3mm!important;border-color:#d4d9d4!important;background:#fff!important;color:#202720!important}
+  .tf-germano-months small,.tf-germano-months strong,.tf-germano-months span{color:#202720!important}.tf-germano-months strong{font-size:13pt!important}
+  .tf-germano-chart{padding:1mm!important;background:#fff!important}.tf-germano-chart>svg{height:70mm!important;max-height:70mm!important}.tf-germano-chart>div{margin:1mm 0 0!important;color:#303830!important;font-size:7pt!important}.tf-germano-chart .grid{stroke:#d7dcd7!important}.tf-germano-chart-point{display:none!important}
+  .tf-germano-financial{margin-top:5mm!important;break-inside:avoid-page!important;page-break-inside:avoid!important}
+  .tf-germano-financial .tf-germano-section-title{margin-bottom:2.5mm!important}
+  .tf-germano-cards{grid-template-columns:repeat(5,1fr)!important;gap:2mm!important;margin:0!important;break-inside:avoid-page!important}
+  .tf-germano-cards article{min-height:0!important;padding:2.5mm!important;border-color:#d4d9d4!important;background:#f5f3ed!important;box-shadow:none!important}
+  .tf-germano-cards article small{color:#626a63!important;font-size:6pt!important}.tf-germano-cards article strong{margin-top:1mm!important;color:#694a1c!important;font-size:10.5pt!important}
+  .tf-germano-cards article.ila{border-color:#9bc2da!important;background:#eef6fb!important}.tf-germano-cards article.ila strong{color:#285d7d!important}
+  .tf-germano-cards article.partner{border-color:#4b9f64!important;background:#e4f2e7!important}.tf-germano-cards article.partner small{color:#245a34!important}.tf-germano-cards article.partner strong{color:#173e24!important}
+  .tf-germano-analysis{grid-template-columns:42mm minmax(0,1fr)!important;gap:3mm!important;margin:3mm 0 0!important;padding:3mm!important;border-color:#d4d9d4!important;background:#f5f3ed!important;box-shadow:none!important;backdrop-filter:none!important;break-inside:avoid-page!important}
+  .tf-germano-analysis>span{min-height:0!important;padding:2.5mm!important;border-color:#8fc79f!important;background:#e7f4eb!important;color:#245a34!important;font-size:7pt!important}.tf-germano-analysis b{color:#694a1c!important;font-size:8pt!important}.tf-germano-analysis p{margin:1mm 0 0!important;color:#303830!important;font-size:6.6pt!important;line-height:1.35!important}
+  .tf-germano-report>footer{display:flex!important;align-items:center!important;justify-content:space-between!important;margin:4mm 0 0!important;padding-top:2mm!important;border-top:1px solid #d0d5d0!important;color:#697069!important;font-size:6.5pt!important}.tf-germano-report>footer button{display:none!important}
+  .tf-germano-report *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+}
