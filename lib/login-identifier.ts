@@ -7,5 +7,5 @@ export function loginIdentifier(input: unknown): { kind: 'email' | 'cpf' | 'logi
     const cpf = value.replace(/\D/g, '');
     return cpf.length === 11 ? { kind: 'cpf', value: cpf } : null;
   }
-  return /^[\p{L}\d]+(?:[ _][\p{L}\d]+)+$/u.test(value) && value.length <= 80 ? { kind: 'login', value } : null;
+  return /^[\p{L}\d]+(?:[ _][\p{L}\d]+)*$/u.test(value) && value.length >= 3 && value.length <= 80 ? { kind: 'login', value } : null;
 }

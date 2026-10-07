@@ -29,7 +29,7 @@ export async function POST(request:Request){
   const name=String(body.name||'').trim(),email=String(body.email||'').trim().toLowerCase(),login=String(body.login||'').trim();
   if(!name||!/^\S+@\S+\.\S+$/.test(email))return json({error:'Informe nome e e-mail válidos.'},400);
   if(email===owner.email.toLowerCase())return json({error:'O administrador não pode ser alterado como subacesso.'},400);
-  if(login && loginIdentifier(login)?.kind!=='login')return json({error:'O login deve conter duas ou mais palavras, como G Veiculos.'},400);
+  if(login && loginIdentifier(login)?.kind!=='login')return json({error:'Use somente letras, números, espaço ou sublinhado no login.'},400);
   const password=String(body.password||''),partnerId=body.partnerId?Number(body.partnerId):null,minPasswordLength=partnerId?6:8;
   if(password.length<minPasswordLength||password.length>256)return json({error:`Defina uma senha entre ${minPasswordLength} e 256 caracteres.`},400);
   const permissions=partnerId?normalizePermissions(['inicio','parceiros','relatorios']):normalizePermissions(body.permissions),now=Date.now();
@@ -51,7 +51,7 @@ export async function PATCH(request:Request){
   const partnerId=body.partnerId===undefined?(current.partner_id||null):(body.partnerId?Number(body.partnerId):null);
   if(!name||!/^\S+@\S+\.\S+$/.test(email))return json({error:'Informe nome e e-mail válidos.'},400);
   if(email===owner.email.toLowerCase())return json({error:'O administrador não pode ser alterado como subacesso.'},400);
-  if(login && loginIdentifier(login)?.kind!=='login')return json({error:'O login deve conter duas ou mais palavras, como G Veiculos.'},400);
+  if(login && loginIdentifier(login)?.kind!=='login')return json({error:'Use somente letras, números, espaço ou sublinhado no login.'},400);
   const password=String(body.password||''),minPasswordLength=partnerId?6:8;
   if(password&&(password.length<minPasswordLength||password.length>256))return json({error:`Use uma senha entre ${minPasswordLength} e 256 caracteres.`},400);
   const account=await env.DB.prepare('SELECT id FROM users WHERE id=?').bind(`member:${id}`).first();
