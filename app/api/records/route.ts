@@ -5,7 +5,7 @@ import { getTfAccess, hasTfPermission } from '../../chatgpt-auth';
 import { getAugustSeptemberRecords } from '../../../lib/aug-sep-2026';
 import { productionSources, hasGgCode } from '../../../lib/production-source';
 import { importUpdatedSheet } from '../../../lib/import-updated-sheet';
-import { importGgHistory, parseGgHistorySpreadsheet, testGgHistoryImportOnPostgres } from '../../../lib/gg-history-import';
+import { importGgHistory, parseGgHistorySpreadsheet, reconcileGgHistoryFinancials, testGgHistoryImportOnPostgres } from '../../../lib/gg-history-import';
 
 const json=(data:unknown,status=200)=>Response.json(data,{status,headers:{'cache-control':'no-store, no-cache, must-revalidate','pragma':'no-cache'}});
 const digits=(value:unknown)=>String(value||'').replace(/\D/g,'');
@@ -53,11 +53,12 @@ export async function POST(request:Request){
   const configured=String((env as unknown as Record<string,unknown>).TF_IMPORT_TOKEN||''),provided=request.headers.get('authorization')?.replace(/^Bearer\s+/i,'')||'';
   const sessionAccess=await getTfAccess(),tokenAuthorized=Boolean(configured&&provided===configured),adminAuthorized=sessionAccess?.role==='admin';
   if(!tokenAuthorized&&!adminAuthorized)return json({error:'Rota indisponível.'},404);
-  const body=await request.json() as {ggHistoryText?:unknown;ggHistoryValidateOnly?:unknown;ggAccessPassword?:unknown;updatedSheet?:unknown;records?:Array<Record<string,unknown>>;institutions?:Array<Record<string,unknown>>;partnerRecords?:Array<Record<string,unknown>>;partnerBonus?:Record<string,unknown>},records=Array.isArray(body.records)?body.records:[],institutionRows=Array.isArray(body.institutions)?body.institutions:[],partnerRecords=Array.isArray(body.partnerRecords)?body.partnerRecords:[];
+  const body=await request.json() as {ggHistoryText?:unknown;ggHistoryValidateOnly?:unknown;ggHistoryFinanceOnly?:unknown;ggAccessPassword?:unknown;updatedSheet?:unknown;records?:Array<Record<string,unknown>>;institutions?:Array<Record<string,unknown>>;partnerRecords?:Array<Record<string,unknown>>;partnerBonus?:Record<string,unknown>},records=Array.isArray(body.records)?body.records:[],institutionRows=Array.isArray(body.institutions)?body.institutions:[],partnerRecords=Array.isArray(body.partnerRecords)?body.partnerRecords:[];
   if(typeof body.ggHistoryText==='string'){
     try{
       const owner=await ownerIdentity(),sheet=parseGgHistorySpreadsheet(body.ggHistoryText);
       if(body.ggHistoryValidateOnly)return json({ok:true,parsed:{operations:sheet.records.length,bonus:Boolean(sheet.bonus)},test:await testGgHistoryImportOnPostgres(sheet)});
+      if(body.ggHistoryFinanceOnly)return json({ok:true,parsed:{operations:sheet.records.length,bonus:Boolean(sheet.bonus)},result:await reconcileGgHistoryFinancials(env.DB,{ownerId:owner.id,ownerKeys:[owner.id,owner.email]},sheet)});
       const result=await importGgHistory(env.DB,{ownerId:owner.id,ownerKeys:[owner.id,owner.email]},sheet,String(body.ggAccessPassword||'102030'));
       return json({ok:true,parsed:{operations:sheet.records.length,bonus:Boolean(sheet.bonus)},result});
     }catch(error){console.error('Importação histórica GG:',error);return json({error:error instanceof Error?error.message:'Não foi possível importar a base GG.'},400)}

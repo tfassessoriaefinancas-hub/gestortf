@@ -81,6 +81,48 @@ export function parseGgHistorySpreadsheet(text: string): GgHistorySheet {
 type ImportAccess = { ownerId: string; ownerKeys: [string, string] };
 type ImportSummary = { clientsCreated: number; clientsUpdated: number; operationsCreated: number; operationsUpdated: number; commissionsReconciled: number; adjustmentsReconciled: number; bonusReconciled: boolean; septemberReconciled: number; accessUserId: number; warnings: string[] };
 
+/** Reconcile only imported financial fields, keeping existing clients and operations intact. */
+export async function reconcileGgHistoryFinancials(db: ApplicationDatabase, access: ImportAccess, sheet: GgHistorySheet) {
+  if (!sheet.records.length) throw new Error('Nenhuma operação válida foi encontrada na planilha.');
+  return db.transaction(async client => {
+    const execute = async <T extends Record<string, unknown>>(sql: string, values: unknown[] = []) =>
+      db.prepare(sql).bind(...values).execute<T>(client);
+    const partner = (await execute<{ id: number }>('SELECT id FROM partners WHERE owner_id IN (?,?) AND lower(name)=lower(?) AND deleted_at IS NULL ORDER BY id LIMIT 1', [...access.ownerKeys, 'GG Veículos'])).results[0];
+    if (!partner) throw new Error('Parceiro GG Veículos não encontrado.');
+    const fingerprints = sheet.records.map(item => item.fingerprint);
+    const operations = (await execute<{ id: number; owner_id: string; dedupe_fingerprint: string; notes: string | null }>(`SELECT id,owner_id,dedupe_fingerprint,notes FROM operations WHERE owner_id IN (?,?) AND deleted_at IS NULL AND dedupe_fingerprint IN (${fingerprints.map(() => '?').join(',')})`, [...access.ownerKeys, ...fingerprints])).results;
+    const byFingerprint = new Map(operations.map(item => [item.dedupe_fingerprint, item]));
+    const missing = sheet.records.filter(item => !byFingerprint.has(item.fingerprint));
+    if (missing.length) throw new Error(`${missing.length} operações históricas não foram localizadas; nenhuma alteração foi aplicada.`);
+    const now = Date.now(), noteValues: unknown[] = [];
+    for (const item of sheet.records) {
+      const operation = byFingerprint.get(item.fingerprint)!;
+      const notes = { ...operationNotes(operation.notes), importedGrossCents: item.grossCents, importedAfterIlaCents: item.afterIlaCents, importedNetCents: item.netCents, importedRepasseCents: item.repasseCents, importedFrom: 'Planilha GG junho-agosto 2026' };
+      noteValues.push(operation.id, JSON.stringify(notes));
+    }
+    await execute(`UPDATE operations SET notes=CASE id ${sheet.records.map(() => 'WHEN ? THEN ?').join(' ')} ELSE notes END,updated_at=? WHERE id IN (${operations.map(() => '?').join(',')})`, [...noteValues, now, ...operations.map(item => item.id)]);
+
+    const payable = sheet.records.filter(item => item.grossCents > 0), operationIds = payable.map(item => byFingerprint.get(item.fingerprint)!.id);
+    const commissions = (await execute<{ id: number; operation_id: number }>(`SELECT id,operation_id FROM commissions WHERE operation_id IN (${operationIds.map(() => '?').join(',')}) AND lower(COALESCE(notes,''))=lower(?) ORDER BY CASE WHEN deleted_at IS NULL THEN 0 ELSE 1 END,id`, [...operationIds, 'Comissão bruta importada · Base GG junho-agosto 2026'])).results;
+    const commissionByOperation = new Map<number, { id: number; operation_id: number }>();
+    for (const commission of commissions) if (!commissionByOperation.has(commission.operation_id)) commissionByOperation.set(commission.operation_id, commission);
+    if (payable.some(item => !commissionByOperation.has(byFingerprint.get(item.fingerprint)!.id))) throw new Error('Uma comissão histórica não foi localizada; nenhuma alteração foi aplicada.');
+    const amountValues: unknown[] = [], dateValues: unknown[] = [];
+    for (const item of payable) {
+      const commission = commissionByOperation.get(byFingerprint.get(item.fingerprint)!.id)!;
+      amountValues.push(commission.id, item.grossCents);
+      dateValues.push(commission.id, item.paidAt);
+    }
+    const commissionIds = payable.map(item => commissionByOperation.get(byFingerprint.get(item.fingerprint)!.id)!.id);
+    await execute(`UPDATE commissions SET value_cents=CASE id ${payable.map(() => 'WHEN ? THEN ?').join(' ')} ELSE value_cents END,expected_at=CASE id ${payable.map(() => 'WHEN ? THEN ?').join(' ')} ELSE expected_at END,received_at=CASE id ${payable.map(() => 'WHEN ? THEN ?').join(' ')} ELSE received_at END,status='recebida',notes='Comissão bruta importada · Base GG junho-agosto 2026',deleted_at=NULL,updated_at=? WHERE id IN (${commissionIds.map(() => '?').join(',')})`, [...amountValues, ...dateValues, ...dateValues, now, ...commissionIds]);
+
+    const adjustmentValues: unknown[] = [];
+    for (const item of sheet.records) adjustmentValues.push(access.ownerId, partner.id, byFingerprint.get(item.fingerprint)!.id, item.ilaRateBps, item.invoiceRateBps, item.tfShareBps, now, now);
+    await execute(`INSERT INTO partner_operation_adjustments (owner_id,partner_id,operation_id,ila_rate_bps,invoice_rate_bps,tf_share_bps,created_at,updated_at) VALUES ${sheet.records.map(() => '(?,?,?,?,?,?,?,?)').join(',')} ON CONFLICT(operation_id) DO UPDATE SET owner_id=excluded.owner_id,partner_id=excluded.partner_id,ila_rate_bps=excluded.ila_rate_bps,invoice_rate_bps=excluded.invoice_rate_bps,tf_share_bps=excluded.tf_share_bps,updated_at=excluded.updated_at`, adjustmentValues);
+    return { operationsReconciled: operations.length, commissionsReconciled: payable.length, adjustmentsReconciled: sheet.records.length, warnings: [] as string[] };
+  });
+}
+
 export async function importGgHistory(db: ApplicationDatabase, access: ImportAccess, sheet: GgHistorySheet, password = '102030'): Promise<ImportSummary> {
   if (!sheet.records.length) throw new Error('Nenhuma operação válida foi encontrada na planilha.');
   return db.transaction(async client => {
@@ -191,7 +233,9 @@ export async function testGgHistoryImportOnPostgres(sheet: GgHistorySheet) {
       CREATE TABLE auth_sessions (token_hash text PRIMARY KEY,user_id text NOT NULL,created_at bigint NOT NULL,expires_at bigint NOT NULL);
     `);
     testDb = new PostgresDatabase(process.env.DATABASE_URL, schema);
-    const result = await importGgHistory(testDb, { ownerId: 'test-owner', ownerKeys: ['test-owner', 'test-owner@local.test'] }, sheet);
+    const testAccess: ImportAccess = { ownerId: 'test-owner', ownerKeys: ['test-owner', 'test-owner@local.test'] };
+    const result = await importGgHistory(testDb, testAccess, sheet);
+    await reconcileGgHistoryFinancials(testDb, testAccess, sheet);
     const counts = await testDb.prepare("SELECT (SELECT count(*) FROM clients) clients,(SELECT count(*) FROM operations) operations,(SELECT count(*) FROM commissions WHERE deleted_at IS NULL) commissions,(SELECT count(*) FROM partner_operation_adjustments) adjustments,(SELECT count(*) FROM access_users WHERE active=1) access_users").first<Record<string, number>>();
     return { result, counts };
   } finally {
