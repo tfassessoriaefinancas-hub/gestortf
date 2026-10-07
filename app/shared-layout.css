@@ -244,6 +244,11 @@
 }
 
 /* Monthly partner additional: shared structure for both visual themes. */
+.tf-partner-adjustments {
+  display: grid;
+  grid-template-columns: repeat(2,minmax(0,1fr));
+  gap: 12px;
+}
 .tf-partner-additional {
   display: grid;
   gap: 12px;
@@ -253,6 +258,11 @@
   border-radius: 12px;
   background: rgba(0,0,0,.12);
 }
+.tf-partner-deduction {
+  border-color: rgba(205,101,101,.28);
+  background: rgba(120,28,28,.08);
+}
+.tf-partner-deduction input { border-color: rgba(205,101,101,.3); }
 .tf-partner-additional>header {
   display: flex;
   align-items: center;
@@ -281,6 +291,7 @@
 .tf-partner-additional>div>button { height: 39px; white-space: nowrap; }
 .tf-partner-additional>small { color: var(--muted); font-size: 9px; }
 @media(max-width:700px) {
+  .tf-partner-adjustments { grid-template-columns: 1fr; }
   .tf-partner-additional>header { align-items: flex-start; flex-direction: column; }
   .tf-partner-additional>div { grid-template-columns: 1fr; align-items: stretch; }
   .tf-partner-additional>div>button { width: 100%; }

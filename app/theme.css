@@ -1619,3 +1619,6 @@ body,button,input,select{font-family:var(--font-ui),sans-serif}
 
 /* Linguagem financeira comum aos dois temas. O gráfico de produção mantém seus tons aprovados. */
 .tf-app { --tf-money:#1d754b; }
+.tf-germano-adjustment.positive td { background:rgba(47,139,77,.12); color:#a8e7bb; }
+.tf-germano-adjustment.negative td { background:rgba(157,61,61,.13); color:#efabab; }
+.tf-germano-adjustment td:first-child { font-weight:900; }

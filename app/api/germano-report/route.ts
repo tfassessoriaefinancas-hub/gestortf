@@ -34,6 +34,8 @@ export async function POST(request:Request){
     commissionRate:row.commissionRate,
     ...importedPartnerFinance(row.grossCommission,row.ilaRate,row.invoiceRate,row.tfShare,row.importedAfterIla,row.importedNet,row.importedRepasse),
   }));
-  const periods=Array.from(new Set(operations.map(item=>item.date.slice(0,7)).filter(period=>/^\d{4}-\d{2}$/.test(period)))).sort((a,b)=>b.localeCompare(a));
-  return json({partner:{id:partner.id,name:partner.name},periods,operations});
+  const settlements=partner.id>0?(await env.DB.prepare("SELECT period,bonus_cents,bonus_description,deduction_cents,deduction_description FROM partner_settlements WHERE partner_id=? AND owner_id IN (?,?) ORDER BY period DESC").bind(partner.id,user.ownerKeys[0],user.ownerKeys[1]).all<any>()).results:[];
+  const normalizedSettlements=settlements.map(item=>({period:item.period,bonus:Number(item.bonus_cents||0)/100,bonusDescription:item.bonus_description||'',deduction:Number(item.deduction_cents||0)/100,deductionDescription:item.deduction_description||''}));
+  const periods=Array.from(new Set([...operations.map(item=>item.date.slice(0,7)),...normalizedSettlements.map(item=>item.period)].filter(period=>/^\d{4}-\d{2}$/.test(period)))).sort((a,b)=>b.localeCompare(a));
+  return json({partner:{id:partner.id,name:partner.name},periods,operations,settlements:normalizedSettlements});
 }

@@ -20,7 +20,7 @@ test('migrations and CRM records survive reopening the database', async () => {
     const row = await db.prepare('SELECT name FROM clients WHERE id = ?').bind(client.id).first<{ name: string }>();
     assert.equal(row?.name, 'Cliente de teste');
     const migrations = await db.prepare('SELECT COUNT(*) AS count FROM _local_migrations').first<{ count: number }>();
-    assert.equal(migrations?.count, 13);
+    assert.equal(migrations?.count, 14);
   } finally { db.close(); await rm(directory, { recursive: true, force: true }); }
 });
 

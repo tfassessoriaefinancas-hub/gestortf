@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { formatMoney, parseMoney, toCents } from '../lib/money.ts';
-import { importedPartnerFinance, operationFinance, partnerAdditionalFinance, partnerFinance, revenueAmounts, type CommissionRow } from '../lib/operation-finance.ts';
+import { importedPartnerFinance, operationFinance, partnerAdditionalFinance, partnerFinance, partnerSettlementFinance, revenueAmounts, type CommissionRow } from '../lib/operation-finance.ts';
 
 test('reais keep cents in Brazilian and numeric input', () => {
   for (const [input, expected] of [['R$ 469,38', 469.38], ['1.261,59', 1261.59], ['17.900,00', 17900], ['42650.00', 42650]] as const) {
@@ -49,6 +49,15 @@ test('partner campaign additions use the existing share rule', () => {
   assert.deepEqual(partnerAdditionalFinance(100, 50), { net: 100, tfShare: 50, thiagoShare: 50, partnerShare: 50 });
   assert.deepEqual(partnerAdditionalFinance(125.5, 40), { net: 125.5, tfShare: 40, thiagoShare: 50.2, partnerShare: 75.3 });
   assert.deepEqual(partnerAdditionalFinance(1583.7, 0), { net: 1583.7, tfShare: 0, thiagoShare: 0, partnerShare: 1583.7 });
+});
+
+test('monthly additions and deductions affect only the partner settlement', () => {
+  assert.deepEqual(partnerSettlementFinance(2000, 1000, 500, 300), {
+    baseNet: 2000, additional: 500, deduction: 300, appliedDeduction: 300, creditNet: 2200, partnerShare: 1200,
+  });
+  assert.deepEqual(partnerSettlementFinance(2000, 1000, 0, 1400), {
+    baseNet: 2000, additional: 0, deduction: 1400, appliedDeduction: 1000, creditNet: 1000, partnerShare: 0,
+  });
 });
 
 test('imported partner statements preserve exact cents', () => {

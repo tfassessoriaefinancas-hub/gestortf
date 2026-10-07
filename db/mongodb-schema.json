@@ -6,7 +6,8 @@
     "003_partner_settlement_bonus.sql": "ef1989a670691420e554aef5462f0d7254c2918bd104c6b04b960bca39152b91",
     "004_post_sale_and_catalogs.sql": "f204d75ca6613866d4d1820ab7e42ba41d6917182c092afa9ac7d876d540c1ec",
     "005_partner_login_alias.sql": "25800310c8af41b30d74f9f20e520653d5e8eda6104cb13bc1902f15e306d0cc",
-    "006_allow_duplicate_client_cpf.sql": "6a7bbbc1cde715ecaba351cacf06cfe6b1a363a3df728e65537c3d2752300917"
+    "006_allow_duplicate_client_cpf.sql": "6a7bbbc1cde715ecaba351cacf06cfe6b1a363a3df728e65537c3d2752300917",
+    "007_partner_settlement_deduction.sql": "3b4ced4a75dac78e989b333177ec7964496c5f401fd5246dbd8a4b190a3ce7ec"
   },
   "tables": {
     "access_users": {
@@ -1770,6 +1771,16 @@
           "default": 0
         },
         "bonus_description": {
+          "type": "text",
+          "required": false,
+          "default": null
+        },
+        "deduction_cents": {
+          "type": "bigint",
+          "required": true,
+          "default": 0
+        },
+        "deduction_description": {
           "type": "text",
           "required": false,
           "default": null
