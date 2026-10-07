@@ -1691,3 +1691,19 @@ body,button,input,select{font-family:var(--font-ui),sans-serif}
   .tf-germano-report>footer{display:flex!important;align-items:center!important;justify-content:space-between!important;margin:4mm 0 0!important;padding-top:2mm!important;border-top:1px solid #d0d5d0!important;color:#697069!important;font-size:6.5pt!important}.tf-germano-report>footer button{display:none!important}
   .tf-germano-report *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
 }
+
+/* V170 · totais explícitos dos créditos e repasses no portal GG. */
+.tf-germano-client-totals{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin-top:10px}
+.tf-germano-client-totals>span{display:grid;gap:5px;padding:13px 15px;border:1px solid rgba(255,255,255,.13);border-radius:11px;background:linear-gradient(135deg,rgba(255,255,255,.07),rgba(215,180,112,.035))}
+.tf-germano-client-totals small{color:#aeb1aa;font-size:8px;font-weight:900;letter-spacing:.65px}
+.tf-germano-client-totals strong{color:#e4bd6e;font-size:16px;font-variant-numeric:tabular-nums}
+.tf-germano-client-totals>span.partner{border-color:rgba(81,226,122,.55);background:linear-gradient(135deg,rgba(39,125,70,.84),rgba(23,78,44,.84))}
+.tf-germano-client-totals>span.partner small,.tf-germano-client-totals>span.partner strong{color:#f1fff4}
+@media(max-width:900px){.tf-germano-client-totals{grid-template-columns:1fr 1fr}}
+@media(max-width:520px){.tf-germano-client-totals{grid-template-columns:1fr}}
+@media print{
+  .tf-germano-client-totals{grid-template-columns:repeat(4,1fr)!important;gap:2mm!important;margin-top:2.5mm!important;break-inside:avoid-page!important;page-break-inside:avoid!important}
+  .tf-germano-client-totals>span{padding:2.3mm!important;border-color:#d4d9d4!important;background:#f5f3ed!important}
+  .tf-germano-client-totals small{color:#626a63!important;font-size:6pt!important}.tf-germano-client-totals strong{color:#694a1c!important;font-size:10pt!important}
+  .tf-germano-client-totals>span.partner{border-color:#4b9f64!important;background:#e4f2e7!important}.tf-germano-client-totals>span.partner small{color:#245a34!important}.tf-germano-client-totals>span.partner strong{color:#173e24!important}
+}
