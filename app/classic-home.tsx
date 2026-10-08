@@ -27,9 +27,7 @@ export default function ClassicHome({ name, modules, go }: Props) {
     </header>
     <div className="tf-launcher-space" role="navigation" aria-label="Todos os módulos">
       <div className="tf-launcher-core">
-        <img src="/tf-emblem.png" alt="TF Assessoria & Finanças" width={112} height={115}/>
-        <span className="tf-launcher-brand">Assessoria &amp; Finanças</span>
-        <span className="tf-launcher-signature">MELHOR QUE BANCO</span>
+        <img src="/tf-logo-exact.png" alt="TF Assessoria & Finanças" width={1238} height={594}/>
       </div>
       {rings.filter(ring => ring.items.length).map(ring => <div key={ring.id} className={`tf-launcher-ring ring-${ring.id}`}>
         <div className="tf-launcher-orbit-line" aria-hidden="true" />
