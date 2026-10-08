@@ -6,6 +6,7 @@ import { startActiveRefresh } from '../../lib/active-refresh';
 
 import { Fragment, useEffect, useMemo, useState } from 'react';
 import PartnerPrintReport from './print-report';
+import { printPartnerPdf } from '../../lib/print-partner-pdf';
 
 type Operation={id:number;clientName:string;cpf:string;bank:string;product:string;date:string;paidDate:string;value:number;producer:string;origin:string;gross:number;ilaRate:number;ilaValue:number;afterIla:number;invoiceRate:number;invoiceFee:number;net:number;thiagoShare:number;partnerShare:number};
 type PartnerSettlement={period:string;bonus:number;bonusDescription:string;deduction:number;deductionDescription:string};
@@ -40,6 +41,14 @@ export default function GermanoPortal(){
   const [period,setPeriod]=useState('');
   const [error,setError]=useState('');
   const [loading,setLoading]=useState(false);
+  const [printing,setPrinting]=useState(false);
+  const printReport=async()=>{
+    if(printing)return;
+    setPrinting(true);
+    try {await printPartnerPdf();}
+    catch {window.alert('Não foi possível preparar o PDF. Tente imprimir novamente.');}
+    finally {setPrinting(false);}
+  };
   const partnerId=typeof window==='undefined'?0:Number(new URLSearchParams(window.location.search).get('partner')||0);
 
   const enter=async()=>{
@@ -103,7 +112,7 @@ export default function GermanoPortal(){
     <header className="tf-germano-top"><PartnershipBrand compact/><span><small>PORTAL DO PARCEIRO · PARCERIA TF + GG</small><h1>{data.partner.name}</h1><p>Consulta completa de produção e comissões</p></span><label>MÊS DO RELATÓRIO<select value={period} onChange={event=>setPeriod(event.target.value)}>{data.periods.map(item=><option key={item} value={item}>{monthName(item)}</option>)}</select></label><button type="button" onClick={()=>{const partner=data.partner.id||partnerId;window.location.href=`/signout-with-chatgpt?scope=partner&return_to=${encodeURIComponent(`/germano${partner?`?partner=${partner}`:''}`)}`}}>Sair</button></header>
     <PartnerPrintReport partnerName={data.partner.name} period={monthName(period)} previousPeriod={monthName(report.prior)} report={report} groups={groupedRows} />
     <section className="tf-germano-report">
-      <div className="tf-germano-report-heading"><div className="tf-germano-print-logos" aria-hidden="true"><img src="/tf-logo-no-bg.png" alt=""/><span>+</span><img src="/gg-veiculos-logo.png" alt=""/></div><span><small>RELATÓRIO DA PARCERIA TF + GG</small><h2>{data.partner.name}</h2><p>{monthName(period)} · Relatório de produção e repasses</p></span><div><button type="button" onClick={exportCsv}>Exportar dados</button><button type="button" onClick={()=>window.print()}>Imprimir relatório</button></div></div>
+      <div className="tf-germano-report-heading"><div className="tf-germano-print-logos" aria-hidden="true"><img src="/tf-logo-no-bg.png" alt=""/><span>+</span><img src="/gg-veiculos-logo.png" alt=""/></div><span><small>RELATÓRIO DA PARCERIA TF + GG</small><h2>{data.partner.name}</h2><p>{monthName(period)} · Relatório de produção e repasses</p></span><div><button type="button" onClick={exportCsv}>Exportar dados</button><button type="button" disabled={printing} onClick={printReport}>{printing?'Preparando PDF…':'Imprimir relatório'}</button></div></div>
       <section className="tf-germano-clients"><header className="tf-germano-section-title"><span><small>01 · CLIENTES</small><h3>Clientes e operações do período</h3></span><b>{report.contracts.length} {report.contracts.length===1?'cliente':'clientes'}</b></header>
         <div className="tf-germano-table"><table><thead><tr><th>Cliente</th><th>CPF</th><th>Banco</th><th>Produto</th><th>Pagamento</th><th>Valor financiado</th><th>Comissão bruta</th><th>ILA</th><th>Após ILA</th><th>Taxa da nota</th><th>Crédito líquido</th><th>Repasse Thiago</th><th>Repasse GG Veículos</th></tr></thead><tbody>{groupedRows.map(group=>{const clientCount=group.rows.filter(row=>row.id>0).length;return <Fragment key={group.key}><tr className={`tf-germano-source ${group.key}`}><th colSpan={13}>{group.label}<small>{clientCount} {clientCount===1?'cliente':'clientes'}</small></th></tr>{group.rows.map(row=><tr key={row.id}><td>{row.clientName}</td><td>{formatCpf(row.cpf)||'—'}</td><td>{row.bank}</td><td>{row.product}</td><td>{formatDate(row.paidDate)}</td><td>{brl(row.value)}</td><td>{brl(row.gross)}</td><td>{row.ilaRate.toLocaleString('pt-BR')}% · {brl(row.ilaValue)}</td><td>{brl(row.afterIla)}</td><td>{row.invoiceRate.toLocaleString('pt-BR')}% · {brl(row.invoiceFee)}</td><td>{brl(row.net)}</td><td>{brl(row.thiagoShare)}</td><td className="partner-value">{brl(row.partnerShare)}</td></tr>)}{!group.rows.length&&<tr className="tf-germano-source-empty"><td colSpan={13}>Nenhum cliente neste bloco.</td></tr>}</Fragment>})}{report.settlementFinance.additional>0&&<tr className="tf-germano-adjustment positive"><td>Ajuste do parceiro</td><td>—</td><td>Adicional</td><td>{report.settlement?.bonusDescription||'Bônus / campanha'}</td><td>—</td><td>—</td><td>—</td><td>0%</td><td>—</td><td>0%</td><td>+ {brl(report.settlementFinance.additional)}</td><td>{brl(0)}</td><td className="partner-value">+ {brl(report.settlementFinance.additional)}</td></tr>}{report.settlementFinance.appliedDeduction>0&&<tr className="tf-germano-adjustment negative"><td>Ajuste Thiago</td><td>—</td><td>Dedução</td><td>{report.settlement?.deductionDescription||'Débito / antecipação'}</td><td>—</td><td>—</td><td>—</td><td>0%</td><td>—</td><td>0%</td><td>− {brl(report.settlementFinance.appliedDeduction)}</td><td>− {brl(report.settlementFinance.appliedDeduction)}</td><td className="partner-value">{brl(0)}</td></tr>}</tbody></table></div>
         <div className="tf-germano-client-totals"><span><small>CRÉDITOS FINANCIADOS</small><strong>{brl(report.production)}</strong></span><span><small>CRÉDITO LÍQUIDO TOTAL</small><strong>{brl(report.net)}</strong></span><span><small>REPASSE GG VEÍCULOS</small><strong>{brl(report.partnerShare)}</strong></span><span className="partner"><small>REPASSE THIAGO</small><strong>{brl(report.thiago)}</strong></span></div>
@@ -116,7 +125,7 @@ export default function GermanoPortal(){
         <div className="tf-germano-cards"><article><small>VALOR FINANCIADO</small><strong>{brl(report.production)}</strong></article><article><small>COMISSÃO BRUTA</small><strong>{brl(report.gross)}</strong></article><article className="ila"><small>ILA DESCONTADO</small><strong>{brl(report.ilaValue)}</strong></article><article><small>APÓS ILA</small><strong>{brl(report.afterIla)}</strong></article><article><small>TAXA DA NOTA</small><strong>{brl(report.invoiceFee)}</strong></article>{report.settlementFinance.additional>0&&<article><small>VALOR ADICIONAL</small><strong>+ {brl(report.settlementFinance.additional)}</strong></article>}{report.settlementFinance.appliedDeduction>0&&<article className="ila"><small>VALOR DEDUZIDO</small><strong>− {brl(report.settlementFinance.appliedDeduction)}</strong></article>}<article><small>CRÉDITO LÍQUIDO</small><strong>{brl(report.net)}</strong></article><article><small>REPASSE GG VEÍCULOS</small><strong>{brl(report.partnerShare)}</strong></article><article className="partner"><small>REPASSE THIAGO</small><strong>{brl(report.thiago)}</strong></article></div>
         <article className="tf-germano-analysis"><span className={report.variation>=0?'positive':'attention'}>{report.result}</span><div><b>Fechamento do mês</b><p>{report.analysis}</p></div></article>
       </section>
-      <footer><span>Visualização somente para consulta · nenhuma alteração é permitida</span><button type="button" onClick={()=>window.print()}>Imprimir relatório</button></footer>
+      <footer><span>Visualização somente para consulta · nenhuma alteração é permitida</span><button type="button" disabled={printing} onClick={printReport}>{printing?'Preparando PDF…':'Imprimir relatório'}</button></footer>
     </section>
   </main>;
 }
