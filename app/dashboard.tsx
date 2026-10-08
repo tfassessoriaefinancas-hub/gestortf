@@ -13,6 +13,7 @@ import { readApiPayload } from "../lib/api-response";
 import type { CanonicalOperation } from "../lib/operations";
 import FinancialCalculator from "./financial-calculator";
 import ClassicHome from "./classic-home";
+import ModuleExperience from "./module-experience";
 import {
   House,
   UsersRound,
@@ -685,6 +686,8 @@ export default function Dashboard({
             ...menu.filter(([id])=>id!=="inicio"&&can(id)).map(([id,icon,label])=>({id,icon,label})),
             ...(user.role==="admin"?[{id:"usuarios",icon:UserRoundCog,label:"Usuários e acessos"}]:[])
           ]} go={(id)=>{setView(id as View);setMobileMenu(false);window.scrollTo(0,0)}} />}
+          {view!=="inicio"&&<ModuleExperience key={view} view={view} name={user.name} can={id=>id==="usuarios"?user.role==="admin":can(id as View)} go={id=>{setView(id as View);window.scrollTo(0,0)}} clientCount={allClients.length} operationCount={allOps.length} activeCount={deals.filter(deal=>deal.stage!=="finalizado").length}/>}
+          <div id="tf-module-workspace" className="tf-module-workspace" tabIndex={-1}>
           {(view === "numeros") && (
             <Home
               numbersOnly={view==="numeros"}
@@ -724,6 +727,7 @@ export default function Dashboard({
           )}{" "}
           {view === "posvenda" && <PostSales tasks={postSales} setTasks={setPostSales} googleReviewUrl={googleReviewUrl} messageTemplate={postSaleMessageTemplate} onTemplateSaved={setPostSaleMessageTemplate} />}
           {view==="usuarios"&&user.role==="admin"&&<AccessManagement members={teamMembers} setMembers={setTeamMembers} partners={partners}/>} {" "}
+          </div>
         </div>
       </section>
       {settingsOpen && <SettingsPanel close={() => setSettingsOpen(false)} serverAuthenticated={user.serverAuthenticated} />}{" "}
