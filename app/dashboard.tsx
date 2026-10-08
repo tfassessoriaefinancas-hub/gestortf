@@ -12,6 +12,7 @@ import { createResourceSync } from "../lib/resource-sync";
 import { readApiPayload } from "../lib/api-response";
 import type { CanonicalOperation } from "../lib/operations";
 import FinancialCalculator from "./financial-calculator";
+import ClassicHome from "./classic-home";
 import {
   House,
   UsersRound,
@@ -757,6 +758,7 @@ export default function Dashboard({
         <div className="tf-content">
           {view === "inicio" && (
             <Home
+              intro={visualTheme === "classic" ? <ClassicHome name={user.name} modules={menu.filter(([id])=>can(id)).map(([id,icon,label])=>({id,icon,label}))} go={(id)=>setView(id as View)} /> : undefined}
               go={setView}
               openMonth={(period)=>{setProductionPeriod(period);setView("producao")}}
               clientCount={allClients.length}
@@ -1118,6 +1120,7 @@ function Commitments({activities,setActivities,clients}:{activities:ActivityItem
   </>;
 }
 function Home({
+  intro,
   go,
   openMonth,
   clientCount,
@@ -1128,6 +1131,7 @@ function Home({
   activityCount,
   todayActivityCount,
 }: {
+  intro?: React.ReactNode;
   go: (v: View) => void;
   openMonth: (period:string) => void;
   clientCount: number;
@@ -1240,14 +1244,15 @@ function Home({
   const areaPath = (points: { x: number; y: number }[]) => points.length ? `${linePath(points)} L ${points.at(-1)!.x} 90 L ${points[0].x} 90 Z` : "";
   return (
     <>
-      <section className="tf-command-hero">
-        <div className="tf-command-copy">
+      {intro}
+      <section className={intro ? "tf-classic-reminders" : "tf-command-hero"}>
+        {!intro && <div className="tf-command-copy">
           <small>PAINEL EXECUTIVO · {periodLabel(currentPeriod).toUpperCase()}</small>
           <h1>Gestão TF</h1>
           <p>
             Atendimentos, produção e resultados organizados em uma única visão.
           </p>
-        </div>
+        </div>}
         {todayActivityCount>0&&<button type="button" className="tf-home-activity-alert" onClick={()=>go("compromissos")} aria-label={`Abrir ${todayActivityCount} ${todayActivityCount===1?"compromisso":"compromissos"} de hoje`}><i><CalendarClock/><span/></i><span><small>ATENÇÃO PARA HOJE</small><strong>Você tem {todayActivityCount} {todayActivityCount===1?"compromisso":"compromissos"} hoje</strong><em>Abra a agenda para conferir horários e detalhes.</em></span><ChevronRight/></button>}
       </section>
       <section className="tf-kpi-strip">
@@ -3113,7 +3118,7 @@ function SettingsPanel({ close, serverAuthenticated, visualTheme, onThemeChange 
           <div className="tf-theme-options" role="radiogroup" aria-label="Tema do sistema">
             <button type="button" role="radio" aria-checked={visualTheme==="classic"} className={visualTheme==="classic"?"active":""} onClick={()=>onThemeChange("classic")}>
               <i className="tf-theme-preview light-preview"><em/><em/><em/></i>
-              <span><b>Claro tradicional</b><small>Branco, limpo e profissional</small></span>
+              <span><b>Claro profissional</b><small>Branco e chumbo, com módulos em movimento</small></span>
             </button>
             <button type="button" role="radio" aria-checked={visualTheme==="mono"} className={visualTheme==="mono"?"active":""} onClick={()=>onThemeChange("mono")}>
               <i className="tf-theme-preview dark-preview"><em/><em/><em/></i>

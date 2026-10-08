@@ -6,6 +6,7 @@ import './mono-theme.css';
 import './mobile-header.css';
 import './shared-layout.css';
 import './white-theme.css';
+import './classic-home.css';
 import './print-overrides.css';
 
 const manrope = localFont({
