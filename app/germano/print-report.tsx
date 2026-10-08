@@ -21,15 +21,17 @@ export default function PartnerPrintReport({partnerName,period,previousPeriod,re
       if(!element)return;
       element.style.transform='none';
       // Measure the actual content at the fixed A4 width, including long names.
-      const scale=Math.min(1,(190*96/25.4)/element.scrollHeight);
+      const scale=Math.min(1,(190*96/25.4)/element.scrollHeight,(281*96/25.4)/element.scrollWidth);
       element.style.transform=`scale(${scale})`;
     };
     fit();
     void document.fonts.ready.then(fit);
     const observer=new ResizeObserver(fit);
     if(sheet.current)observer.observe(sheet.current);
+    const images=Array.from(sheet.current?.querySelectorAll('img')??[]);
+    images.forEach(image=>image.addEventListener('load',fit));
     window.addEventListener('beforeprint',fit);
-    return()=>{observer.disconnect();window.removeEventListener('beforeprint',fit)};
+    return()=>{observer.disconnect();images.forEach(image=>image.removeEventListener('load',fit));window.removeEventListener('beforeprint',fit)};
   },[report,groups]);
   const adjustment=report.settlementFinance;
   return <div className="gg-print-page" aria-hidden="true"><div className="gg-print-sheet" ref={sheet}>
