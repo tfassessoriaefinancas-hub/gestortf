@@ -38,6 +38,24 @@ const copy: Record<string,[string,string,string]> = {
   posvenda:['O cuidado continua.','Depois de cada conquista.','Mantenha o relacionamento ativo e acompanhe os próximos contatos.'],
   usuarios:['Sua equipe conectada.','Cada acesso organizado.','Gerencie usuários, parceiros e as áreas autorizadas para cada pessoa.'],
 };
+type ModuleVisual = { layout:'original'|'portrait-left'|'portrait-right'|'portrait-center'; scene:string; caption:string; links:string[] };
+const visuals:Record<string,ModuleVisual> = {
+  numeros:{layout:'original',scene:'original',caption:'',links:[]},
+  atendimento:{layout:'portrait-left',scene:'conversation',caption:'Conexões começam com uma boa conversa.',links:['clientes','compromissos']},
+  clientes:{layout:'portrait-right',scene:'arch',caption:'Cada pessoa tem uma história.',links:['atendimento','posvenda']},
+  producao:{layout:'portrait-center',scene:'steps',caption:'Do primeiro contato à conquista.',links:['relatorios','financeiro']},
+  financeiro:{layout:'portrait-left',scene:'balance',caption:'Organização para planejar o próximo passo.',links:['notas','relatorios']},
+  comissoes:{layout:'portrait-left',scene:'balance',caption:'Seu trabalho, seus resultados.',links:['financeiro','producao']},
+  notas:{layout:'portrait-right',scene:'paper',caption:'Tudo em ordem. Tudo por perto.',links:['clientes','financeiro']},
+  parceiros:{layout:'portrait-center',scene:'connections',caption:'Boas parcerias abrem caminhos.',links:['producao','clientes']},
+  compromissos:{layout:'portrait-left',scene:'calendar',caption:'Um dia bem planejado faz a diferença.',links:['atendimento','posvenda']},
+  bancos:{layout:'portrait-right',scene:'pillars',caption:'Conecte oportunidades e soluções.',links:['calculadora','servicos']},
+  calculadora:{layout:'portrait-center',scene:'precision',caption:'Explore possibilidades com clareza.',links:['bancos','producao']},
+  relatorios:{layout:'portrait-left',scene:'insights',caption:'Encontre a história por trás dos números.',links:['producao','financeiro']},
+  servicos:{layout:'portrait-right',scene:'possibilities',caption:'Uma solução para cada momento.',links:['bancos','parceiros']},
+  posvenda:{layout:'portrait-center',scene:'care',caption:'O relacionamento continua.',links:['clientes','compromissos']},
+  usuarios:{layout:'portrait-left',scene:'network',caption:'Pessoas conectadas. Acessos organizados.',links:['parceiros','compromissos']},
+};
 const groups = [
   { id:'resultados',label:'Resultados',description:'Produção e visão financeira',links:['numeros','producao','financeiro','relatorios'] },
   { id:'relacionamento',label:'Relacionamento',description:'Clientes e oportunidades',links:['atendimento','clientes','parceiros','posvenda'] },
@@ -54,6 +72,8 @@ export default function ModuleExperience({view,name,can,go,clientCount,operation
   const info=destinations[view];
   if(!info)return null;
   const [headline,highlight,description]=copy[view];
+  const visual=visuals[view];
+  const portrait=view==='numeros'?'/tf-client-consultant.webp':`/module-portraits/${view==='comissoes'?'financeiro':view}.webp`;
   const available=groups.map(group=>({...group,links:group.links.filter(id=>can(id))})).filter(group=>group.links.length);
   const active=available.find(group=>group.id===selected)||available[0];
   const details=()=>{
@@ -67,14 +87,16 @@ export default function ModuleExperience({view,name,can,go,clientCount,operation
     ...(can('producao')?[{id:'producao',label:'Operações registradas',value:operationCount,icon:FileChartColumn}]:[]),
     ...(can('atendimento')?[{id:'atendimento',label:'Em atendimento',value:activeCount,icon:Columns3}]:[]),
   ];
-  const sceneLinks=(active?.links||[]).filter(id=>id!==view).slice(0,2);
-  return <section className="tf-module-experience" aria-label={`Apresentação de ${info.label}`} style={{'--module-accent':info.color} as CSSProperties}>
+  const sceneLinks=(view==='numeros'?(active?.links||[]):visual.links).filter(id=>id!==view&&can(id)).slice(0,2);
+  return <section className={`tf-module-experience module-${view} layout-${visual.layout} scene-${visual.scene}`} aria-label={`Apresentação de ${info.label}`} style={{'--module-accent':info.color} as CSSProperties}>
     <header className="tf-experience-welcome"><div><span>SEU ESPAÇO DE TRABALHO</span><p>Bem-vindo, <strong>{name.split(' ')[0]}.</strong></p></div><span className="tf-experience-location"><info.icon size={16}/>{info.label}</span></header>
     <div className="tf-experience-composition">
       <div className="tf-experience-copy"><span className="tf-experience-eyebrow">GESTÃO TF · MELHOR QUE BANCO</span><h2>{headline}<br/><em>{highlight}</em></h2><p>{description}</p><button type="button" className="tf-experience-detail" onClick={details}>Explorar {info.label}<ArrowDown size={16}/></button></div>
       <div className="tf-experience-scene">
         <div className="tf-experience-halo" aria-hidden="true"/>
-        <img src="/tf-client-consultant.webp" alt="" width={667} height={1000}/>
+        {view!=='numeros'&&<div className="tf-module-scenery" aria-hidden="true"><i/><i/><i/></div>}
+        <img src={portrait} alt="" width={667} height={1000} decoding="async"/>
+        {visual.caption&&<span className="tf-module-scene-caption">{visual.caption}</span>}
         {sceneLinks.map((id,index)=>{const item=destinations[id],Icon=item.icon;return <button type="button" key={id} className={`tf-experience-float float-${index}`} onClick={()=>navigate(id)}><Icon size={18} style={{color:item.color}}/><span>{item.label}</span><ArrowUpRight size={12}/></button>})}
       </div>
       <nav className="tf-experience-topics" aria-label="Assuntos do módulo"><small>O QUE VOCÊ QUER ACOMPANHAR?</small>{available.map((group,index)=><button key={group.id} type="button" aria-expanded={active?.id===group.id} aria-controls="tf-experience-shortcuts" onClick={()=>setSelected(group.id)} className={active?.id===group.id?'is-active':''}><span className="tf-topic-number">0{index+1}</span><span><b>{group.label}</b><small>{group.description}</small></span><ArrowUpRight size={17}/></button>)}</nav>
