@@ -712,7 +712,7 @@ export default function Dashboard({
       </aside>}
       <section className="tf-main">
         <header className="tf-top">
-          {!dark && <button type="button" className="tf-launcher-home" aria-label="Voltar à central de módulos" onClick={()=>{setView("inicio");setMobileMenu(false)}}>{view!=="inicio"&&<ArrowLeft size={18}/>}<img src="/tf-emblem.png" alt=""/><span>{view==="inicio"?"Gestão TF":"Central de módulos"}</span></button>}
+          {!dark && <button type="button" className="tf-launcher-home" aria-label="Voltar à central de módulos" onClick={()=>{setView("inicio");setMobileMenu(false)}}>{view!=="inicio"&&<ArrowLeft size={18}/>}<img src="/tf-logo-exact.png" alt="TF Assessoria & Finanças" width={1238} height={594}/>{view!=="inicio"&&<span>Central de módulos</span>}</button>}
           {dark && <button
             className="tf-mobile-menu"
             aria-label={mobileMenu?"Recolher menu":"Abrir menu"} aria-expanded={mobileMenu} aria-controls="tf-navigation"

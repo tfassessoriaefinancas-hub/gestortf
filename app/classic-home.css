@@ -126,8 +126,8 @@
 .tf-app.theme-classic,.tf-app.theme-classic.menu-open { display:block!important; }
 .tf-app.theme-classic .tf-mobile-heading { display:none!important; }
 .tf-app.theme-classic .tf-top { display:flex!important; align-items:center!important; justify-content:space-between!important; flex-wrap:wrap; gap:16px!important; padding:14px 28px!important; min-height:72px!important; }
-.tf-app.theme-classic .tf-top .tf-launcher-home { display:flex!important; flex-shrink:0; align-items:center; gap:10px; padding:0; height:38px; background:transparent!important; border:0!important; box-shadow:none!important; color:#3b444d!important; cursor:pointer; }
-.tf-app.theme-classic .tf-launcher-home img { width:34px; height:34px; object-fit:contain; }
+.tf-app.theme-classic .tf-top .tf-launcher-home { display:flex!important; flex-shrink:0; align-items:center; gap:10px; padding:0; height:46px; background:transparent!important; border:0!important; box-shadow:none!important; color:#3b444d!important; cursor:pointer; }
+.tf-app.theme-classic .tf-launcher-home img { display:block; width:96px; height:auto; object-fit:contain; }
 .tf-app.theme-classic .tf-launcher-home span { font-size:12px; font-weight:750; white-space:nowrap; }
 .tf-app.theme-classic.is-classic-hub .tf-top>label,.tf-app.theme-classic.is-classic-hub .tf-main-action { display:none!important; }
 .tf-app.theme-classic.is-classic-hub .tf-top { border-bottom-color:#edf0f2!important; background:#fbfcfd!important; box-shadow:none!important; }
@@ -174,9 +174,9 @@
  .tf-app.theme-classic .tf-top { gap:12px!important; padding:12px 16px!important; min-height:64px!important; }
  .tf-app.theme-classic .tf-top>div { display:flex!important; position:static!important; margin-left:auto; gap:5px!important; }
  .tf-app.theme-classic .tf-top>label { order:3; flex:1 1 100%!important; margin:0!important; }
- .tf-app.theme-classic .tf-launcher-home span { font-size:11px; }
+ .tf-app.theme-classic .tf-launcher-home span { display:none; }
  .tf-app.theme-classic .tf-top .tf-launcher-home { gap:7px; }
- .tf-app.theme-classic .tf-launcher-home img { width:30px; height:30px; }
+ .tf-app.theme-classic .tf-launcher-home img { width:88px; height:auto; }
  .tf-app.theme-classic.is-classic-hub .tf-content { padding:0 8px!important; }
  .tf-app.theme-classic .tf-launcher { height:calc(100svh - 64px); min-height:885px; }
  .tf-app.theme-classic .tf-launcher-heading { padding-top:18px; }
