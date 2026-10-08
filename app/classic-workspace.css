@@ -19,7 +19,7 @@
 .tf-app.theme-classic :is(.tf-table-empty,.tf-activity-empty,.tf-kanban-empty) { color:#627386!important; }
 .tf-app.theme-classic :is(.tf-table-empty,.tf-activity-empty) p { color:#627386!important; }
 /* Executive office photograph, with a quiet central area for navigation. */
-.tf-app.theme-classic.is-classic-hub .tf-main { background:radial-gradient(ellipse at 50% 45%,#39444c 0%,#232b32 42%,#13191f 85%)!important; }
+.tf-app.theme-classic.is-classic-hub .tf-main { background:linear-gradient(#10182050,#10182065),url('/tf-office-panorama.webp') center/cover fixed!important; }
 .tf-app.theme-classic.is-classic-hub .tf-top { background:#ffffffed!important; }
 .tf-app.theme-classic.is-classic-hub .tf-content { padding:0 24px!important; }
 .tf-app.theme-classic .tf-launcher { padding-bottom:24px; }
@@ -342,21 +342,21 @@
 @media(max-width:700px) { .tf-app.theme-classic .tf-kanban { grid-template-columns:repeat(5,minmax(300px,86vw))!important; gap:14px!important; } }
 
 /* A quiet graphite environment keeps the original mark and modules in focus. */
-.tf-app.theme-classic .tf-launcher::before { content:''; position:absolute; z-index:-1; inset:0 -24px; pointer-events:none; background:linear-gradient(115deg,transparent 20%,#d9e4ee05 20.1%,transparent 48%),linear-gradient(65deg,transparent 67%,#e7eff707 67.1%,transparent 90%); }
+.tf-app.theme-classic .tf-launcher::before { content:none; position:absolute; z-index:-1; inset:0 -24px; pointer-events:none; background:linear-gradient(115deg,transparent 20%,#d9e4ee05 20.1%,transparent 48%),linear-gradient(65deg,transparent 67%,#e7eff707 67.1%,transparent 90%); }
 .tf-app.theme-classic .tf-launcher-heading { padding-top:30px; }
 .tf-app.theme-classic .tf-launcher-heading h1 { font-weight:450; letter-spacing:-.8px; }
 .tf-app.theme-classic.is-classic-hub .tf-launcher-orbit-line { border-color:#d4dce414!important; }
 .tf-app.theme-classic .tf-launcher-core { filter:drop-shadow(0 8px 24px #0003); }
 .tf-app.theme-classic .tf-launcher-spark::after { background:#d9c398; opacity:.7; }
-/* One uniform transparent footprint for every floating module. */
-.tf-app.theme-classic .tf-launcher .tf-launcher-module { width:114px!important; height:88px!important; min-height:88px!important; left:-57px!important; top:-44px!important; padding:0!important; display:flex!important; flex-direction:column!important; justify-content:flex-start!important; align-items:center!important; gap:8px!important; background:transparent!important; border:0!important; box-shadow:none!important; border-radius:10px; }
-.tf-app.theme-classic .tf-launcher .tf-launcher-module>i { width:44px!important; height:44px!important; min-width:44px!important; background:transparent!important; border:0!important; box-shadow:none!important; color:color-mix(in srgb,var(--tone) 58%,white)!important; }
+/* Uniform floating cards; the icon itself has no separate background. */
+.tf-app.theme-classic .tf-launcher .tf-launcher-module { width:114px!important; height:88px!important; min-height:88px!important; left:-57px!important; top:-44px!important; padding:8px 5px!important; display:flex!important; flex-direction:column!important; justify-content:flex-start!important; align-items:center!important; gap:2px!important; background:#fffffff0!important; border:1px solid #ffffff80!important; box-shadow:0 6px 20px #08111d22!important; border-radius:14px; backdrop-filter:blur(12px); }
+.tf-app.theme-classic .tf-launcher .tf-launcher-module>i { width:38px!important; height:38px!important; min-width:38px!important; background:transparent!important; border:0!important; box-shadow:none!important; color:var(--tone)!important; }
 .tf-app.theme-classic .tf-launcher .tf-launcher-module>i>svg { width:30px!important; height:30px!important; }
-.tf-app.theme-classic .tf-launcher .tf-launcher-module>span { display:flex; align-items:flex-start; justify-content:center; width:114px!important; max-width:114px!important; height:32px; padding:0!important; margin:0; background:transparent!important; color:#f1f4f8!important; font-size:11px!important; font-weight:600; line-height:1.4!important; text-align:center!important; text-shadow:0 1px 6px #0008; overflow-wrap:normal; }
+.tf-app.theme-classic .tf-launcher .tf-launcher-module>span { display:flex; align-items:flex-start; justify-content:center; width:102px!important; max-width:102px!important; height:32px; padding:0!important; margin:0; background:transparent!important; color:#344254!important; font-size:11px!important; font-weight:600; line-height:1.4!important; text-align:center!important; text-shadow:none; overflow-wrap:normal; }
 .tf-app.theme-classic .tf-launcher .tf-launcher-arrow { display:none!important; }
 @media(max-width:800px) {
- .tf-app.theme-classic .tf-launcher .tf-launcher-module { width:70px!important; height:82px!important; min-height:82px!important; left:-35px!important; top:-41px!important; gap:6px!important; }
- .tf-app.theme-classic .tf-launcher .tf-launcher-module>i { width:40px!important; height:40px!important; min-width:40px!important; }
+ .tf-app.theme-classic .tf-launcher .tf-launcher-module { width:70px!important; height:82px!important; min-height:82px!important; left:-35px!important; top:-41px!important; gap:2px!important; padding:5px 3px!important; border-radius:11px; }
+ .tf-app.theme-classic .tf-launcher .tf-launcher-module>i { width:36px!important; height:36px!important; min-width:36px!important; }
  .tf-app.theme-classic .tf-launcher .tf-launcher-module>i>svg { width:27px!important; height:27px!important; }
- .tf-app.theme-classic .tf-launcher .tf-launcher-module>span { width:70px!important; max-width:70px!important; height:32px; font-size:10px!important; }
+ .tf-app.theme-classic .tf-launcher .tf-launcher-module>span { width:64px!important; max-width:64px!important; height:32px; font-size:10px!important; }
 }
