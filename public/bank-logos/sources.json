@@ -1,0 +1,238 @@
+[
+  {
+    "code": "001",
+    "name": "Banco do Brasil",
+    "source": {
+      "type": "openfinance",
+      "org": "BANCO DO BRASIL S.A.",
+      "cnpj": "00000000000191",
+      "uri": "https://www.bb.com.br/docs/pub/inst/img/LogoBB.svg",
+      "sha256": "8bd7640e0e08e49cc00d3b4b901a44add88a1a3e9539b8cd71c8f04692d88caa",
+      "updatedAt": "2026-07-17"
+    }
+  },
+  {
+    "code": "003",
+    "name": "Banco da Amazônia",
+    "source": {
+      "type": "openfinance",
+      "org": "BCO DA AMAZONIA S.A.",
+      "cnpj": "04902979000144",
+      "uri": "https://d1rb2uej4kk1a4.cloudfront.net/bancoamazonia/Logo_SVG_2025_06db299653.svg",
+      "sha256": "5d9e4d900c763711fe04309b52bbb574927661315b9546751a80ba8f037cce03",
+      "updatedAt": "2026-07-17"
+    }
+  },
+  {
+    "code": "004",
+    "name": "Banco do Nordeste",
+    "source": {
+      "type": "openfinance",
+      "org": "BCO DO NORDESTE DO BRASIL S.A.",
+      "cnpj": "07237373000120",
+      "uri": "https://consentimento.openfinance.bnb.gov.br/logo_bnb.svg",
+      "sha256": "e07c03253a3b5f81dd890ec3d2f304f641d502e1d968f8ad8d76e4fb8732a997",
+      "updatedAt": "2026-07-17"
+    }
+  },
+  {
+    "code": "033",
+    "name": "Santander",
+    "source": {
+      "type": "openfinance",
+      "org": "BCO SANTANDER (BRASIL) S.A.",
+      "cnpj": "90400888000142",
+      "uri": "https://cms.santander.com.br/sites/WPS/imagem/santander_chama/23-10-31_194829_P_santander_chama.svg",
+      "sha256": "3db65acca8651f09096f81c004513586b3b22075041afe7e29df16f658b7d766",
+      "updatedAt": "2026-07-17"
+    }
+  },
+  {
+    "code": "041",
+    "name": "Banrisul",
+    "source": {
+      "type": "openfinance",
+      "org": "BCO DO ESTADO DO RS S.A.",
+      "cnpj": "92702067000196",
+      "uri": "https://banrisul.com.br/bob/data/Simbolo-Banrisul.svg",
+      "sha256": "e6568098371a05f49599e45741b57da407cc27271525fa436cfef776090da87d",
+      "updatedAt": "2026-07-17"
+    }
+  },
+  {
+    "code": "070",
+    "name": "BRB",
+    "source": {
+      "repository": "https://github.com/Tgentil/Bancos-em-SVG",
+      "path": "BRB - Banco de Brasilia/brb-logo.svg"
+    }
+  },
+  {
+    "code": "077",
+    "name": "Inter",
+    "source": {
+      "type": "openfinance",
+      "org": "BANCO INTER",
+      "cnpj": "00416968000101",
+      "uri": "https://marketing.bancointer.com.br/arquivos/images/app-icon.svg",
+      "sha256": "09b8e88439fd0106deef4eb448fea00d127e1a7dd592b5baa76fea07b226c128",
+      "updatedAt": "2026-07-17"
+    }
+  },
+  {
+    "code": "104",
+    "name": "Caixa",
+    "source": {
+      "type": "openfinance",
+      "org": "CAIXA ECONOMICA FEDERAL",
+      "cnpj": "00360305000104",
+      "uri": "https://consentimento.openbanking.caixa.gov.br/assets/images/logomarca_caixa.svg",
+      "sha256": "3073827b49f87a32f69c93d8008583a1af2f2498b873eabd9f9d64d130c70dfd",
+      "updatedAt": "2026-07-17"
+    }
+  },
+  {
+    "code": "237",
+    "name": "Bradesco",
+    "source": {
+      "type": "openfinance",
+      "org": "BANCO BRADESCO SA",
+      "cnpj": "60746948000112",
+      "uri": "https://banco.bradesco/open-finance/logo/icones_vetorial-pf.svg",
+      "sha256": "eab31731175c5229512016c2cdf98f38affecb891c217bbe6ea6b83e4c5bdb38",
+      "updatedAt": "2026-07-17"
+    }
+  },
+  {
+    "code": "260",
+    "name": "Nubank",
+    "source": {
+      "type": "openfinance",
+      "org": "NU PAGAMENTOS S.A. - INSTITUICAO DE PAGAMENTO",
+      "cnpj": "18236120000158",
+      "uri": "https://nuapp.nubank.com.br/open-banking/logo.svg",
+      "sha256": "a4a63bd7d76bd7f3377335ae2a4c9d1f80d602f6a69fd5dba375f46d269272a6",
+      "updatedAt": "2026-07-17"
+    }
+  },
+  {
+    "code": "290",
+    "name": "PagBank",
+    "source": {
+      "repository": "https://github.com/Tgentil/Bancos-em-SVG",
+      "path": "PagSeguro Internet S.A/logo-pagbank.svg"
+    }
+  },
+  {
+    "code": "318",
+    "name": "BMG",
+    "source": {
+      "type": "openfinance",
+      "org": "BCO BMG S.A.",
+      "cnpj": "61186680000174",
+      "uri": "https://www.bancobmg.com.br/data/files/8C/A2/7F/0A/FBA318104A94D208970BE9C2/bmg_open_finance.svg",
+      "sha256": "47cce73d983327a047fc75bcbf2307a5b2014020c3e2131644bcd354b84898eb",
+      "updatedAt": "2026-07-17"
+    }
+  },
+  {
+    "code": "336",
+    "name": "C6 Bank",
+    "source": {
+      "type": "openfinance",
+      "org": "BCO C6 S.A.",
+      "cnpj": "31872495000172",
+      "uri": "https://cdn.c6bank.com.br/open-banking/c6bank-logo.svg",
+      "sha256": "deb2fd2d220ad11000f97f2ee553308c1e98311c979a0a003530aca76f83b011",
+      "updatedAt": "2026-07-17"
+    }
+  },
+  {
+    "code": "341",
+    "name": "Itaú",
+    "source": {
+      "type": "openfinance",
+      "org": "ITAU UNIBANCO S.A.",
+      "cnpj": "60701190000104",
+      "uri": "https://www.itau.com.br/media/dam/m/4ee2c952e1fa91a2/original/Novo_itau.svg",
+      "sha256": "9b2cadfb4ec44d8a3f9b24e9b3e7439e128164ab05ab1044ad37742255795af2",
+      "updatedAt": "2026-07-17"
+    }
+  },
+  {
+    "code": "389",
+    "name": "Mercantil",
+    "source": {
+      "type": "openfinance",
+      "org": "BCO MERCANTIL DO BRASIL S.A.",
+      "cnpj": "17184037000110",
+      "uri": "https://www.bancomercantil.com.br/imagens/openbanking/mercantil.svg",
+      "sha256": "ce244740d6ba638b7c82da17b7025cfa9f2756d9c59177181b18d2ca7fe3fabd",
+      "updatedAt": "2026-07-17"
+    }
+  },
+  {
+    "code": "422",
+    "name": "Safra",
+    "source": {
+      "type": "openfinance",
+      "org": "BCO SAFRA S.A.",
+      "cnpj": "58160789000128",
+      "uri": "https://www.safra.com.br/shared/assets/img/safra-of.svg",
+      "sha256": "9c25f4839fe8a258db6c0a59f192120f97f5ef49830f3db05ebd6cac82e02e50",
+      "updatedAt": "2026-07-17"
+    }
+  },
+  {
+    "code": "623",
+    "name": "Banco Pan",
+    "source": {
+      "type": "openfinance",
+      "org": "BANCO PAN",
+      "cnpj": "59285411000113",
+      "uri": "https://www.bancopan.com.br/content/dam/documentos/outros-produtos/open-banking/logo_pan_openbanking.svg",
+      "sha256": "4ca9e04c2f27ab627ff54dbd2d31a26640e29d431808e3ff78e724fce28d16ab",
+      "updatedAt": "2026-07-17"
+    }
+  },
+  {
+    "code": "748",
+    "name": "Sicredi",
+    "source": {
+      "type": "openfinance",
+      "org": "CONFEDERACAO DAS COOPERATIVAS DO SICREDI - CONFEDERACAO SICREDI",
+      "cnpj": "03795072000160",
+      "uri": "https://www.sicredi.com.br/openbanking/app/assets/images/shared/logo/logo_sicredi_512.svg",
+      "sha256": "046e1c6e7cd6c28502f1dcc3ae24f359a64fbf325751f7be7f9a2e752e6b5088",
+      "updatedAt": "2026-07-17"
+    }
+  },
+  {
+    "code": "756",
+    "name": "Sicoob",
+    "source": {
+      "type": "openfinance",
+      "org": "Confederacao Nacional das Cooperativas do Sicoob",
+      "cnpj": "04891850000188",
+      "uri": "https://sicoob-openbanking.s3.sa-east-1.amazonaws.com/icone-sicoob.svg",
+      "sha256": "8d4b418f1c75262ad4526137a70d6828902c7a10d1243480824f747e33555ca3",
+      "updatedAt": "2026-07-17"
+    }
+  },
+  {
+    "code": "707",
+    "name": "Banco Daycoval",
+    "source": {
+      "repository": "https://github.com/Tgentil/Bancos-em-SVG",
+      "path": "Banco Daycoval/logo-Daycoval-com-fundo.svg"
+    }
+  },
+  {
+    "code": "655",
+    "name": "Banco BV",
+    "source": {
+      "repository": "https://github.com/Tgentil/Bancos-em-SVG",
+      "path": "Banco Votorantim/banco-bv-logo.svg"
+    }
+  }
+]

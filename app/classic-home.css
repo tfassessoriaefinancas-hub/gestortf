@@ -163,8 +163,6 @@
 .tf-app.theme-classic .ring-inner .tf-launcher-module:is(:hover,:focus-visible)>i { box-shadow:none; }
 .tf-app.theme-classic .tf-launcher-module:is(:hover,:focus-visible) .tf-launcher-arrow { opacity:.7; }
 .tf-app.theme-classic .tf-launcher-module:focus-visible { outline:2px solid #a38b5f!important; outline-offset:5px; }
-.tf-app.theme-classic .is-paused :is(.tf-launcher-slot,.tf-launcher-spark),.tf-app.theme-classic .tf-launcher-space:focus-within :is(.tf-launcher-slot,.tf-launcher-spark) { animation-play-state:paused; }
-@media(hover:hover) { .tf-app.theme-classic .tf-launcher-space:hover :is(.tf-launcher-slot,.tf-launcher-spark) { animation-play-state:paused; } }
 .tf-app.theme-classic .tf-launcher-footer { display:flex; flex:none; justify-content:space-between; align-items:center; padding:0 12px 18px; gap:10px; }
 .tf-app.theme-classic .tf-launcher-footer>span { font-size:7px; font-weight:600; letter-spacing:1.25px; color:#9da5ad; display:flex; align-items:center; gap:7px; }
 .tf-app.theme-classic .tf-launcher-footer>span i { width:4px; height:4px; border-radius:50%; background:#9c8a64; }

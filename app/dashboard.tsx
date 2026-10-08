@@ -2784,7 +2784,8 @@ function Banks() {
           {visibleBanks.map((bank,index) => (
             <article key={bank.code}>
               <strong className="tf-bank-order">{String(index+1).padStart(2,'0')}</strong>
-              <i style={{ background: bank.color }}>{bank.code}</i>
+              <i className="tf-bank-code-tile" style={{ background: bank.color }}>{bank.code}</i>
+              <i className="tf-bank-logo"><img src={`/bank-logos/${bank.code}.svg`} alt={`Logomarca ${bank.name}`} width={50} height={46} loading="lazy"/></i>
               <span>
                 <b>{bank.code} — {bank.name}</b>
                 <small>{bank.service || "Instituição financeira"}{bank.phone ? ` · ${bank.phone}` : " · Central no site oficial"}</small>

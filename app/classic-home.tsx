@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, type CSSProperties } from 'react';
-import { ArrowUpRight, Pause, Play, type LucideIcon } from 'lucide-react';
+import { type CSSProperties } from 'react';
+import { ArrowUpRight, type LucideIcon } from 'lucide-react';
 
 type Module = { id: string; label: string; icon: LucideIcon };
 type Props = { name: string; modules: Module[]; go: (id: string) => void };
@@ -13,17 +13,15 @@ const compactLabels: Record<string, string> = { atendimento: 'Kanban', calculado
 const primaryModules = ['atendimento', 'clientes', 'producao', 'numeros'];
 
 export default function ClassicHome({ name, modules, go }: Props) {
-  const [paused, setPaused] = useState(false);
   const items = modules.filter(item => item.id !== 'inicio');
   const rings = [
     { id: 'inner', items: items.filter(item => primaryModules.includes(item.id)), start: 0 },
     { id: 'outer', items: items.filter(item => !primaryModules.includes(item.id)), start: 5 },
   ];
-  return <section className={`tf-launcher${paused ? ' is-paused' : ''}`} aria-label="Central de módulos Gestão TF">
+  return <section className="tf-launcher" aria-label="Central de módulos Gestão TF">
     <header className="tf-launcher-heading">
       <span>OLÁ, {name.split(' ')[0].toUpperCase()}</span>
       <h1>Seu universo de negócios.</h1>
-      <p>Escolha um módulo para começar.</p>
     </header>
     <div className="tf-launcher-space" role="navigation" aria-label="Todos os módulos">
       <div className="tf-launcher-core">
@@ -41,6 +39,5 @@ export default function ClassicHome({ name, modules, go }: Props) {
         </div>)}
       </div>)}
     </div>
-    <footer className="tf-launcher-footer"><span><i/> SEU CRM, SEMPRE CONECTADO</span><button type="button" onClick={() => setPaused(value => !value)} aria-pressed={paused} aria-label={paused ? 'Retomar animação dos módulos' : 'Pausar animação dos módulos'}>{paused ? <Play size={12} /> : <Pause size={12} />}{paused ? 'Retomar movimento' : 'Pausar movimento'}</button></footer>
   </section>;
 }
