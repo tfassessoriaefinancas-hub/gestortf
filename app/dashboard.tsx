@@ -853,10 +853,8 @@ function Title({
   action?: string;
   onAction?: () => void;
 }) {
-  const portrait = ["Clientes", "Atendimento", "Serviços", "Parceiros", "Pós-venda"].includes(title);
   return (
-    <div className={`tf-title tf-module-hero${portrait ? ' with-portrait' : ''}`}>
-      <img className="tf-module-hero-image" src={portrait ? '/tf-executive-advisor.webp' : '/tf-executive-office.webp'} alt="" aria-hidden="true" />
+    <div className="tf-title">
       <div>
         <small>{over}</small>
         <h1>{title}</h1>
@@ -982,6 +980,7 @@ function ClientsFiltered({
           ⇧ Importar planilhas
         </button>
       </div>
+      <div className="tf-clients-workspace">
       <div className="tf-client-list">
         <div className="tf-list-head">
           <span>CLIENTE</span>
@@ -1028,6 +1027,13 @@ function ClientsFiltered({
             </button>
           );
         })}
+      </div>
+      <aside className="tf-client-scene" aria-label="Resumo da base de clientes">
+        <div className="tf-client-scene-orbit" aria-hidden="true" />
+        <img src="/tf-client-consultant.webp" alt="" aria-hidden="true" width={1024} height={1536}/>
+        <div className="tf-client-scene-stat stat-clients"><UsersRound aria-hidden="true"/><span><small>Clientes na base</small><strong>{data.length.toLocaleString('pt-BR')}</strong></span></div>
+        <div className="tf-client-scene-stat stat-operations"><FileChartColumn aria-hidden="true"/><span><small>Operações registradas</small><strong>{operations.length.toLocaleString('pt-BR')}</strong></span></div>
+      </aside>
       </div>
     </>
   );
@@ -2091,20 +2097,19 @@ function Kanban({
                     )}
                     <div className="tf-card-heading">
                       <i className="tf-card-avatar" aria-hidden="true">{d.name.trim().split(/\s+/).filter(Boolean).slice(0,2).map(part=>part[0]).join('').toUpperCase()||'TF'}</i>
-                      <strong>{d.name}</strong>
-                      <span className="tf-card-product">{d.product||"Serviço não informado"}</span>
+                      <div className="tf-card-identity"><strong>{d.name}</strong><small>CPF {formatCpf(d.cpf)||'não informado'}</small></div>
                     </div>
+                    <span className="tf-card-product"><BriefcaseBusiness aria-hidden="true"/>{d.product||"Serviço não informado"}</span>
                     {d.product==="Crédito com garantia"&&d.guaranteeType&&<small className="tf-card-detail"><b>Garantia:</b> {d.guaranteeType}</small>}
                     {movingIds.has(d.id)&&<span role="status">Salvando etapa…</span>}
                     <div className="tf-card-facts">
-                      <small className="tf-card-detail"><b>CPF</b><span>{formatCpf(d.cpf)||'Não informado'}</span></small>
-                      <small className="tf-card-detail"><b>Nascimento</b><span>{formatDateBr(d.birthDate)||'Não informado'}</span></small>
                       <span className="tf-card-phone tf-card-detail"><b>Telefone</b><span>{formatPhone(d.phone)||'Não informado'}</span></span>
+                      <small className="tf-card-detail"><b>Nascimento</b><span>{formatDateBr(d.birthDate)||'Não informado'}</span></small>
                     </div>
                     {stage === "finalizado" && (d.needsCompletion || d.status !== "concluido")&&<em className="tf-card-pending-label">FINALIZAR CADASTRO</em>}
                     {d.returnAt&&d.returnStatus!=="concluido"&&<span className="tf-card-return"><Clock3/> {new Date(d.returnAt).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})} · {d.returnReason}</span>}
                     <div className="tf-card-actions">
-                      <button type="button" title="WhatsApp" disabled={!digits(d.phone)} onClick={()=>window.open(`https://wa.me/55${digits(d.phone)}`,'_blank')}><MessageCircle/></button>
+                      <button type="button" className="tf-card-whatsapp" title="WhatsApp" disabled={!digits(d.phone)} onClick={()=>window.open(`https://wa.me/55${digits(d.phone)}`,'_blank')}><MessageCircle/><span>WhatsApp</span></button>
                       <button type="button" title="Ligar" disabled={!digits(d.phone)} onClick={()=>{window.location.href=`tel:${digits(d.phone)}`}}><Phone/></button>
                       <button type="button" title="Agendar retorno" onClick={()=>openReturn(d)}><CalendarDays/></button>
                       <button type="button" title="Histórico" onClick={()=>setHistoryDeal(d)}><History/></button>
@@ -2120,7 +2125,7 @@ function Kanban({
                             move(d, columns[Math.min(i + 1, columns.length - 1)][0])
                           }
                         >
-                          <ChevronRight />
+                          <span>Avançar</span><ChevronRight />
                         </button>
                       )}
                     </div>

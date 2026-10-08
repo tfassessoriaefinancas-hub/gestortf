@@ -19,7 +19,7 @@
 .tf-app.theme-classic :is(.tf-table-empty,.tf-activity-empty,.tf-kanban-empty) { color:#627386!important; }
 .tf-app.theme-classic :is(.tf-table-empty,.tf-activity-empty) p { color:#627386!important; }
 /* Executive office photograph, with a quiet central area for navigation. */
-.tf-app.theme-classic.is-classic-hub .tf-main { background:linear-gradient(100deg,#f8fafc99,#f8fafc77 48%,#f8fafc66),url('/tf-executive-office.webp') center/cover fixed!important; }
+.tf-app.theme-classic.is-classic-hub .tf-main { background:linear-gradient(90deg,#05090d33,#05090d11),url('/tf-office-graphite.webp') center/cover fixed!important; }
 .tf-app.theme-classic.is-classic-hub .tf-top { background:#ffffffed!important; }
 .tf-app.theme-classic.is-classic-hub .tf-content { padding:0 24px!important; }
 .tf-app.theme-classic .tf-launcher { padding-bottom:24px; }
@@ -264,38 +264,90 @@
  .tf-app.theme-classic .tf-launcher-module.is-overview>span { max-width:68px; }
 }
 
-/* Contextual module headers pair the working area with executive photography. */
-.tf-app.theme-classic .tf-content .tf-title.tf-module-hero { position:relative; isolation:isolate; overflow:hidden; border:0!important; border-radius:22px; padding:30px!important; min-height:200px; background:#24374c!important; box-shadow:none; }
-.tf-app.theme-classic .tf-module-hero-image { position:absolute; z-index:-2; width:100%; height:100%; inset:0; object-fit:cover; object-position:center 48%; }
-.tf-app.theme-classic .tf-module-hero::after { content:''; position:absolute; inset:0; z-index:-1; background:linear-gradient(90deg,#172b40f5,#1b334bc9 56%,#1b334b33); }
-.tf-app.theme-classic .tf-module-hero.with-portrait .tf-module-hero-image { width:650px; left:auto; right:0; object-position:right 34%; }
-.tf-app.theme-classic .tf-module-hero.with-portrait::after { background:linear-gradient(90deg,#1d3047 0%,#1d3047fa 35%,#1d304770 60%,transparent 78%); }
-.tf-app.theme-classic .tf-content .tf-module-hero>div { max-width:58%; position:relative; }
-.tf-app.theme-classic .tf-content .tf-module-hero h1 { color:#fff!important; margin:8px 0!important; font-size:32px!important; }
-.tf-app.theme-classic .tf-content .tf-module-hero small { color:#bdd0e3!important; font-size:9px!important; }
-.tf-app.theme-classic .tf-content .tf-module-hero p { color:#d3dfeb!important; font-size:12px!important; max-width:430px; line-height:1.65!important; }
-.tf-app.theme-classic .tf-content .tf-module-hero>.tf-primary { align-self:flex-end!important; position:relative; background:#fff!important; color:#29425b!important; border-color:#fff!important; white-space:nowrap; z-index:1; font-size:11px!important; }
-.tf-app.theme-classic .tf-command-hero { padding:30px!important; border:1px solid #e4eaf1!important; border-radius:22px!important; background:linear-gradient(90deg,#f9fbfe 25%,#f9fbfee8 53%,#f9fbfe55),url('/tf-executive-office.webp') right 46%/cover!important; }
-.tf-app.theme-classic .tf-command-copy h1 { font-size:32px!important; letter-spacing:-1px; }
-@media(max-width:700px) {
- .tf-app.theme-classic .tf-content .tf-title.tf-module-hero { min-height:224px; padding:22px!important; gap:16px!important; justify-content:center!important; border-radius:18px; }
- .tf-app.theme-classic .tf-module-hero.with-portrait .tf-module-hero-image { width:410px; height:100%; object-position:right 34%; right:-60px; }
- .tf-app.theme-classic .tf-module-hero.with-portrait::after { background:linear-gradient(90deg,#1d3047fc,#1d3047d9 45%,#1d304738 100%); }
- .tf-app.theme-classic .tf-content .tf-module-hero>div { max-width:70%; }
- .tf-app.theme-classic .tf-content .tf-module-hero h1 { font-size:26px!important; line-height:1.15!important; }
- .tf-app.theme-classic .tf-content .tf-module-hero p { font-size:11px!important; }
- .tf-app.theme-classic .tf-content .tf-module-hero>.tf-primary { align-self:flex-start!important; min-height:40px; padding:10px 13px!important; }
- .tf-app.theme-classic .tf-command-hero { padding:24px!important; }
- .tf-app.theme-classic .tf-command-copy h1 { font-size:26px!important; }
-}
-.tf-app.theme-classic .tf-module-hero.with-portrait .tf-module-hero-image { object-position:right top; mask-image:linear-gradient(90deg,transparent,#000 40%); }
 .tf-app.theme-classic .tf-kanban .tf-deal-card .tf-card-facts .tf-card-detail>span { font-size:11px!important; line-height:1.5!important; }
 .tf-app.theme-classic .tf-market-services article ul { padding:0!important; gap:6px; }
 .tf-app.theme-classic .tf-market-services article li { padding:4px 0!important; margin:0!important; }
-@media(max-width:700px) { .tf-app.theme-classic .tf-module-hero.with-portrait .tf-module-hero-image { object-position:right top; } }
 
 /* Settings are rendered in a portal outside the workspace root. */
 .tf-settings-popover.light { color:#26354a!important; background:#fff!important; border:1px solid #e1e7ee!important; border-radius:22px!important; }
 .tf-settings-popover.light form input { display:block!important; width:100%!important; min-width:0!important; height:44px!important; padding:10px 12px!important; background:#fff!important; color:#34475d!important; border:1px solid #d9e2ec!important; border-radius:9px!important; font:13px var(--font-ui),Arial,sans-serif!important; box-sizing:border-box; }
 .tf-settings-popover.light .tf-password-settings label { display:flex; flex-direction:column; gap:8px; color:#65758b; }
 .tf-settings-popover.light form>.tf-primary { width:100%!important; min-height:42px; padding:11px 16px!important; margin-top:14px; border:0!important; border-radius:9px!important; background:#293c53!important; color:#fff!important; font:600 12px var(--font-ui),Arial,sans-serif!important; text-shadow:none!important; box-shadow:none!important; }
+
+/* Dark office photography provides contrast only on the orbital home. */
+.tf-app.theme-classic.is-classic-hub .tf-launcher-heading h1 { color:#f5f7fa!important; text-shadow:0 2px 16px #0008!important; }
+.tf-app.theme-classic.is-classic-hub .tf-launcher-heading>span { color:#dfc590!important; }
+.tf-app.theme-classic.is-classic-hub .tf-launcher-orbit-line { border-color:#e4ebf233!important; }
+.tf-app.theme-classic.is-classic-hub .tf-launcher-core { isolation:isolate; }
+.tf-app.theme-classic.is-classic-hub .tf-launcher-core::after { content:''; position:absolute; inset:0; background:#f3ead8; mask:url('/tf-logo-exact.png') center/contain no-repeat; clip-path:inset(76% 0 0 0); pointer-events:none; }
+/* Cutout photography floats beside live client information, never in a header. */
+.tf-app.theme-classic .tf-clients-workspace { display:grid; grid-template-columns:minmax(0,1fr) 280px; align-items:start; gap:24px; }
+.tf-app.theme-classic .tf-clients-workspace .tf-client-list { min-width:0; }
+.tf-app.theme-classic .tf-client-scene { position:relative; isolation:isolate; min-height:440px; margin-top:20px; background:transparent; }
+.tf-app.theme-classic .tf-client-scene>img { display:block; position:absolute; z-index:1; bottom:0; right:-8px; width:270px; height:405px; object-fit:contain; object-position:center bottom; filter:drop-shadow(0 16px 18px #20304013); mask-image:linear-gradient(#000 91%,transparent); }
+.tf-app.theme-classic .tf-client-scene-orbit { position:absolute; inset:50px -5px 40px; border:1px solid #dce4ec; border-radius:50%; transform:rotate(-18deg); background:radial-gradient(ellipse,#e7edf577,transparent 70%); }
+.tf-app.theme-classic .tf-client-scene-stat { position:absolute; z-index:2; display:flex; align-items:center; gap:10px; padding:12px 15px; background:#fffffff2; border:1px solid #e2e8ef; border-radius:13px; box-shadow:0 10px 30px #23364c10; animation:tf-client-float 7s ease-in-out infinite; }
+.tf-app.theme-classic .tf-client-scene-stat>svg { width:20px; height:20px; color:#52799d; }
+.tf-app.theme-classic .tf-client-scene-stat>span { display:flex; flex-direction:column; gap:3px; }
+.tf-app.theme-classic .tf-client-scene-stat small { font-size:9px; color:#687c91; }
+.tf-app.theme-classic .tf-client-scene-stat strong { font-size:20px; color:#293d52; }
+.tf-app.theme-classic .stat-clients { top:85px; left:-8px; }
+.tf-app.theme-classic .stat-operations { bottom:45px; right:-4px; animation-delay:-3.5s; }
+@keyframes tf-client-float { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-7px); } }
+@media(max-width:1100px) { .tf-app.theme-classic .tf-clients-workspace { grid-template-columns:1fr; } .tf-app.theme-classic .tf-client-scene { width:300px; max-width:100%; margin:10px auto 0; min-height:350px; } .tf-app.theme-classic .tf-client-scene>img { width:240px; height:360px; right:15px; } }
+@media(prefers-reduced-motion:reduce) { .tf-app.theme-classic .tf-client-scene-stat { animation:none; } }
+.tf-app.theme-classic .tf-client-scene { overflow:clip; min-width:0; }
+.tf-app.theme-classic .tf-client-scene-orbit { transform:none; inset:50px 4px 40px; }
+.tf-app.theme-classic .stat-clients { left:0; }
+.tf-app.theme-classic .stat-operations { right:0; }
+
+/* Refined pipeline: flat data hierarchy and explicit primary actions. */
+.tf-app.theme-classic .tf-kanban { gap:20px!important; grid-template-columns:repeat(5,minmax(306px,1fr))!important; padding-top:0!important; }
+.tf-app.theme-classic .tf-kanban>article { background:#eef1f5!important; border:0!important; border-radius:14px!important; padding:0 8px 9px!important; }
+.tf-app.theme-classic .tf-kanban>article>header { background:transparent!important; padding:16px 6px 12px!important; border:0!important; min-height:68px; }
+.tf-app.theme-classic .tf-kanban>article>header b { color:#35465b!important; font-size:13px!important; }
+.tf-app.theme-classic .tf-kanban>article>header small { font-size:9px!important; color:#758498!important; }
+.tf-app.theme-classic .tf-kanban>article>header em { color:var(--stage)!important; background:var(--stage-soft)!important; }
+.tf-app.theme-classic .tf-stage-total { padding:0 7px 12px!important; font-size:9px; }
+.tf-app.theme-classic .tf-stage-total b { color:#6e7e91!important; }
+.tf-app.theme-classic .tf-deal-stack { padding:0!important; }
+.tf-app.theme-classic .tf-kanban .tf-deal-card { position:relative; background:#fff!important; padding:22px 18px 16px!important; border:1px solid #e2e7ee!important; border-left:1px solid #e2e7ee!important; border-radius:12px!important; box-shadow:0 2px 3px #25395204,0 8px 22px #25395204!important; }
+.tf-app.theme-classic .tf-kanban .tf-deal-card::before { content:''; position:absolute; left:18px; top:0; height:3px; width:34px; background:var(--stage); border-radius:0 0 4px 4px; }
+.tf-app.theme-classic .tf-kanban .tf-deal-card .tf-card-heading { display:flex!important; align-items:center; gap:11px!important; margin:0 12px 16px 0!important; padding:0!important; }
+.tf-app.theme-classic .tf-card-avatar { width:40px; height:40px; flex:none; border-radius:50%; background:#f0f3f7; color:#5b718b; font-size:11px; letter-spacing:.3px; }
+.tf-app.theme-classic .tf-card-identity { min-width:0; display:flex; flex-direction:column; gap:5px; }
+.tf-app.theme-classic .tf-card-identity strong { font-size:15px!important; line-height:1.35; font-weight:750; color:#24364b!important; letter-spacing:-.3px; overflow-wrap:anywhere; }
+.tf-app.theme-classic .tf-card-identity small { display:block; font-size:10px!important; line-height:1.5; color:#7d8998!important; letter-spacing:.1px; }
+.tf-app.theme-classic .tf-kanban .tf-deal-card>.tf-card-product { display:flex; align-items:center; gap:6px; width:fit-content; max-width:100%; padding:6px 9px; background:var(--stage-soft); border:0; color:var(--stage); border-radius:5px; font-size:10px!important; font-weight:650; line-height:1.4; margin-bottom:18px; }
+.tf-app.theme-classic .tf-card-product>svg { width:12px; height:12px; flex:none; }
+.tf-app.theme-classic .tf-card-facts { display:grid; grid-template-columns:1.25fr 1fr; gap:12px; background:transparent; border:0; border-radius:0; padding:0 0 17px; }
+.tf-app.theme-classic .tf-kanban .tf-deal-card .tf-card-facts .tf-card-detail { flex-direction:column; align-items:flex-start; gap:6px; }
+.tf-app.theme-classic .tf-kanban .tf-deal-card .tf-card-facts .tf-card-detail>b { color:#8090a1!important; font-weight:500!important; font-size:9px!important; }
+.tf-app.theme-classic .tf-kanban .tf-deal-card .tf-card-facts .tf-card-detail>span { text-align:left; font-size:11px!important; color:#40566d!important; font-weight:600; }
+.tf-app.theme-classic .tf-card-actions { display:grid!important; grid-template-columns:repeat(4,minmax(0,1fr)); grid-template-rows:32px 38px; gap:9px 8px!important; border-top:1px solid #edf0f4; padding-top:12px; margin-top:0; }
+.tf-app.theme-classic .tf-kanban .tf-card-actions button { display:flex; align-items:center; justify-content:center; gap:7px; background:transparent!important; border:1px solid #e8edf3!important; height:32px!important; border-radius:7px!important; color:#7b899b!important; }
+.tf-app.theme-classic .tf-kanban .tf-card-actions button:nth-child(2) { grid-column:1;grid-row:1; }
+.tf-app.theme-classic .tf-kanban .tf-card-actions button:nth-child(3) { grid-column:2;grid-row:1; }
+.tf-app.theme-classic .tf-kanban .tf-card-actions button:nth-child(4) { grid-column:3;grid-row:1; }
+.tf-app.theme-classic .tf-kanban .tf-card-actions button:nth-child(5) { grid-column:4;grid-row:1; }
+.tf-app.theme-classic .tf-kanban .tf-card-actions .tf-card-whatsapp { grid-column:1/3;grid-row:2; height:38px!important; background:#edf7f2!important; color:#258260!important; border-color:#e0efe7!important; }
+.tf-app.theme-classic .tf-kanban .tf-card-actions .tf-card-next { grid-column:3/5;grid-row:2; height:38px!important; background:#2c3d53!important; border-color:#2c3d53!important; color:#fff!important; }
+.tf-app.theme-classic .tf-kanban .tf-card-actions button>span { display:inline!important; font-size:10px!important; font-weight:650; line-height:1; }
+.tf-app.theme-classic .tf-card-actions:not(:has(.tf-card-next)) .tf-card-whatsapp { grid-column:1/-1!important; }
+.tf-app.theme-classic .tf-kanban>article>footer { padding:12px 0 0!important; }
+.tf-app.theme-classic .tf-kanban>article>footer button { border:0!important; background:transparent!important; color:#7c8da0!important; font-size:10px; height:34px; }
+.tf-app.theme-classic .tf-kanban .tf-deal-options { top:13px!important; right:7px!important; color:#91a0b0!important; }
+.tf-app.theme-classic .tf-deal-card[aria-busy="true"] { opacity:.65; }
+.tf-app.theme-classic .tf-deal-card button:disabled { opacity:.4; cursor:not-allowed; }
+.tf-app.theme-classic .tf-card-return { display:flex; gap:6px; align-items:center; padding:8px 10px; margin-bottom:13px; border-radius:7px; }
+.tf-app.theme-classic .tf-card-pending-label { display:block; padding:7px 10px; margin-bottom:13px; border-radius:7px; }
+@media(max-width:700px) { .tf-app.theme-classic .tf-kanban { grid-template-columns:repeat(5,minmax(300px,86vw))!important; gap:14px!important; } }
+.tf-app.theme-classic .tf-kanban .tf-deal-card .tf-card-heading { flex-direction:row!important; text-align:left!important; }
+.tf-app.theme-classic .tf-card-identity { text-align:left!important; }
+.tf-app.theme-classic .tf-kanban .tf-deal-card .tf-card-actions .tf-card-next>span { color:#fff!important; }
+.tf-app.theme-classic .tf-kanban .tf-deal-card .tf-card-actions .tf-card-whatsapp>span { color:#258260!important; }
+.tf-app.theme-classic .tf-kanban .tf-deal-card .tf-card-heading { justify-content:flex-start!important; }
+.tf-app.theme-classic .tf-card-identity { flex:1; }
+.tf-app.theme-classic .tf-card-identity small { font-size:11px!important; color:#687b90!important; }
+.tf-app.theme-classic .tf-kanban .tf-deal-card .tf-card-facts .tf-card-detail>b { font-size:10px!important; color:#748498!important; }
+.tf-app.theme-classic .tf-kanban .tf-deal-card .tf-card-facts .tf-card-detail>span { font-size:12px!important; }
