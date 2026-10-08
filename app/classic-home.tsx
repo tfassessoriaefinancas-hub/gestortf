@@ -1,42 +1,36 @@
 'use client';
 
 import { useState, type CSSProperties } from 'react';
-import { ArrowUpRight, ArrowRight, Pause, Play, Sparkles, type LucideIcon } from 'lucide-react';
+import { ArrowUpRight, Pause, Play, type LucideIcon } from 'lucide-react';
 
 type Module = { id: string; label: string; icon: LucideIcon };
 type Props = { name: string; modules: Module[]; go: (id: string) => void };
-const orbitIds = ['producao', 'clientes', 'atendimento', 'parceiros', 'financeiro', 'relatorios'];
+const labels: Record<string, string> = {
+  numeros: 'Seu negócio em números', compromissos: 'Compromissos', bancos: 'Bancos',
+  calculadora: 'Calculadora', financeiro: 'Financeiro / Comissões', usuarios: 'Usuários e acessos',
+};
 
 export default function ClassicHome({ name, modules, go }: Props) {
   const [paused, setPaused] = useState(false);
-  const orbit = orbitIds.flatMap(id => modules.filter(item => item.id === id));
-  const shortcuts = modules.filter(item => !orbitIds.includes(item.id) && item.id !== 'inicio');
-  const can = (id: string) => modules.some(item => item.id === id);
-  return <div className="tf-classic-home">
-    <div className="tf-classic-greeting"><span><span className="tf-classic-status" /> SEU ESPAÇO DE NEGÓCIOS</span><p>Bem-vindo, <b>{name.split(' ')[0]}</b>.</p></div>
-    <section className="tf-classic-hero" aria-label="Central de negócios Gestão TF">
-      <div className="tf-classic-copy">
-        <span className="tf-classic-eyebrow"><Sparkles size={14} /> GESTÃO TF · MELHOR QUE BANCO</span>
-        <h1>Conexões que viram<br /><em>grandes negócios.</em></h1>
-        <p>Seu atendimento, sua produção e seus parceiros.<br />Tudo conectado para você ir além.</p>
-        <div className="tf-classic-actions">
-          {can('atendimento') && <button type="button" className="tf-classic-cta" onClick={() => go('atendimento')}>Abrir atendimento <ArrowUpRight size={18} /></button>}
-          {can('producao') && <button type="button" className="tf-classic-link" onClick={() => go('producao')}>Ver produção <ArrowRight size={17} /></button>}
-        </div>
-        <span className="tf-classic-signature">Pessoas no centro. Resultados em movimento.</span>
-      </div>
-      <div className={`tf-classic-universe${paused ? ' is-paused' : ''}`}>
-        <div className="tf-classic-orbit" role="group" aria-label="Acessos aos módulos">
-          <div className="tf-orbit-ring" aria-hidden="true" /><div className="tf-orbit-ring outer" aria-hidden="true" />
-          <div className="tf-orbit-center"><img src="/tf-emblem.png" alt="" /><strong>Gestão TF</strong></div>
-          {orbit.map(({ id, label, icon: Icon }, index) => <div className="tf-orbit-slot" key={id} style={{ '--angle': `${index * 360 / orbit.length - 90}deg` } as CSSProperties}>
-            <button type="button" className={`tf-orbit-module module-${id}`} onClick={() => go(id)} aria-label={`Abrir ${label}`}><i><Icon size={21} strokeWidth={1.7} /></i><span>{id === 'financeiro' ? 'Financeiro' : label}</span><ArrowUpRight className="tf-orbit-arrow" size={12} /></button>
-          </div>)}
-        </div>
-        <button type="button" className="tf-orbit-control" onClick={() => setPaused(value => !value)} aria-pressed={paused} aria-label={paused ? 'Retomar animação dos módulos' : 'Pausar animação dos módulos'}>{paused ? <Play size={12} /> : <Pause size={12} />}<span>{paused ? 'Retomar movimento' : 'Pausar movimento'}</span></button>
-      </div>
-    </section>
-    {shortcuts.length > 0 && <nav className="tf-classic-shortcuts" aria-label="Mais ferramentas"><span>EXPLORE<br /><b>Seu escritório</b></span><div>{shortcuts.map(({id,label,icon:Icon}) => <button key={id} type="button" onClick={() => go(id)}><Icon size={20} strokeWidth={1.6} /><span>{label}</span></button>)}</div></nav>}
-    <div className="tf-classic-section-heading"><div><span>ACOMPANHAMENTO</span><h2>Seu negócio em números</h2></div><span>Visão geral dos resultados</span></div>
-  </div>;
+  const items = modules.filter(item => item.id !== 'inicio');
+  return <section className={`tf-launcher${paused ? ' is-paused' : ''}`} aria-label="Central de módulos Gestão TF">
+    <header className="tf-launcher-heading">
+      <span>OLÁ, {name.split(' ')[0].toUpperCase()}</span>
+      <h1>Seu universo de negócios.</h1>
+      <p>Escolha um módulo para começar.</p>
+    </header>
+    <div className="tf-launcher-space" role="navigation" aria-label="Todos os módulos">
+      <div className="tf-launcher-orbit-line" aria-hidden="true" />
+      <div className="tf-launcher-orbit-line inner" aria-hidden="true" />
+      <div className="tf-launcher-glow" aria-hidden="true" />
+      <div className="tf-launcher-core"><img src="/tf-emblem.png" alt="" width={64} height={64}/><strong>Gestão TF</strong><span>MELHOR QUE BANCO</span><i aria-hidden="true" /></div>
+      {items.map(({ id, label, icon: Icon }, index) => <div key={id} className="tf-launcher-slot" style={{ '--start': `${index * 100 / items.length}%`, '--tone': ['#927d55', '#638777', '#6c829b', '#8b7895'][index % 4] } as CSSProperties}>
+        <button type="button" className={`tf-launcher-module${id === 'numeros' ? ' is-overview' : ''}`} onClick={() => go(id)} aria-label={`Abrir ${label}`}>
+          <i><Icon size={25} strokeWidth={1.45}/><ArrowUpRight className="tf-launcher-arrow" size={11} /></i>
+          <span>{labels[id] || label}</span>
+        </button>
+      </div>)}
+    </div>
+    <footer className="tf-launcher-footer"><span><i/> TF ASSESSORIA & FINANÇAS</span><button type="button" onClick={() => setPaused(value => !value)} aria-pressed={paused} aria-label={paused ? 'Retomar animação dos módulos' : 'Pausar animação dos módulos'}>{paused ? <Play size={12} /> : <Pause size={12} />}{paused ? 'Retomar movimento' : 'Pausar movimento'}</button></footer>
+  </section>;
 }

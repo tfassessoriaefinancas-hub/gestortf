@@ -33,6 +33,7 @@ import {
   ExternalLink,
   Plus,
   ArrowUpRight,
+  ArrowLeft,
   Menu,
   X,
   FileUp,
@@ -63,6 +64,7 @@ import {
 
 type View =
   | "inicio"
+  | "numeros"
   | "compromissos"
   | "clientes"
   | "atendimento"
@@ -599,7 +601,7 @@ export default function Dashboard({
       window.removeEventListener('storage',storage);
     };
   }, [user.role,user.permissions,user.serverAuthenticated]);
-  useEffect(()=>{void resourceSync.current?.setResources(resourcesForView(view,user.role,user.permissions));},[view,user.role,user.permissions,user.serverAuthenticated]);
+  useEffect(()=>{void resourceSync.current?.setResources(resourcesForView(view==="numeros"?"inicio":view,user.role,user.permissions));},[view,user.role,user.permissions,user.serverAuthenticated]);
   const allClients = liveClients;
   const allOps = useMemo(() => liveOps.map(operation => /proteção auto/i.test(operation.product) && operation.installment > 0 ? {...operation, value:operation.installment} : operation), [liveOps]);
   const currentPeriod=(()=>{const date=new Date();return new Date(date.getTime()-date.getTimezoneOffset()*60000).toISOString().slice(0,7)})();
@@ -632,7 +634,7 @@ export default function Dashboard({
     setTimeout(() => setNotice(""), 2200);
   };
   const markCommissionReceived=async(id:number)=>{const response=await fetch('/api/records',{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({entity:'commission',id,details:{status:'recebida'}})});if(response.ok){setReceivables(current=>current.filter(item=>item.id!==id));refreshData();flash('Crédito marcado como recebido')}else{const data=await response.json().catch(()=>({}));alert(data.error||'Não foi possível atualizar o crédito.')}};
-  const can=(section:View)=>section==="compromissos"?user.role==="admin"||user.permissions.includes("inicio"):user.role==="admin"||user.permissions.includes(section);
+  const can=(section:View)=>(section==="compromissos"||section==="numeros")?user.role==="admin"||user.permissions.includes("inicio"):user.role==="admin"||user.permissions.includes(section);
   useEffect(()=>{if(!can(view))setView('inicio')},[view,user.permissions]);
   if (!gateReady) return <main className="tf-gate-loading" />;
   if (locked)
@@ -646,9 +648,9 @@ export default function Dashboard({
     );
   return (
     <main
-      className={`tf-app ${dark ? "dark" : "light"} theme-${visualTheme}${mobileMenu ? " menu-open" : ""}`}
+      className={`tf-app ${dark ? "dark" : "light"} theme-${visualTheme}${mobileMenu ? " menu-open" : ""}${visualTheme==="classic"&&view==="inicio"?" is-classic-hub":""}`}
     >
-      <aside className="tf-side" aria-label="Menu principal" id="tf-navigation">
+      {dark && <aside className="tf-side" aria-label="Menu principal" id="tf-navigation">
         <div className="tf-brand">
           <button
             type="button"
@@ -707,24 +709,25 @@ export default function Dashboard({
             <ArrowUpRight />
           </a>
         </div>
-      </aside>
+      </aside>}
       <section className="tf-main">
         <header className="tf-top">
-          <button
+          {!dark && <button type="button" className="tf-launcher-home" aria-label="Voltar à central de módulos" onClick={()=>{setView("inicio");setMobileMenu(false)}}>{view!=="inicio"&&<ArrowLeft size={18}/>}<img src="/tf-emblem.png" alt=""/><span>{view==="inicio"?"Gestão TF":"Central de módulos"}</span></button>}
+          {dark && <button
             className="tf-mobile-menu"
             aria-label={mobileMenu?"Recolher menu":"Abrir menu"} aria-expanded={mobileMenu} aria-controls="tf-navigation"
             onClick={() => setMobileMenu(open => !open)}
           >
             <Menu />
-          </button>
-          <button
+          </button>}
+          {dark && <button
             type="button"
             className="tf-mobile-logo-button"
             aria-label="Ir para o início"
             onClick={() => setView("inicio")}
           >
             <img className="tf-mobile-logo" src="/tf-emblem.png" alt="TF" />
-          </button>
+          </button>}
           <label>
             <Search />
             <input
@@ -756,9 +759,14 @@ export default function Dashboard({
           </button>
         </div>
         <div className="tf-content">
-          {view === "inicio" && (
+          {view === "inicio" && !dark && <ClassicHome name={user.name} modules={[
+            ...(can("inicio")?[{id:"numeros",icon:ChartNoAxesCombined,label:"Seu negócio em números"}]:[]),
+            ...menu.filter(([id])=>id!=="inicio"&&can(id)).map(([id,icon,label])=>({id,icon,label})),
+            ...(user.role==="admin"?[{id:"usuarios",icon:UserRoundCog,label:"Usuários e acessos"}]:[])
+          ]} go={(id)=>{setView(id as View);setMobileMenu(false);window.scrollTo(0,0)}} />}
+          {((view === "inicio" && dark) || view === "numeros") && (
             <Home
-              intro={visualTheme === "classic" ? <ClassicHome name={user.name} modules={menu.filter(([id])=>can(id)).map(([id,icon,label])=>({id,icon,label}))} go={(id)=>setView(id as View)} /> : undefined}
+              numbersOnly={view==="numeros"}
               go={setView}
               openMonth={(period)=>{setProductionPeriod(period);setView("producao")}}
               clientCount={allClients.length}
@@ -797,7 +805,7 @@ export default function Dashboard({
           {view==="usuarios"&&user.role==="admin"&&<AccessManagement members={teamMembers} setMembers={setTeamMembers} partners={partners}/>} {" "}
         </div>
       </section>
-      {settingsOpen && <SettingsPanel close={() => setSettingsOpen(false)} serverAuthenticated={user.serverAuthenticated} visualTheme={visualTheme} onThemeChange={(theme)=>{setVisualTheme(theme);localStorage.setItem("tf_visual_theme",theme)}} />}{" "}
+      {settingsOpen && <SettingsPanel close={() => setSettingsOpen(false)} serverAuthenticated={user.serverAuthenticated} visualTheme={visualTheme} onThemeChange={(theme)=>{setVisualTheme(theme);if(theme==="mono"&&view==="numeros")setView("inicio");localStorage.setItem("tf_visual_theme",theme)}} />}{" "}
       {showReceivables&&<div className={`tf-modal-back${dueReminderRequired?" tf-receivable-blocking":""}`}><section className="tf-modal tf-receivables-modal">{!dueReminderRequired&&<button type="button" className="tf-modal-close" onClick={()=>setShowReceivables(false)}>×</button>}<small>FINANCEIRO</small><h2>{dueReminderRequired?"Você tem comissões a receber":"Comissões a receber"}</h2><p>{dueReminderRequired?"Confira quem deve pagar hoje ou possui pagamento atrasado.":"Valores previstos de comissões, taxas de adesão e assessorias."}</p><div>{displayedReceivables.map(item=><article key={item.id}><i><BadgeDollarSign/></i><span><b>{item.name}</b><small>{item.product} · {item.type}</small></span><strong>{brl(item.value)}</strong><time className={item.dueDate&&item.dueDate<todayDate?"overdue":""}>{item.dueDate?formatDateBr(item.dueDate):"Sem data"}</time><button type="button" onClick={()=>markCommissionReceived(item.id)}>Marcar recebido</button></article>)}</div>{dueReminderRequired&&<button type="button" className="tf-primary tf-receivable-ack" onClick={()=>{localStorage.setItem(`tf_receivables_seen_${todayDate}`,"1");setDueReminderRequired(false);setShowReceivables(false)}}>Visualizei os recebimentos</button>}</section></div>}{" "}
       {showActivityReminder&&dueActivities.length>0&&<div className="tf-modal-back tf-activity-reminder-back"><section className="tf-modal tf-activity-reminder"><small>COMPROMISSOS E NEGÓCIOS</small><h2>Você tem {dueActivities.length===1?'uma atividade':`${dueActivities.length} atividades`} para acompanhar</h2><p>Confira os compromissos de hoje e o que estiver atrasado.</p><div>{dueActivities.slice(0,5).map(item=><article key={item.id}><CalendarClock/><span><b>{item.title}</b><small>{item.clientName||item.type} · {item.dueAt?new Date(item.dueAt).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):''}</small></span></article>)}</div><footer><button type="button" className="tf-secondary" onClick={()=>{localStorage.setItem(`tf_activities_seen_${todayDate}`,dueActivitySignature);setShowActivityReminder(false)}}>Visualizei</button><button type="button" className="tf-primary" onClick={()=>{localStorage.setItem(`tf_activities_seen_${todayDate}`,dueActivitySignature);setShowActivityReminder(false);setView('compromissos')}}>Abrir atividades</button></footer></section></div>}{" "}
       {selected && <ClientSheet
@@ -1120,7 +1128,7 @@ function Commitments({activities,setActivities,clients}:{activities:ActivityItem
   </>;
 }
 function Home({
-  intro,
+  numbersOnly = false,
   go,
   openMonth,
   clientCount,
@@ -1131,7 +1139,7 @@ function Home({
   activityCount,
   todayActivityCount,
 }: {
-  intro?: React.ReactNode;
+  numbersOnly?: boolean;
   go: (v: View) => void;
   openMonth: (period:string) => void;
   clientCount: number;
@@ -1244,15 +1252,14 @@ function Home({
   const areaPath = (points: { x: number; y: number }[]) => points.length ? `${linePath(points)} L ${points.at(-1)!.x} 90 L ${points[0].x} 90 Z` : "";
   return (
     <>
-      {intro}
-      <section className={intro ? "tf-classic-reminders" : "tf-command-hero"}>
-        {!intro && <div className="tf-command-copy">
+      <section className="tf-command-hero">
+        <div className="tf-command-copy">
           <small>PAINEL EXECUTIVO · {periodLabel(currentPeriod).toUpperCase()}</small>
-          <h1>Gestão TF</h1>
+          <h1>{numbersOnly ? "Seu negócio em números" : "Gestão TF"}</h1>
           <p>
             Atendimentos, produção e resultados organizados em uma única visão.
           </p>
-        </div>}
+        </div>
         {todayActivityCount>0&&<button type="button" className="tf-home-activity-alert" onClick={()=>go("compromissos")} aria-label={`Abrir ${todayActivityCount} ${todayActivityCount===1?"compromisso":"compromissos"} de hoje`}><i><CalendarClock/><span/></i><span><small>ATENÇÃO PARA HOJE</small><strong>Você tem {todayActivityCount} {todayActivityCount===1?"compromisso":"compromissos"} hoje</strong><em>Abra a agenda para conferir horários e detalhes.</em></span><ChevronRight/></button>}
       </section>
       <section className="tf-kpi-strip">
