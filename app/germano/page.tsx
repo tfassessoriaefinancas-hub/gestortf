@@ -5,6 +5,7 @@ import { CRM_CHANGED } from '../../lib/crm-events';
 import { startActiveRefresh } from '../../lib/active-refresh';
 
 import { Fragment, useEffect, useMemo, useState } from 'react';
+import PartnerPrintReport from './print-report';
 
 type Operation={id:number;clientName:string;cpf:string;bank:string;product:string;date:string;paidDate:string;value:number;producer:string;origin:string;gross:number;ilaRate:number;ilaValue:number;afterIla:number;invoiceRate:number;invoiceFee:number;net:number;thiagoShare:number;partnerShare:number};
 type PartnerSettlement={period:string;bonus:number;bonusDescription:string;deduction:number;deductionDescription:string};
@@ -100,6 +101,7 @@ export default function GermanoPortal(){
 
   return <main className="tf-germano-portal">
     <header className="tf-germano-top"><PartnershipBrand compact/><span><small>PORTAL DO PARCEIRO · PARCERIA TF + GG</small><h1>{data.partner.name}</h1><p>Consulta completa de produção e comissões</p></span><label>MÊS DO RELATÓRIO<select value={period} onChange={event=>setPeriod(event.target.value)}>{data.periods.map(item=><option key={item} value={item}>{monthName(item)}</option>)}</select></label><button type="button" onClick={()=>{const partner=data.partner.id||partnerId;window.location.href=`/signout-with-chatgpt?scope=partner&return_to=${encodeURIComponent(`/germano${partner?`?partner=${partner}`:''}`)}`}}>Sair</button></header>
+    <PartnerPrintReport partnerName={data.partner.name} period={monthName(period)} previousPeriod={monthName(report.prior)} report={report} groups={groupedRows} />
     <section className="tf-germano-report">
       <div className="tf-germano-report-heading"><div className="tf-germano-print-logos" aria-hidden="true"><img src="/tf-logo-no-bg.png" alt=""/><span>+</span><img src="/gg-veiculos-logo.png" alt=""/></div><span><small>RELATÓRIO DA PARCERIA TF + GG</small><h2>{data.partner.name}</h2><p>{monthName(period)} · Relatório de produção e repasses</p></span><div><button type="button" onClick={exportCsv}>Exportar dados</button><button type="button" onClick={()=>window.print()}>Imprimir relatório</button></div></div>
       <section className="tf-germano-clients"><header className="tf-germano-section-title"><span><small>01 · CLIENTES</small><h3>Clientes e operações do período</h3></span><b>{report.contracts.length} {report.contracts.length===1?'cliente':'clientes'}</b></header>
