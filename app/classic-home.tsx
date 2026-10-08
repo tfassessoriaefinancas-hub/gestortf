@@ -6,10 +6,11 @@ import { ArrowUpRight, type LucideIcon } from 'lucide-react';
 type Module = { id: string; label: string; icon: LucideIcon };
 type Props = { name: string; modules: Module[]; go: (id: string) => void };
 const labels: Record<string, string> = {
-  numeros: 'Seu negócio em números', compromissos: 'Compromissos', bancos: 'Bancos',
+  numeros: 'Painel de Gestão', compromissos: 'Compromissos', bancos: 'Bancos',
   calculadora: 'Calculadora', financeiro: 'Financeiro / Comissões', usuarios: 'Usuários e acessos',
 };
-const compactLabels: Record<string, string> = { atendimento: 'Kanban', calculadora: 'Cálculos', numeros: 'Números', compromissos: 'Agenda', financeiro: 'Financeiro', usuarios: 'Acessos' };
+const compactLabels: Record<string, string> = { atendimento: 'Kanban', calculadora: 'Cálculos', numeros: 'Painel de Gestão', compromissos: 'Agenda', financeiro: 'Financeiro', usuarios: 'Acessos' };
+const moduleColors: Record<string,string> = { atendimento:'#3975d9',clientes:'#7c54cb',producao:'#16927b',numeros:'#b88834',compromissos:'#b7643a',bancos:'#326da1',calculadora:'#8666ba',financeiro:'#168966',notas:'#b95070',parceiros:'#238a91',relatorios:'#6268c4',servicos:'#b47830',posvenda:'#369f80',usuarios:'#a06098' };
 const primaryModules = ['atendimento', 'clientes', 'producao', 'numeros'];
 
 export default function ClassicHome({ name, modules, go }: Props) {
@@ -30,7 +31,7 @@ export default function ClassicHome({ name, modules, go }: Props) {
       {rings.filter(ring => ring.items.length).map(ring => <div key={ring.id} className={`tf-launcher-ring ring-${ring.id}`}>
         <div className="tf-launcher-orbit-line" aria-hidden="true" />
         {[12, 43, 78].map(start => <span key={start} className="tf-launcher-spark" aria-hidden="true" style={{ '--start': `${start}%` } as CSSProperties} />)}
-        {ring.items.map(({ id, label, icon: Icon }, index) => <div key={id} className="tf-launcher-slot" style={{ '--start': `${ring.start + index * 100 / ring.items.length}%`, '--tone': ['#8b7959', '#5c7d73', '#687d92', '#83798e'][index % 4] } as CSSProperties}>
+        {ring.items.map(({ id, label, icon: Icon }, index) => <div key={id} className="tf-launcher-slot" style={{ '--start': `${ring.start + index * 100 / ring.items.length}%`, '--tone': moduleColors[id] || '#53718a' } as CSSProperties}>
           <button type="button" className={`tf-launcher-module${id === 'numeros' ? ' is-overview' : ''}`} onClick={() => go(id)} aria-label={`Abrir ${label}`} title={label}>
             <i><Icon size={23} strokeWidth={1.45}/></i>
             <span><span className="tf-module-full-label">{labels[id] || label}</span><span className="tf-module-compact-label">{compactLabels[id] || labels[id] || label}</span></span>

@@ -79,7 +79,6 @@ type View =
   | "posvenda"
   | "calculadora"
   | "usuarios";
-type VisualTheme = "mono" | "classic";
 type Client = {
   id: number;
   dbId?: number;
@@ -463,7 +462,6 @@ export default function Dashboard({
     [query, setQuery] = useState(""),
     [mobileMenu, setMobileMenu] = useState(false),
     [settingsOpen, setSettingsOpen] = useState(false),
-    [visualTheme, setVisualTheme] = useState<VisualTheme>("mono"),
     [selected, setSelected] = useState<Client | null>(null),
     [notice, setNotice] = useState(""),
     [deals, setDeals] = useState<Deal[]>([]),
@@ -492,7 +490,6 @@ export default function Dashboard({
     setDeals(update);
   }, []);
   const refreshData = useCallback(() => { dealsMutationVersion.current += 1; notifyCrmChanged(); }, []);
-  const dark = visualTheme === "mono";
   useEffect(() => {
     const onClick = (e: Event) => {
       const t = e.target as HTMLElement;
@@ -515,8 +512,7 @@ export default function Dashboard({
   useEffect(() => {
     setGateReady(true);
     setLocked(!user.serverAuthenticated && localStorage.getItem("tf_access_unlocked") !== "1");
-    const savedTheme=localStorage.getItem("tf_visual_theme");
-    setVisualTheme(savedTheme==="classic"?"classic":"mono");
+    localStorage.setItem("tf_visual_theme", "classic");
     const refreshApp=()=>navigator.serviceWorker?.getRegistration().then(async(registration)=>{
       await registration?.update();
       registration?.waiting?.postMessage({type:"SKIP_WAITING"});
@@ -648,86 +644,11 @@ export default function Dashboard({
     );
   return (
     <main
-      className={`tf-app ${dark ? "dark" : "light"} theme-${visualTheme}${mobileMenu ? " menu-open" : ""}${visualTheme==="classic"&&view==="inicio"?" is-classic-hub":""}`}
+      className={`tf-app light theme-classic${view==="inicio"?" is-classic-hub":""}`}
     >
-      {dark && <aside className="tf-side" aria-label="Menu principal" id="tf-navigation">
-        <div className="tf-brand">
-          <button
-            type="button"
-            className="tf-brand-home"
-            aria-label="Ir para o início"
-            onClick={() => {
-              setView("inicio");
-              setMobileMenu(false);
-            }}
-          >
-            <img className="tf-brand-emblem" src="/tf-emblem.png" alt="TF" />
-            <img
-              className="tf-brand-full"
-              src="/tf-logo-no-bg.png"
-              alt="TF Assessoria e Finanças"
-            />
-            <span>ASSESSORIA E FINANÇAS</span>
-          </button>
-          <CloseButton className="tf-menu-close" label="Fechar menu" onClick={() => setMobileMenu(false)}/>
-        </div>
-        <nav>
-          {menu.filter(([id])=>can(id)).map(([id, MenuIcon, label]) => (
-            <button
-              type="button"
-              aria-label={label}
-              key={id}
-              className={view === id ? "active" : ""}
-              onClick={() => {
-                setView(id);
-                setMobileMenu(false);
-              }}
-            >
-              <i>
-                <MenuIcon />
-              </i>
-              <span>{label}</span>
-              {id === "clientes" && <b>{allClients.length}</b>}
-              {id === "compromissos" && dueActivities.length > 0 && <b className="tf-menu-alert-count tf-activity-count">{dueActivities.length}</b>}
-              {id === "posvenda" && postSales.filter((task) => task.status === "pendente").length > 0 && <b className="tf-menu-alert-count">{postSales.filter((task) => task.status === "pendente").length}</b>}
-            </button>
-          ))}
-          {user.role==="admin"&&<button
-            type="button"
-            aria-label="Usuários e acessos"
-            className={view==="usuarios"?"active":""}
-            onClick={()=>{setView("usuarios");setMobileMenu(false)}}
-          ><i><UserRoundCog/></i><span>Usuários e acessos</span><b>{teamMembers.filter(m=>m.active).length}</b></button>}
-        </nav>
-        <div className="tf-user">
-          <i>TO</i>
-          <span>
-            <b>{user.name}</b>
-            <small>{user.role==="admin"?"Administrador":"Funcionário"}</small>
-          </span>
-          <a href="/signout-with-chatgpt?return_to=/">
-            <ArrowUpRight />
-          </a>
-        </div>
-      </aside>}
       <section className="tf-main">
         <header className="tf-top">
-          {!dark && <button type="button" className="tf-launcher-home" aria-label="Voltar à central de módulos" onClick={()=>{setView("inicio");setMobileMenu(false)}}>{view!=="inicio"&&<ArrowLeft size={18}/>}<img src="/tf-logo-exact.png" alt="TF Assessoria & Finanças" width={1238} height={594}/>{view!=="inicio"&&<span>Central de módulos</span>}</button>}
-          {dark && <button
-            className="tf-mobile-menu"
-            aria-label={mobileMenu?"Recolher menu":"Abrir menu"} aria-expanded={mobileMenu} aria-controls="tf-navigation"
-            onClick={() => setMobileMenu(open => !open)}
-          >
-            <Menu />
-          </button>}
-          {dark && <button
-            type="button"
-            className="tf-mobile-logo-button"
-            aria-label="Ir para o início"
-            onClick={() => setView("inicio")}
-          >
-            <img className="tf-mobile-logo" src="/tf-emblem.png" alt="TF" />
-          </button>}
+          <button type="button" className="tf-launcher-home" aria-label="Voltar à central de módulos" onClick={()=>{setView("inicio");setMobileMenu(false)}}>{view!=="inicio"&&<ArrowLeft size={18}/>}<img src="/tf-logo-exact.png" alt="TF Assessoria & Finanças" width={1238} height={594}/>{view!=="inicio"&&<span>Central de módulos</span>}</button>
           <label>
             <Search />
             <input
@@ -759,12 +680,12 @@ export default function Dashboard({
           </button>
         </div>
         <div className="tf-content">
-          {view === "inicio" && !dark && <ClassicHome name={user.name} modules={[
-            ...(can("inicio")?[{id:"numeros",icon:ChartNoAxesCombined,label:"Seu negócio em números"}]:[]),
+          {view === "inicio" && <ClassicHome name={user.name} modules={[
+            ...(can("inicio")?[{id:"numeros",icon:ChartNoAxesCombined,label:"Painel de Gestão"}]:[]),
             ...menu.filter(([id])=>id!=="inicio"&&can(id)).map(([id,icon,label])=>({id,icon,label})),
             ...(user.role==="admin"?[{id:"usuarios",icon:UserRoundCog,label:"Usuários e acessos"}]:[])
           ]} go={(id)=>{setView(id as View);setMobileMenu(false);window.scrollTo(0,0)}} />}
-          {((view === "inicio" && dark) || view === "numeros") && (
+          {(view === "numeros") && (
             <Home
               numbersOnly={view==="numeros"}
               go={setView}
@@ -779,7 +700,7 @@ export default function Dashboard({
             />
           )}{" "}
           {view === "clientes" && (
-            <ClientsFiltered data={found} operations={allOps} open={setSelected} />
+            <ClientsFiltered data={found} operations={allOps} open={setSelected} onCreate={()=>{setView("atendimento");setNewDealRequest(value=>value+1)}} />
           )}{" "}
           {view === "compromissos" && <Commitments activities={activities} setActivities={setActivities} clients={allClients} />}{" "}
           {view === "calculadora" && <FinancialCalculator />}{" "}
@@ -805,7 +726,7 @@ export default function Dashboard({
           {view==="usuarios"&&user.role==="admin"&&<AccessManagement members={teamMembers} setMembers={setTeamMembers} partners={partners}/>} {" "}
         </div>
       </section>
-      {settingsOpen && <SettingsPanel close={() => setSettingsOpen(false)} serverAuthenticated={user.serverAuthenticated} visualTheme={visualTheme} onThemeChange={(theme)=>{setVisualTheme(theme);if(theme==="mono"&&view==="numeros")setView("inicio");localStorage.setItem("tf_visual_theme",theme)}} />}{" "}
+      {settingsOpen && <SettingsPanel close={() => setSettingsOpen(false)} serverAuthenticated={user.serverAuthenticated} />}{" "}
       {showReceivables&&<div className={`tf-modal-back${dueReminderRequired?" tf-receivable-blocking":""}`}><section className="tf-modal tf-receivables-modal">{!dueReminderRequired&&<button type="button" className="tf-modal-close" onClick={()=>setShowReceivables(false)}>×</button>}<small>FINANCEIRO</small><h2>{dueReminderRequired?"Você tem comissões a receber":"Comissões a receber"}</h2><p>{dueReminderRequired?"Confira quem deve pagar hoje ou possui pagamento atrasado.":"Valores previstos de comissões, taxas de adesão e assessorias."}</p><div>{displayedReceivables.map(item=><article key={item.id}><i><BadgeDollarSign/></i><span><b>{item.name}</b><small>{item.product} · {item.type}</small></span><strong>{brl(item.value)}</strong><time className={item.dueDate&&item.dueDate<todayDate?"overdue":""}>{item.dueDate?formatDateBr(item.dueDate):"Sem data"}</time><button type="button" onClick={()=>markCommissionReceived(item.id)}>Marcar recebido</button></article>)}</div>{dueReminderRequired&&<button type="button" className="tf-primary tf-receivable-ack" onClick={()=>{localStorage.setItem(`tf_receivables_seen_${todayDate}`,"1");setDueReminderRequired(false);setShowReceivables(false)}}>Visualizei os recebimentos</button>}</section></div>}{" "}
       {showActivityReminder&&dueActivities.length>0&&<div className="tf-modal-back tf-activity-reminder-back"><section className="tf-modal tf-activity-reminder"><small>COMPROMISSOS E NEGÓCIOS</small><h2>Você tem {dueActivities.length===1?'uma atividade':`${dueActivities.length} atividades`} para acompanhar</h2><p>Confira os compromissos de hoje e o que estiver atrasado.</p><div>{dueActivities.slice(0,5).map(item=><article key={item.id}><CalendarClock/><span><b>{item.title}</b><small>{item.clientName||item.type} · {item.dueAt?new Date(item.dueAt).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):''}</small></span></article>)}</div><footer><button type="button" className="tf-secondary" onClick={()=>{localStorage.setItem(`tf_activities_seen_${todayDate}`,dueActivitySignature);setShowActivityReminder(false)}}>Visualizei</button><button type="button" className="tf-primary" onClick={()=>{localStorage.setItem(`tf_activities_seen_${todayDate}`,dueActivitySignature);setShowActivityReminder(false);setView('compromissos')}}>Abrir atividades</button></footer></section></div>}{" "}
       {selected && <ClientSheet
@@ -932,8 +853,10 @@ function Title({
   action?: string;
   onAction?: () => void;
 }) {
+  const portrait = ["Clientes", "Atendimento", "Serviços", "Parceiros", "Pós-venda"].includes(title);
   return (
-    <div className="tf-title">
+    <div className={`tf-title tf-module-hero${portrait ? ' with-portrait' : ''}`}>
+      <img className="tf-module-hero-image" src={portrait ? '/tf-executive-advisor.webp' : '/tf-executive-office.webp'} alt="" aria-hidden="true" />
       <div>
         <small>{over}</small>
         <h1>{title}</h1>
@@ -941,7 +864,7 @@ function Title({
       </div>
       {action && (
         <button className="tf-primary" onClick={onAction}>
-          ＋ {action}
+          <Plus aria-hidden="true"/> {action}
         </button>
       )}
     </div>
@@ -998,10 +921,12 @@ function ClientsFiltered({
   data,
   operations,
   open,
+  onCreate,
 }: {
   data: Client[];
   operations: Operation[];
   open: (c: Client) => void;
+  onCreate: () => void;
 }) {
   const [filter, setFilter] = useState<"all" | "month" | "active" | "inactive">("all");
   const rows = (
@@ -1020,6 +945,7 @@ function ClientsFiltered({
         title="Clientes"
         text="Um cadastro por pessoa, com todo o histórico preservado."
         action="Cadastrar cliente"
+        onAction={onCreate}
       />
       <div className="tf-filters">
         <button
@@ -1255,7 +1181,7 @@ function Home({
       <section className="tf-command-hero">
         <div className="tf-command-copy">
           <small>PAINEL EXECUTIVO · {periodLabel(currentPeriod).toUpperCase()}</small>
-          <h1>{numbersOnly ? "Seu negócio em números" : "Gestão TF"}</h1>
+          <h1>{numbersOnly ? "Painel de Gestão" : "Gestão TF"}</h1>
           <p>
             Atendimentos, produção e resultados organizados em uma única visão.
           </p>
@@ -2163,12 +2089,18 @@ function Kanban({
                         </button>
                       </div>
                     )}
-                    <div className="tf-card-heading"><span className="tf-card-product">{d.product||"Serviço não informado"}</span><strong>{d.name}</strong></div>
+                    <div className="tf-card-heading">
+                      <i className="tf-card-avatar" aria-hidden="true">{d.name.trim().split(/\s+/).filter(Boolean).slice(0,2).map(part=>part[0]).join('').toUpperCase()||'TF'}</i>
+                      <strong>{d.name}</strong>
+                      <span className="tf-card-product">{d.product||"Serviço não informado"}</span>
+                    </div>
                     {d.product==="Crédito com garantia"&&d.guaranteeType&&<small className="tf-card-detail"><b>Garantia:</b> {d.guaranteeType}</small>}
                     {movingIds.has(d.id)&&<span role="status">Salvando etapa…</span>}
-                    <small className="tf-card-detail"><b>CPF:</b> {formatCpf(d.cpf)}</small>
-                    <small className="tf-card-detail"><b>Nascimento:</b> {formatDateBr(d.birthDate)}</small>
-                    <span className="tf-card-phone tf-card-detail"><b>Telefone:</b> {formatPhone(d.phone)}</span>
+                    <div className="tf-card-facts">
+                      <small className="tf-card-detail"><b>CPF</b><span>{formatCpf(d.cpf)||'Não informado'}</span></small>
+                      <small className="tf-card-detail"><b>Nascimento</b><span>{formatDateBr(d.birthDate)||'Não informado'}</span></small>
+                      <span className="tf-card-phone tf-card-detail"><b>Telefone</b><span>{formatPhone(d.phone)||'Não informado'}</span></span>
+                    </div>
                     {stage === "finalizado" && (d.needsCompletion || d.status !== "concluido")&&<em className="tf-card-pending-label">FINALIZAR CADASTRO</em>}
                     {d.returnAt&&d.returnStatus!=="concluido"&&<span className="tf-card-return"><Clock3/> {new Date(d.returnAt).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})} · {d.returnReason}</span>}
                     <div className="tf-card-actions">
@@ -2587,9 +2519,9 @@ function Services({rows}:{rows:Operation[]}) {
           <article key={service.name} className={`tone-${service.tone}`}>
             <header><i><Icon/></i><em>{serviceRows.length} {serviceRows.length===1?'operação':'operações'}</em></header>
             <h2>{service.name}</h2>
-            <p>Produção {brl(production)} · Comissão {brl(commission)}</p>
+
             <ul>{service.subtopics.map(topic=><li key={topic}>{topic}</li>)}</ul>
-            <div className="tf-service-live-total"><span>Produção registrada</span><strong>{brl(production)}</strong></div>
+            <div className="tf-service-live-total"><div><span>Produção registrada</span><strong>{brl(production)}</strong></div><div><span>Comissão</span><strong>{brl(commission)}</strong></div></div>
           </article>
         )})}
       </div>
@@ -3008,7 +2940,7 @@ function AccessManagement({members,setMembers,partners}:{members:TeamMember[];se
  return <><Title over="EQUIPE E SEGURANÇA" title="Usuários e acessos" text="Cadastre funcionários ou parceiros e envie o link do sistema." action="Novo acesso" onAction={()=>setForm(empty)}/><section className="tf-access-layout"><div className="tf-access-list"><header><div><small>USUÁRIOS CADASTRADOS</small><h2>Equipe e parceiros</h2></div><b>{members.filter(m=>m.active).length} ativos</b></header>{[...members].sort((a,b)=>a.name.localeCompare(b.name,'pt-BR',{sensitivity:'base'})).map((member,index)=>{const permissions=visiblePermissions(member),partnerName=partners.find(partner=>partner.id===member.partnerId)?.name||member.partnerName;return <article key={member.id} className={`${!member.active?'inactive ':''}member-tone-${index%6}`}><i>{member.name.split(/\s+/).slice(0,2).map(n=>n[0]).join('').toUpperCase()}</i><div><b>{member.name}</b><small>{member.login||member.email}</small><p>{partnerName?`Parceiro · ${partnerName}`:permissions.length?permissions.join(' · '):'Somente acesso básico'}</p></div><em>{member.active?'Ativo':'Pausado'}</em><button onClick={()=>setForm({...member,password:''})}>Editar</button><button onClick={()=>toggleActive(member)}>{member.active?'Pausar':'Reativar'}</button><button className="danger" onClick={()=>deleteMember(member)}>Excluir usuário</button></article>})}{!members.length&&<div className="tf-access-empty"><UserRoundCog/><b>Nenhum subacesso criado</b><small>Cadastre o primeiro acesso ao lado.</small></div>}</div><form className="tf-access-form" onSubmit={save}><small>{form.id?'EDITAR ACESSO':'NOVO ACESSO'}</small><h2>{form.id?form.name:'Cadastrar usuário'}</h2><p>Use qualquer e-mail válido. Selecione um parceiro para limitar o acesso somente à produção dele.</p><div className="tf-access-share"><span><b>Link para entrar no Gestão TF</b><small>Depois de salvar, envie o convite diretamente por e-mail ou copie o link.</small></span><code>{accessUrl}</code><button type="button" onClick={copyAccessLink}><Copy/>{copied?'Link copiado':'Copiar link'}</button>{lastInvite&&<a href={`mailto:${lastInvite.email}?subject=${encodeURIComponent('Seu acesso ao Gestão TF')}&body=${encodeURIComponent(`Olá, ${lastInvite.name}! Seu acesso ao Gestão TF está pronto. Entre por este link: ${accessUrl}`)}`}><Send/>Enviar por e-mail</a>}</div><label>Nome<input required value={form.name} onChange={e=>setForm(x=>({...x,name:e.target.value}))} placeholder="Nome do usuário"/></label><label>Login de acesso<input required={Boolean(form.partnerId)} value={form.login||''} onChange={e=>setForm(x=>({...x,login:e.target.value}))} placeholder="Ex.: ggveiculos" autoCapitalize="none" spellCheck={false}/></label><label>E-mail de acesso<input required type="email" value={form.email} onChange={e=>setForm(x=>({...x,email:e.target.value}))} placeholder="nome@empresa.com"/></label><label>{form.id?"Nova senha (opcional)":"Senha de acesso"}<input type="password" autoComplete="new-password" minLength={form.partnerId?6:8} maxLength={256} required={!form.id} value={form.password||''} onChange={e=>setForm(x=>({...x,password:e.target.value}))}/></label><label>Vincular a parceiro<select value={form.partnerId||''} onChange={event=>setForm(current=>({...current,partnerId:event.target.value?Number(event.target.value):null}))}><option value="">Equipe TF · acesso interno</option>{partners.filter(partner=>partner.id>0).map(partner=><option key={partner.id} value={partner.id}>{partner.name}</option>)}</select></label>{form.partnerId?<div className="tf-partner-access-note"><ShieldCheck/><span><b>Acesso restrito ao parceiro</b><small>Este usuário verá somente clientes, produção, relatórios e acertos desse parceiro.</small></span></div>:<fieldset><legend>Áreas autorizadas</legend>{Object.entries(permissionLabels).filter(([id])=>id!=='inicio').sort(([,a],[,b])=>a.localeCompare(b,'pt-BR',{sensitivity:'base'})).map(([id,label])=><label key={id}><input type="checkbox" checked={form.permissions.includes(id as View)} onChange={e=>setForm(x=>({...x,permissions:e.target.checked?[...x.permissions,id as View]:x.permissions.filter(p=>p!==id)}))}/><span><b>{label}</b>{id==='atendimento'&&<small>Kanban individual, sem visualizar o seu.</small>}</span></label>)}</fieldset>}{message&&<em>{message}</em>}<footer>{form.id&&<button type="button" onClick={()=>setForm(empty)}>Cancelar</button>}<button className="tf-primary" disabled={saving}>{saving?'Salvando...':'Salvar acesso'}</button></footer></form></section></>;
 }
 
-function SettingsPanel({ close, serverAuthenticated, visualTheme, onThemeChange }: { close: () => void; serverAuthenticated?: boolean; visualTheme:VisualTheme; onThemeChange:(theme:VisualTheme)=>void }) {
+function SettingsPanel({ close, serverAuthenticated }: { close: () => void; serverAuthenticated?: boolean }) {
   const [newTab, setNewTab] = useState(true);
   const [currentPassword,setCurrentPassword]=useState(""),[newPassword,setNewPassword]=useState(""),[passwordMessage,setPasswordMessage]=useState("");
   const [wa, setWa] = useState<any>(null),
@@ -3096,7 +3028,7 @@ function SettingsPanel({ close, serverAuthenticated, visualTheme, onThemeChange 
   };
   const content = (
     <div
-      className={`tf-settings-popover ${visualTheme==="mono"?"dark":"light"}`}
+      className="tf-settings-popover light"
       role="dialog"
       aria-modal="true"
       aria-labelledby="tf-settings-title"
@@ -3118,22 +3050,6 @@ function SettingsPanel({ close, serverAuthenticated, visualTheme, onThemeChange 
           <small>PREFERÊNCIAS</small>
           <h2 id="tf-settings-title">Configurações</h2>
         </header>
-        <div className="tf-theme-settings">
-          <span>
-            <b>Aparência do sistema</b>
-            <small>Alterne quando quiser. A preferência fica salva somente neste navegador.</small>
-          </span>
-          <div className="tf-theme-options" role="radiogroup" aria-label="Tema do sistema">
-            <button type="button" role="radio" aria-checked={visualTheme==="classic"} className={visualTheme==="classic"?"active":""} onClick={()=>onThemeChange("classic")}>
-              <i className="tf-theme-preview light-preview"><em/><em/><em/></i>
-              <span><b>Claro profissional</b><small>Branco e chumbo, com módulos em movimento</small></span>
-            </button>
-            <button type="button" role="radio" aria-checked={visualTheme==="mono"} className={visualTheme==="mono"?"active":""} onClick={()=>onThemeChange("mono")}>
-              <i className="tf-theme-preview dark-preview"><em/><em/><em/></i>
-              <span><b>Preto luxo</b><small>O visual atual do sistema</small></span>
-            </button>
-          </div>
-        </div>
         <form className="tf-google-review-settings" onSubmit={saveGoogleReview}>
           <header><span><b>Link de avaliação Google</b><small>Será incluído automaticamente nas mensagens de pós-venda.</small></span><Star /></header>
           <input type="url" value={googleReviewUrl} onChange={(event) => setGoogleReviewUrl(event.target.value)} placeholder="https://g.page/r/.../review" />

@@ -1,7 +1,7 @@
 # Gestão TF
 
-- Work on the existing project, database and deployment. Preserve clients, operations, imported history, partner settings and both themes. Never reset or reimport the production database to fix an interface issue.
-- Unless the user expressly limits a change to one theme, every layout, structure, spacing and responsive change applies to both themes. Keep shared layout in shared components/styles; theme styles define visual identity only.
+- Work on the existing project, database and deployment. Preserve clients, operations, imported history, partner settings and the current white theme. Never reset or reimport the production database to fix an interface issue.
+- The white/classic theme is the only active CRM appearance. Do not restore the retired Preto Luxo theme or a theme picker. Keep layout and responsive changes consistent across modules.
 - Clients and operations in the explicitly selected database are the source of truth. PostgreSQL remains authoritative until a current full snapshot is verified in MongoDB and the provider is switched, unless the user explicitly authorizes starting a fresh MongoDB database and importing history later. Financial screens and partner reports must share the same calculations. Do not introduce a new commission distribution rule without an explicit request.
 - Monetary values remain numeric internally (integer cents in storage). Display Brazilian reais with R$, thousands separators and two decimal places using the shared money utilities.
 - Edits update existing IDs. Preserve omitted fields, payment history, partner adjustments and imported provenance.

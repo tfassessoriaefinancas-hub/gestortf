@@ -2,7 +2,6 @@ import type { Metadata } from 'next';
 import localFont from 'next/font/local';
 import './globals.css';
 import './theme.css';
-import './mono-theme.css';
 import './mobile-header.css';
 import './shared-layout.css';
 import './white-theme.css';
@@ -54,7 +53,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pt-BR" suppressHydrationWarning>
-      <head><meta name="theme-color" content="#10120f" /></head>
+      <head><meta name="theme-color" content="#ffffff" /></head>
       <body
         className={`${manrope.variable} ${cormorant.variable} antialiased`}
       >
