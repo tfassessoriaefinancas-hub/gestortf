@@ -2,6 +2,7 @@ import { env } from '@/lib/runtime';
 import { createSession, PARTNER_SESSION_COOKIE, sameOrigin, tokenHash } from '@/lib/auth-session';
 import { hashPassword, verifyPassword } from '@/lib/password';
 import { loginIdentifier } from '@/lib/login-identifier';
+import { legacyPartnerLoginQuery } from '@/lib/partner-login';
 
 // Keep an equivalent password check when an account does not exist.
 const dummyHash = hashPassword('unavailable-account');
@@ -13,8 +14,10 @@ export async function POST(request: Request) {
   if (!identifier || !password || password.length > 256) return Response.json({ error: 'Informe CPF, e-mail ou login e uma senha válidos.' }, { status: 400 });
   try {
   const accountField = identifier.kind === 'cpf' ? 'u.cpf' : identifier.kind === 'login' ? 'lower(u.login)' : 'lower(u.email)';
-  const account = await env.DB.prepare(`SELECT u.id,c.password_hash FROM users u JOIN auth_credentials c ON c.user_id=u.id
+  let account = await env.DB.prepare(`SELECT u.id,c.password_hash FROM users u JOIN auth_credentials c ON c.user_id=u.id
     WHERE ${accountField}=? AND u.active=1 AND u.deleted_at IS NULL`).bind(identifier.value).first<{ id: string; password_hash: string }>();
+  const legacyQuery = legacyPartnerLoginQuery(identifier, partnerAccess);
+  if (!account && legacyQuery) account = await env.DB.prepare(legacyQuery.sql).bind(...legacyQuery.bindings).first<{ id: string; password_hash: string }>();
   const now = Date.now(), windowStart = now - 15 * 60 * 1000;
   // CPF, formatted CPF and email share the same attempt limit for an account.
   const key = tokenHash(account ? `login:account:${account.id}` : `login:${identifier.kind}:${identifier.value}`);
