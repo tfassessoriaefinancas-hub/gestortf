@@ -84,7 +84,7 @@
   }
   .tf-germano-report {
     display: block !important;
-    width: var(--print-width, 121.951%) !important;
+    width: 100% !important;
     max-width: none !important;
     margin: 0 !important;
     padding: 0 !important;
@@ -95,7 +95,7 @@
     color: #171917 !important;
     box-shadow: none !important;
     backdrop-filter: none !important;
-    zoom: var(--print-zoom, .82) !important;
+    zoom: 1 !important;
   }
   .tf-germano-report-heading { padding-bottom: 7px !important; break-after: avoid-page !important; }
   .tf-germano-report-heading h2 { margin: 2px 0 !important; font-size: 24px !important; }
@@ -135,6 +135,18 @@
   .tf-germano-table td { color: #222 !important; }
   .tf-germano-table td.partner-value { color: #245a34 !important; font-weight: 900 !important; }
   .tf-germano-report * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+}
+
+/* Keep all thirteen GG report columns inside the printable A4 area. */
+@media print {
+  @page gg-report { size: A4 landscape; margin: 8mm; }
+  .tf-germano-portal { page: gg-report; width: auto !important; max-width: none !important; }
+  .tf-germano-report { box-sizing: border-box !important; min-width: 0 !important; transform: none !important; }
+  .tf-germano-table { box-sizing: border-box !important; max-width: 100% !important; min-width: 0 !important; }
+  .tf-germano-table table { max-width: 100% !important; }
+  .tf-germano-table th,
+  .tf-germano-table td { box-sizing: border-box !important; font-size: 6.5pt !important; }
+  .tf-germano-table thead th { font-size: 6pt !important; }
 }
 
 /* V172: o relatório impresso da GG usa uma única folha; o gráfico continua apenas no painel. */
