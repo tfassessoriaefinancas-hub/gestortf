@@ -351,3 +351,15 @@
 .tf-app.theme-classic .tf-card-identity small { font-size:11px!important; color:#687b90!important; }
 .tf-app.theme-classic .tf-kanban .tf-deal-card .tf-card-facts .tf-card-detail>b { font-size:10px!important; color:#748498!important; }
 .tf-app.theme-classic .tf-kanban .tf-deal-card .tf-card-facts .tf-card-detail>span { font-size:12px!important; }
+/* One uniform transparent footprint for every floating module. */
+.tf-app.theme-classic .tf-launcher .tf-launcher-module { width:114px!important; height:88px!important; min-height:88px!important; left:-57px!important; top:-44px!important; padding:0!important; display:flex!important; flex-direction:column!important; justify-content:flex-start!important; align-items:center!important; gap:8px!important; background:transparent!important; border:0!important; box-shadow:none!important; border-radius:10px; }
+.tf-app.theme-classic .tf-launcher .tf-launcher-module>i { width:44px!important; height:44px!important; min-width:44px!important; background:transparent!important; border:0!important; box-shadow:none!important; color:color-mix(in srgb,var(--tone) 58%,white)!important; }
+.tf-app.theme-classic .tf-launcher .tf-launcher-module>i>svg { width:30px!important; height:30px!important; }
+.tf-app.theme-classic .tf-launcher .tf-launcher-module>span { display:flex; align-items:flex-start; justify-content:center; width:114px!important; max-width:114px!important; height:32px; padding:0!important; margin:0; background:transparent!important; color:#f1f4f8!important; font-size:11px!important; font-weight:600; line-height:1.4!important; text-align:center!important; text-shadow:0 1px 6px #0008; overflow-wrap:normal; }
+.tf-app.theme-classic .tf-launcher .tf-launcher-arrow { display:none!important; }
+@media(max-width:800px) {
+ .tf-app.theme-classic .tf-launcher .tf-launcher-module { width:70px!important; height:82px!important; min-height:82px!important; left:-35px!important; top:-41px!important; gap:6px!important; }
+ .tf-app.theme-classic .tf-launcher .tf-launcher-module>i { width:40px!important; height:40px!important; min-width:40px!important; }
+ .tf-app.theme-classic .tf-launcher .tf-launcher-module>i>svg { width:27px!important; height:27px!important; }
+ .tf-app.theme-classic .tf-launcher .tf-launcher-module>span { width:70px!important; max-width:70px!important; height:32px; font-size:10px!important; }
+}
