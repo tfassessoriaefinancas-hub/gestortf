@@ -10,6 +10,7 @@ import './classic-workspace.css';
 import './executive-ui.css';
 import './interface-polish.css';
 import './cinematic-scenes.css';
+import './workspace-scenery.css';
 import './print-overrides.css';
 
 const manrope = localFont({

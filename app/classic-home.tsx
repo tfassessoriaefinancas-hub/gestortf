@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, type CSSProperties } from 'react';
-import { ArrowUpRight, Sparkles, type LucideIcon } from 'lucide-react';
+import { ArrowUpRight, Sparkles, Settings2, Cog, type LucideIcon } from 'lucide-react';
 import { moduleAccentColors } from './module-appearance';
 import './hologram-home.css';
 
@@ -35,13 +35,14 @@ export default function ClassicHome({ name, modules, go }: Props) {
       <div className="tf-hud-center">
         <div className="tf-hud-dial">
           <div className="tf-hud-dial-segments" aria-hidden="true"/>
-          <div className="tf-hud-brand"><img src="/tf-logo-exact.png" alt="TF Assessoria & Finanças" width={1238} height={594}/></div>
+          <div className="tf-hud-engine" aria-hidden="true"><Cog className="tf-hud-gear-main" strokeWidth={1.1}/><Cog className="tf-hud-gear-small" strokeWidth={1.3}/><Settings2 className="tf-hud-engine-control" strokeWidth={1.3}/></div>
           <i className="tf-hud-light light-one" aria-hidden="true"/><i className="tf-hud-light light-two" aria-hidden="true"/>
         </div>
         <span>CENTRAL DE MÓDULOS</span>
         <small>Conectando seus negócios</small>
       </div>
       {ordered.map(({ id, label, icon: Icon }, index) => <div key={id} className={`tf-hud-tile${index < 4 ? ' is-primary' : ''}`} style={{
+        '--tile-offset': `${[-18, 15, -6, 24][index % 4]}px`,
         '--tile-column': [1, 2, 4, 5][index % 4],
         '--tile-row': Math.floor(index / 4) + 1,
         '--tone': moduleAccentColors[id] || '#31618f',

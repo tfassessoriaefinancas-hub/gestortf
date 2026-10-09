@@ -13,6 +13,7 @@ import { readApiPayload } from "../lib/api-response";
 import type { CanonicalOperation } from "../lib/operations";
 import FinancialCalculator from "./financial-calculator";
 import ClassicHome from "./classic-home";
+import { moduleBackgrounds } from "./module-appearance";
 import ModuleExperience from "./module-experience";
 import {
   House,
@@ -645,7 +646,8 @@ export default function Dashboard({
     );
   return (
     <main
-      className={`tf-app light theme-classic${view==="inicio"?" is-classic-hub":""}`}
+      className={`tf-app light theme-classic has-workspace-scenery${view==="inicio"?" is-classic-hub":""}`}
+      style={{"--workspace-background":`url('/module-backgrounds/${view==="inicio"?"technology":moduleBackgrounds[view]||"office"}.webp')`} as React.CSSProperties}
     >
       <section className="tf-main">
         <header className="tf-top">

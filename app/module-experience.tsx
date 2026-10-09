@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, type CSSProperties } from 'react';
-import { moduleAccentColors } from './module-appearance';
+import { moduleAccentColors, moduleBackgrounds } from './module-appearance';
 import { ArrowDown, ArrowUpRight, UsersRound, Columns3, FileChartColumn, ChartNoAxesCombined, CalendarDays, Landmark, Calculator, WalletCards, ReceiptText, Handshake, ChartSpline, BriefcaseBusiness, MessageCircle, UserRoundCog, type LucideIcon } from 'lucide-react';
 import './module-orbits.css';
 import './module-motion.css';
@@ -40,13 +40,6 @@ const copy: Record<string,[string,string,string]> = {
   servicos:['Soluções para cada momento.','Oportunidades para conectar.','Explore seu portfólio e acompanhe a produção de cada serviço.'],
   posvenda:['O cuidado continua.','Depois de cada conquista.','Mantenha o relacionamento ativo e acompanhe os próximos contatos.'],
   usuarios:['Sua equipe conectada.','Cada acesso organizado.','Gerencie usuários, parceiros e as áreas autorizadas para cada pessoa.'],
-};
-// Each workspace selects a scene that reflects its purpose.
-const moduleBackgrounds: Record<string,string> = {
-  numeros:'office', atendimento:'handshake', clientes:'clients', producao:'planning',
-  financeiro:'finance', comissoes:'analytics', notas:'documents', parceiros:'handshake',
-  compromissos:'agenda', bancos:'architecture', calculadora:'finance', relatorios:'analytics',
-  servicos:'architecture', posvenda:'clients', usuarios:'team',
 };
 type ModuleVisual = { layout:'original'|'portrait-left'|'portrait-right'|'portrait-center'; scene:string; caption:string; links:string[] };
 const visuals:Record<string,ModuleVisual> = {
