@@ -1,25 +1,26 @@
 'use client';
 
 import { useState, type CSSProperties } from 'react';
+import { moduleAccentColors } from './module-appearance';
 import { ArrowDown, ArrowUpRight, UsersRound, Columns3, FileChartColumn, ChartNoAxesCombined, CalendarDays, Landmark, Calculator, WalletCards, ReceiptText, Handshake, ChartSpline, BriefcaseBusiness, MessageCircle, UserRoundCog, type LucideIcon } from 'lucide-react';
 
 type Destination = { label: string; icon: LucideIcon; color: string };
 const destinations: Record<string, Destination> = {
-  numeros:{label:'Painel de Gestão',icon:ChartNoAxesCombined,color:'#a48248'},
-  atendimento:{label:'Atendimento',icon:Columns3,color:'#4778a9'},
-  clientes:{label:'Clientes',icon:UsersRound,color:'#7966ad'},
-  producao:{label:'Produção',icon:FileChartColumn,color:'#338672'},
-  compromissos:{label:'Agenda',icon:CalendarDays,color:'#a16d51'},
-  bancos:{label:'Bancos',icon:Landmark,color:'#507795'},
-  calculadora:{label:'Calculadora',icon:Calculator,color:'#7465a0'},
-  financeiro:{label:'Financeiro',icon:WalletCards,color:'#398168'},
-  comissoes:{label:'Comissões',icon:WalletCards,color:'#398168'},
-  notas:{label:'Notas fiscais',icon:ReceiptText,color:'#ad627b'},
-  parceiros:{label:'Parceiros',icon:Handshake,color:'#43858a'},
-  relatorios:{label:'Relatórios',icon:ChartSpline,color:'#646faa'},
-  servicos:{label:'Serviços',icon:BriefcaseBusiness,color:'#a6824b'},
-  posvenda:{label:'Pós-venda',icon:MessageCircle,color:'#568679'},
-  usuarios:{label:'Usuários e acessos',icon:UserRoundCog,color:'#8c6783'},
+  numeros:{label:'Painel de Gestão',icon:ChartNoAxesCombined,color:moduleAccentColors.numeros},
+  atendimento:{label:'Atendimento',icon:Columns3,color:moduleAccentColors.atendimento},
+  clientes:{label:'Clientes',icon:UsersRound,color:moduleAccentColors.clientes},
+  producao:{label:'Produção',icon:FileChartColumn,color:moduleAccentColors.producao},
+  compromissos:{label:'Agenda',icon:CalendarDays,color:moduleAccentColors.compromissos},
+  bancos:{label:'Bancos',icon:Landmark,color:moduleAccentColors.bancos},
+  calculadora:{label:'Calculadora',icon:Calculator,color:moduleAccentColors.calculadora},
+  financeiro:{label:'Financeiro',icon:WalletCards,color:moduleAccentColors.financeiro},
+  comissoes:{label:'Comissões',icon:WalletCards,color:moduleAccentColors.comissoes},
+  notas:{label:'Notas fiscais',icon:ReceiptText,color:moduleAccentColors.notas},
+  parceiros:{label:'Parceiros',icon:Handshake,color:moduleAccentColors.parceiros},
+  relatorios:{label:'Relatórios',icon:ChartSpline,color:moduleAccentColors.relatorios},
+  servicos:{label:'Serviços',icon:BriefcaseBusiness,color:moduleAccentColors.servicos},
+  posvenda:{label:'Pós-venda',icon:MessageCircle,color:moduleAccentColors.posvenda},
+  usuarios:{label:'Usuários e acessos',icon:UserRoundCog,color:moduleAccentColors.usuarios},
 };
 const copy: Record<string,[string,string,string]> = {
   numeros:['Uma visão clara.','Mais espaço para crescer.','Conecte produção, clientes e resultados para acompanhar o que move o seu negócio.'],
@@ -102,7 +103,7 @@ export default function ModuleExperience({view,name,can,go,clientCount,operation
       <nav className="tf-experience-topics" aria-label="Assuntos do módulo"><small>O QUE VOCÊ QUER ACOMPANHAR?</small>{available.map((group,index)=><button key={group.id} type="button" aria-expanded={active?.id===group.id} aria-controls="tf-experience-shortcuts" onClick={()=>setSelected(group.id)} className={active?.id===group.id?'is-active':''}><span className="tf-topic-number">0{index+1}</span><span><b>{group.label}</b><small>{group.description}</small></span><ArrowUpRight size={17}/></button>)}</nav>
     </div>
     <div id="tf-experience-shortcuts" className="tf-experience-shortcuts" aria-label={`Atalhos de ${active?.label||info.label}`}>
-      {(active?.links||[]).map(id=>{const item=destinations[id],Icon=item.icon;return <button type="button" key={id} onClick={()=>navigate(id)} style={{'--shortcut-color':item.color} as CSSProperties}><Icon size={22}/><span>{item.label}</span><ArrowUpRight size={14}/></button>})}
+      {(active?.links||[]).map(id=>{const item=destinations[id],Icon=item.icon;return <button type="button" key={id} className={id===view?'is-current':undefined} aria-current={id===view?'page':undefined} onClick={()=>navigate(id)} style={{'--shortcut-color':item.color} as CSSProperties}><Icon size={22}/><span>{item.label}</span><ArrowUpRight size={14}/></button>})}
     </div>
     {stats.length>0&&<div className="tf-experience-stats">{stats.map(({id,label,value,icon:Icon})=><button key={id} type="button" onClick={()=>navigate(id)}><Icon size={19}/><span><small>{label}</small><strong>{value.toLocaleString('pt-BR')}</strong></span><ArrowUpRight size={14}/></button>)}</div>}
   </section>;
