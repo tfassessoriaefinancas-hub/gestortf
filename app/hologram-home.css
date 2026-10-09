@@ -1,104 +1,112 @@
-/* Scoped to the home screen; module layouts retain their classic appearance. */
+/* Two counter-rotating glass orbits, scoped to the home screen. */
 .tf-app.theme-classic .tf-hologram-home {
   position:relative; isolation:isolate; min-height:calc(100svh - 80px);
   max-width:1180px; margin:0 auto; display:flex; flex-direction:column;
 }
 .tf-app.theme-classic .tf-holo-heading { text-align:center; padding:28px 12px 6px; position:relative; z-index:1; }
-.tf-app.theme-classic .tf-holo-heading>span { color:#315879; font-size:10px; font-weight:750; letter-spacing:2.5px; }
+.tf-app.theme-classic .tf-holo-heading>span { color:#6e5734; font-size:10px; font-weight:750; letter-spacing:2.5px; }
 .tf-app.theme-classic .tf-holo-heading h1 { margin:10px 0 8px; color:#1b344e!important; font-size:clamp(25px,2.8vw,36px); font-weight:650; letter-spacing:-1.3px; line-height:1.2; }
 .tf-app.theme-classic .tf-holo-heading p { margin:0; color:#355571!important; font-size:12px; }
-.tf-app.theme-classic .tf-holo-space { position:relative; flex:1; min-height:580px; }
-.tf-app.theme-classic .tf-holo-atmosphere { position:absolute; inset:0; pointer-events:none; overflow:hidden; }
-.tf-app.theme-classic .tf-holo-atmosphere::before { content:''; position:absolute; inset:7% 3%; border-radius:50%; background:radial-gradient(ellipse at 54% 50%,#e0f6ff88,transparent 62%); }
-.tf-app.theme-classic .tf-holo-atmosphere i { position:absolute; left:49%; top:48%; width:65%; height:45%; border:1px solid #e2f6ff55; border-radius:50%; transform:translate(-50%,-50%) rotate(-16deg); }
-.tf-app.theme-classic .tf-holo-atmosphere i:nth-child(2) { width:86%; height:65%; transform:translate(-50%,-50%) rotate(10deg); border-color:#ffffff38; }
-.tf-app.theme-classic .tf-holo-atmosphere i:nth-child(3) { width:43%; height:67%; transform:translate(-50%,-50%) rotate(65deg); border-style:dashed; opacity:.5; }
-.tf-app.theme-classic .tf-holo-core { position:absolute; left:51%; top:49%; transform:translate(-50%,-50%); width:170px; display:flex; flex-direction:column; align-items:center; gap:16px; pointer-events:none; }
+.tf-app.theme-classic .tf-holo-space { position:relative; flex:1; min-height:680px; }
+.tf-app.theme-classic .tf-holo-core { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:180px; display:flex; flex-direction:column; align-items:center; gap:16px; pointer-events:none; }
 .tf-app.theme-classic .tf-holo-core img { display:block; width:100%; height:auto; object-fit:contain; filter:drop-shadow(0 6px 14px #f0faffaa); }
 .tf-app.theme-classic .tf-holo-core>span { color:#335674; font-size:8px; font-weight:750; letter-spacing:2px; white-space:nowrap; }
-.tf-app.theme-classic .tf-holo-anchor { position:absolute; left:var(--x); top:var(--y); width:clamp(104px,10vw,128px); height:124px; transform:translate(-50%,-50%); z-index:2; }
-.tf-app.theme-classic .tf-holo-anchor.is-featured { width:164px; height:170px; z-index:3; }
-.tf-app.theme-classic .tf-holo-float { width:100%; height:100%; animation:tf-holo-levitate var(--float-duration) ease-in-out var(--float-delay) infinite; }
+.tf-app.theme-classic .tf-holo-ring { position:absolute; inset:0; pointer-events:none; --duration:100s; --direction:normal; --rx:24%; --ry:170px; --card-width:150px; --card-height:66px; }
+.tf-app.theme-classic .tf-holo-ring-outer { --duration:140s; --direction:reverse; --rx:calc(50% - 44px); --ry:285px; --card-width:60px; --card-height:60px; }
+.tf-app.theme-classic .tf-holo-track { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:calc(var(--rx) * 2); height:calc(var(--ry) * 2); border:1px solid #ffffff70; border-radius:50%; box-shadow:0 0 22px #e4f5ff15; }
+.tf-app.theme-classic .tf-holo-ring-outer .tf-holo-track { border-color:#ffffff48; }
+/* A zero-sized path follower leaves every card upright while it travels. */
+.tf-app.theme-classic :is(.tf-holo-anchor,.tf-holo-spark) {
+  position:absolute; top:0; left:0; width:0; height:0;
+  offset-path:ellipse(var(--rx) var(--ry) at 50% 50%); offset-anchor:center;
+  offset-distance:var(--start); offset-rotate:0deg;
+  animation:tf-holo-orbit var(--duration) linear infinite;
+  animation-direction:var(--direction);
+}
+.tf-app.theme-classic .tf-holo-anchor { z-index:2; }
+.tf-app.theme-classic .tf-holo-spark::after { content:''; display:block; width:3px; height:3px; border-radius:50%; background:#c5a66b; box-shadow:0 0 7px #e6d1a2; opacity:.75; }
 .tf-app.theme-classic .tf-holo-card {
-  position:relative; isolation:isolate; width:100%; height:100%; min-height:44px;
-  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px;
-  padding:17px 9px 13px; overflow:hidden; border-radius:18px;
-  border:1px solid #a6e2ff; border-top-color:#e2f7ff; border-left-color:#c6edff;
-  background:linear-gradient(145deg,#5f9ab87a 0%,#173f64d6 55%,#285878bf 100%);
-  color:#f4fbff; cursor:pointer; -webkit-tap-highlight-color:transparent;
-  -webkit-backdrop-filter:blur(9px); backdrop-filter:blur(9px);
-  box-shadow:inset 0 0 0 1px #e1f5ff30,inset 0 2px 12px #b5e4ff29,0 0 12px #5dc6ff24,0 17px 24px -13px #0b2c5280;
-  transform:perspective(700px) rotateY(var(--tilt)) rotateZ(calc(var(--tilt) * .4));
+  position:absolute; left:calc(var(--card-width) / -2); top:calc(var(--card-height) / -2);
+  isolation:isolate; width:var(--card-width); height:var(--card-height); min-height:44px;
+  display:flex; flex-direction:row; align-items:center; justify-content:center; gap:10px;
+  padding:12px; border-radius:15px; border:1px solid #ffffffed;
+  border-right-color:#ccdce3a6; border-bottom-color:#c2d4dfa6;
+  background:linear-gradient(140deg,#fffffff0 0%,#ffffffbf 52%,#e7f5ff9c 100%);
+  color:#263e55; cursor:pointer; pointer-events:auto; -webkit-tap-highlight-color:transparent;
+  -webkit-backdrop-filter:blur(14px); backdrop-filter:blur(14px);
+  box-shadow:inset 0 0 0 1px #ffffff66,inset 0 2px 10px #fff9,0 0 14px #c5e9ff38,0 12px 25px -12px #233d5d70;
   transition:transform .22s,box-shadow .22s,border-color .22s;
 }
-.tf-app.theme-classic .tf-holo-card::before { content:''; position:absolute; inset:0; pointer-events:none; z-index:-1; background:linear-gradient(125deg,#edfbff23,transparent 38%,transparent 64%,#85d9ff12); }
-.tf-app.theme-classic .tf-holo-card::after { content:''; position:absolute; bottom:0; left:21%; right:21%; height:1px; background:#e4fbff; box-shadow:0 0 9px 2px #59caffb3; }
-.tf-app.theme-classic .tf-holo-glint { position:absolute; top:1px; left:12%; width:33%; height:1px; background:#fff; box-shadow:0 0 9px 2px #a6e7ff; pointer-events:none; animation:tf-holo-shimmer 5s ease-in-out var(--float-delay) infinite; }
-.tf-app.theme-classic .tf-holo-icon { flex:none; width:42px; height:42px; stroke:#f1faff; filter:drop-shadow(0 0 5px #93dfff77); }
-.tf-app.theme-classic .tf-holo-label { color:#fff; font-size:11px; font-weight:700; text-align:center; line-height:1.35; letter-spacing:.1px; text-shadow:0 1px 4px #0d304b80; }
-.tf-app.theme-classic .tf-holo-arrow { position:absolute; top:10px; right:10px; color:#cef1ff; opacity:.75; }
-.tf-app.theme-classic .tf-holo-action { display:flex; align-items:center; gap:5px; font-size:9px; font-weight:600; color:#d5f2ff; }
-.tf-app.theme-classic .is-featured .tf-holo-card { border-width:1.5px; border-radius:23px; gap:13px; background:linear-gradient(145deg,#8fc5df6b,#144675cc 60%,#34719cad); box-shadow:inset 0 0 0 1px #effaff45,inset 0 2px 24px #c0efff25,0 0 23px #41b8fa38,0 24px 40px -18px #0b2c5280; }
-.tf-app.theme-classic .is-featured .tf-holo-icon { width:59px; height:59px; }
-.tf-app.theme-classic .is-featured .tf-holo-label { font-size:14px; max-width:130px; }
+.tf-app.theme-classic .tf-holo-card::before { content:''; position:absolute; inset:0; border-radius:inherit; pointer-events:none; z-index:-1; background:linear-gradient(125deg,#ffffff66,transparent 45%,transparent 65%,#b2dcf51a); }
+.tf-app.theme-classic .tf-holo-glint { position:absolute; top:0; left:15%; width:30%; height:1px; background:#fff; box-shadow:0 0 8px 1px #fff; pointer-events:none; animation:tf-holo-shimmer 5s ease-in-out var(--glint-delay) infinite; }
+.tf-app.theme-classic .tf-holo-icon { flex:none; width:30px; height:30px; stroke:var(--tone); filter:drop-shadow(0 2px 3px #ffffffb3); }
+.tf-app.theme-classic .tf-holo-label { color:#263e55; font-size:11px; font-weight:750; text-align:left; line-height:1.35; letter-spacing:.05px; }
+.tf-app.theme-classic .tf-holo-arrow { position:absolute; top:5px; right:5px; color:var(--tone); opacity:0; transition:opacity .2s; }
+.tf-app.theme-classic .tf-holo-ring-outer .tf-holo-card { padding:12px; }
+.tf-app.theme-classic .tf-holo-ring-outer .tf-holo-label { position:absolute; top:calc(100% + 9px); left:50%; transform:translateX(-50%); width:max-content; max-width:132px; text-align:center; font-size:10px; padding:5px 8px; background:#fffffff2; border:1px solid #d7e4ed; border-radius:7px; box-shadow:0 4px 14px #18365314; opacity:0; pointer-events:none; transition:opacity .2s; }
 .tf-app.theme-classic .tf-holo-anchor:is(:hover,:focus-within) { z-index:5; }
-.tf-app.theme-classic .tf-holo-space:focus-within .tf-holo-float,
-.tf-app.theme-classic .tf-holo-anchor:hover .tf-holo-float { animation-play-state:paused; }
-.tf-app.theme-classic .tf-holo-card:is(:hover,:focus-visible) { transform:perspective(700px) rotateY(0deg) rotateZ(0deg) scale(1.045); border-color:#e8faff; box-shadow:inset 0 0 0 1px #d8f4ff80,0 0 25px #51c4ff66,0 22px 34px -12px #082b5e85; }
-.tf-app.theme-classic .tf-holo-card:focus-visible { outline:3px solid #1263a2!important; outline-offset:6px; }
+.tf-app.theme-classic .tf-holo-card:is(:hover,:focus-visible) { transform:scale(1.06); border-color:#fff; box-shadow:inset 0 0 0 1px #fff,0 0 21px #d5edff90,0 16px 28px -9px #23456566; }
+.tf-app.theme-classic .tf-holo-card:is(:hover,:focus-visible) :is(.tf-holo-arrow,.tf-holo-label) { opacity:1; }
+.tf-app.theme-classic .tf-holo-card:focus-visible { outline:3px solid #31618f!important; outline-offset:5px; }
 .tf-app.theme-classic .tf-holo-card:active { transform:scale(.97); }
+/* Pause the entire ring under the pointer so neighboring controls keep their spacing. */
+.tf-app.theme-classic .tf-holo-ring:has(.tf-holo-card:hover) :is(.tf-holo-anchor,.tf-holo-spark),
+.tf-app.theme-classic .tf-holo-space:focus-within :is(.tf-holo-anchor,.tf-holo-spark),
+.tf-app.theme-classic .is-paused :is(.tf-holo-anchor,.tf-holo-spark,.tf-holo-glint) { animation-play-state:paused; }
 .tf-app.theme-classic .tf-holo-footer { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:0 12px 18px; }
 .tf-app.theme-classic .tf-holo-footer>span { display:flex; align-items:center; gap:10px; font-size:8px; letter-spacing:1.2px; color:#274c6b; font-weight:700; }
-.tf-app.theme-classic .tf-holo-footer>span i { height:3px; width:3px; border-radius:50%; background:#397eb0; }
-.tf-app.theme-classic .tf-holo-footer>button { min-height:44px; display:flex; align-items:center; justify-content:center; gap:7px; border:1px solid #ffffff80; border-radius:20px; background:#edf7ffba; color:#224966; padding:0 14px; font:600 10px var(--font-ui),Arial,sans-serif; cursor:pointer; }
-.tf-app.theme-classic .is-paused :is(.tf-holo-float,.tf-holo-glint) { animation-play-state:paused; }
-@keyframes tf-holo-levitate { 0%,100% { transform:translate3d(0,4px,0); } 50% { transform:translate3d(0,-8px,0); } }
+.tf-app.theme-classic .tf-holo-footer>span i { height:3px; width:3px; border-radius:50%; background:#ae8e53; }
+.tf-app.theme-classic .tf-holo-footer>button { min-height:44px; display:flex; align-items:center; justify-content:center; gap:7px; border:1px solid #ffffffb3; border-radius:20px; background:#f6fbffcf; color:#224966; padding:0 14px; font:600 10px var(--font-ui),Arial,sans-serif; cursor:pointer; }
+@keyframes tf-holo-orbit { from { offset-distance:var(--start); } to { offset-distance:calc(var(--start) + 100%); } }
 @keyframes tf-holo-shimmer { 0%,100% { opacity:.45; transform:translateX(0); } 50% { opacity:1; transform:translateX(60%); } }
 
-/* Small permission sets use the same cards in a centered flow. */
-.tf-app.theme-classic .tf-hologram-home.is-compact .tf-holo-space { display:flex; flex-wrap:wrap; align-content:center; align-items:center; justify-content:center; gap:26px; padding:30px 12px; }
-.tf-app.theme-classic .tf-hologram-home.is-compact .tf-holo-core { position:relative; left:auto; top:auto; transform:none; width:100%; margin:0 0 18px; }
-.tf-app.theme-classic .tf-hologram-home.is-compact .tf-holo-core img { width:170px; }
-.tf-app.theme-classic .tf-hologram-home.is-compact .tf-holo-anchor { position:relative; left:auto; top:auto; transform:none; }
-
-@media(max-width:1000px) {
-  .tf-app.theme-classic .tf-hologram-home { max-width:700px; }
-  .tf-app.theme-classic .tf-holo-space { flex:none; min-height:0; display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:26px 20px; padding:26px 18px 34px; }
-  .tf-app.theme-classic .tf-holo-core { position:relative; grid-column:1/-1; left:auto; top:auto; transform:none; width:100%; margin-bottom:14px; }
-  .tf-app.theme-classic .tf-holo-core img { width:175px; }
-  .tf-app.theme-classic .tf-holo-anchor,.tf-app.theme-classic .tf-holo-anchor.is-featured { position:relative; left:auto; top:auto; transform:none; width:100%; height:128px; }
-  .tf-app.theme-classic .is-featured .tf-holo-card { border-radius:18px; gap:8px; }
-  .tf-app.theme-classic .is-featured .tf-holo-icon { width:42px; height:42px; }
-  .tf-app.theme-classic .is-featured .tf-holo-label { font-size:11px; }
-  .tf-app.theme-classic .tf-holo-action { display:none; }
-  .tf-app.theme-classic .tf-hologram-home.is-compact .tf-holo-anchor { width:130px; }
-  .tf-app.theme-classic .tf-holo-footer { margin-top:auto; }
+@media(max-width:800px) {
+  .tf-app.theme-classic .tf-holo-space { min-height:650px; }
+  .tf-app.theme-classic .tf-holo-ring { --rx:calc(25% - 6px); --ry:160px; --card-width:104px; --card-height:60px; }
+  .tf-app.theme-classic .tf-holo-ring-outer { --rx:calc(50% - 34px); --ry:282px; --card-width:52px; --card-height:52px; }
+  .tf-app.theme-classic .tf-holo-card { gap:6px; padding:8px; border-radius:13px; }
+  .tf-app.theme-classic .tf-holo-icon { width:26px; height:26px; }
+  .tf-app.theme-classic .tf-holo-label { font-size:10px; }
+  .tf-app.theme-classic .tf-holo-core { width:clamp(84px,18vw,144px); gap:12px; }
+  .tf-app.theme-classic .tf-holo-core>span { font-size:6px; letter-spacing:1px; }
 }
 @media(max-width:600px) {
   .tf-app.theme-classic .tf-holo-heading { padding-top:23px; }
   .tf-app.theme-classic .tf-holo-heading h1 { font-size:26px; }
   .tf-app.theme-classic .tf-holo-heading p { font-size:11px; }
-  .tf-app.theme-classic .tf-holo-space { grid-template-columns:repeat(3,minmax(0,1fr)); gap:23px 13px; padding:24px 10px 30px; }
-  .tf-app.theme-classic .tf-holo-core { gap:10px; margin-bottom:4px; }
-  .tf-app.theme-classic .tf-holo-core img { width:150px; }
-  .tf-app.theme-classic .tf-holo-core>span { font-size:7px; }
-  .tf-app.theme-classic .tf-holo-anchor,.tf-app.theme-classic .tf-holo-anchor.is-featured { height:114px; }
-  .tf-app.theme-classic .tf-holo-card { padding:17px 6px 10px; gap:10px; border-radius:15px; }
-  .tf-app.theme-classic .tf-holo-icon,.tf-app.theme-classic .is-featured .tf-holo-icon { width:36px; height:36px; }
-  .tf-app.theme-classic .tf-holo-label,.tf-app.theme-classic .is-featured .tf-holo-label { font-size:10px; }
-  .tf-app.theme-classic .tf-holo-arrow { width:11px; height:11px; top:8px; right:8px; }
+  .tf-app.theme-classic .tf-holo-ring { --card-width:80px; --card-height:56px; --ry:155px; }
+  .tf-app.theme-classic .tf-holo-ring-outer { --rx:calc(50% - 32px); --ry:272px; --card-width:48px; --card-height:48px; }
+  .tf-app.theme-classic .tf-holo-card { padding:6px; gap:5px; border-radius:12px; }
+  .tf-app.theme-classic .tf-holo-icon { width:22px; height:22px; }
+  .tf-app.theme-classic .tf-holo-ring-outer .tf-holo-icon { width:26px; height:26px; }
+  .tf-app.theme-classic .tf-holo-label { font-size:9px; }
+  .tf-app.theme-classic .tf-holo-core { width:84px; }
+  .tf-app.theme-classic .tf-holo-core>span { display:none; }
   .tf-app.theme-classic .tf-holo-footer { flex-direction:column; gap:8px; padding-bottom:20px; }
   .tf-app.theme-classic .tf-holo-footer>span { font-size:7px; letter-spacing:.7px; }
-  .tf-app.theme-classic .tf-hologram-home.is-compact .tf-holo-space { gap:23px 16px; }
-  .tf-app.theme-classic .tf-hologram-home.is-compact .tf-holo-anchor { width:calc(33.333% - 12px); }
 }
 @media(max-width:359px) {
-  .tf-app.theme-classic .tf-holo-space { grid-template-columns:repeat(2,minmax(0,1fr)); padding-inline:14px; }
+  .tf-app.theme-classic .tf-holo-ring { --rx:calc(25% - 12px); --card-width:64px; }
+  .tf-app.theme-classic .tf-holo-ring-outer { --rx:calc(50% - 26px); --card-width:44px; --card-height:44px; }
+  .tf-app.theme-classic .tf-holo-ring-inner .tf-holo-card { flex-direction:column; gap:2px; padding:4px; }
+  .tf-app.theme-classic .tf-holo-ring-inner .tf-holo-icon { width:20px; height:20px; }
+  .tf-app.theme-classic .tf-holo-label { font-size:8px; text-align:center; }
+  .tf-app.theme-classic .tf-holo-core { width:54px; }
   .tf-app.theme-classic .tf-holo-heading h1 { font-size:23px; }
-  .tf-app.theme-classic .tf-hologram-home.is-compact .tf-holo-anchor { width:calc(50% - 10px); }
 }
 @media(prefers-reduced-motion:reduce) {
-  .tf-app.theme-classic .tf-hologram-home :is(.tf-holo-float,.tf-holo-glint) { animation:none; }
-  .tf-app.theme-classic .tf-holo-card { transition:none; transform:none; }
+  .tf-app.theme-classic .tf-hologram-home :is(.tf-holo-anchor,.tf-holo-spark,.tf-holo-glint) { animation:none; }
+  .tf-app.theme-classic .tf-holo-card { transition:none; }
+  .tf-app.theme-classic .tf-holo-footer>button { display:none; }
+}
+/* Older engines retain all destinations in a readable layout. */
+@supports not (offset-path:ellipse(100px 200px at 50% 50%)) {
+  .tf-app.theme-classic .tf-holo-space { display:flex; flex-direction:column; gap:26px; padding:36px 10px; min-height:0; }
+  .tf-app.theme-classic .tf-holo-core { position:static; transform:none; margin:0 auto 24px; width:150px; }
+  .tf-app.theme-classic .tf-holo-ring { position:static; display:grid; grid-template-columns:repeat(auto-fit,minmax(100px,1fr)); gap:24px; }
+  .tf-app.theme-classic .tf-holo-anchor { position:static; width:auto; height:76px; animation:none; }
+  .tf-app.theme-classic .tf-holo-ring .tf-holo-card { position:relative; left:auto; top:auto; margin:auto; width:100%; height:76px; flex-direction:column; gap:6px; }
+  .tf-app.theme-classic .tf-holo-ring-outer .tf-holo-label { position:static; transform:none; opacity:1; background:none; border:0; box-shadow:none; padding:0; }
+  .tf-app.theme-classic :is(.tf-holo-track,.tf-holo-spark) { display:none; }
   .tf-app.theme-classic .tf-holo-footer>button { display:none; }
 }

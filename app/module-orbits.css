@@ -1,0 +1,30 @@
+/* Animated shortcuts stay inside the portrait scene and retain module permissions. */
+.tf-app.theme-classic .tf-module-orbits { position:absolute; inset:18px 0 34px; z-index:4; pointer-events:none; }
+.tf-app.theme-classic .tf-module-orbit { position:absolute; inset:0; --orbit-rx:max(14px,calc(50% - 92px)); --orbit-ry:12%; --orbit-duration:75s; --orbit-direction:normal; }
+.tf-app.theme-classic .tf-module-orbit.orbit-1 { --orbit-rx:calc(50% - 30px); --orbit-ry:46%; --orbit-duration:110s; --orbit-direction:reverse; }
+.tf-app.theme-classic .tf-module-orbit-track { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:calc(var(--orbit-rx) * 2); height:calc(var(--orbit-ry) * 2); border:1px solid color-mix(in srgb,var(--orbit-tone) 13%,transparent); border-radius:50%; pointer-events:none; }
+.tf-app.theme-classic .tf-module-orbit-anchor { position:absolute; left:0; top:0; width:0; height:0; offset-path:ellipse(var(--orbit-rx) var(--orbit-ry) at 50% 50%); offset-distance:var(--orbit-start); offset-rotate:0deg; offset-anchor:center; animation:tf-module-orbit-travel var(--orbit-duration) linear infinite; animation-direction:var(--orbit-direction); }
+.tf-app.theme-classic .tf-module-orbit-card { position:absolute; left:-24px; top:-24px; display:grid; place-items:center; width:48px; height:48px; padding:9px; border:1px solid #ffffffed; border-right-color:#d1dde6b3; border-bottom-color:#c7d7e4b3; border-radius:13px; background:linear-gradient(140deg,#ffffffeb,#ffffffc7 58%,#e7f3ffad); color:var(--orbit-tone); box-shadow:inset 0 1px 7px #fff,0 0 12px #c5e9ff30,0 10px 20px -9px #243a5a4d; -webkit-backdrop-filter:blur(12px); backdrop-filter:blur(12px); pointer-events:auto; cursor:pointer; transition:transform .2s,box-shadow .2s; }
+.tf-app.theme-classic .tf-module-orbit-card>svg:first-child { color:var(--orbit-tone); filter:drop-shadow(0 1px 2px #fff); }
+.tf-app.theme-classic .tf-module-orbit-card>svg:last-child { position:absolute; right:4px; top:4px; opacity:.65; }
+.tf-app.theme-classic .tf-module-orbit-card>span { position:absolute; top:calc(100% + 7px); left:50%; transform:translateX(-50%); width:max-content; max-width:120px; padding:5px 7px; color:#2c4259; background:#fffffff5; border:1px solid #dee6ee; border-radius:6px; box-shadow:0 4px 12px #233a511a; font-size:10px; font-weight:650; text-align:center; opacity:0; pointer-events:none; transition:opacity .2s; }
+.tf-app.theme-classic .tf-module-orbit:has(.tf-module-orbit-card:is(:hover,:focus-visible)) { z-index:2; }
+.tf-app.theme-classic .tf-module-orbit-card:is(:hover,:focus-visible) { transform:scale(1.06); box-shadow:inset 0 0 0 1px #fff,0 0 16px #c8e8ff80,0 12px 24px -8px #233f6059; }
+.tf-app.theme-classic .tf-module-orbit-card:is(:hover,:focus-visible)>span { opacity:1; }
+.tf-app.theme-classic .tf-module-orbit-card:active { transform:scale(.96); }
+.tf-app.theme-classic .tf-module-orbit-card:focus-visible { outline:3px solid var(--orbit-tone)!important; outline-offset:4px; }
+.tf-app.theme-classic .tf-module-orbits:has(.tf-module-orbit-card:hover) .tf-module-orbit-anchor,
+.tf-app.theme-classic .tf-module-orbits:focus-within .tf-module-orbit-anchor,
+.tf-app.theme-classic .is-motion-paused .tf-module-orbit-anchor { animation-play-state:paused; }
+.tf-app.theme-classic .tf-module-motion-toggle { position:absolute; right:0; top:0; z-index:5; width:44px; height:44px; display:grid; place-items:center; background:#ffffffb3; border:1px solid #dce5ee99; border-radius:50%; color:#52667a; cursor:pointer; }
+@keyframes tf-module-orbit-travel { from { offset-distance:var(--orbit-start); } to { offset-distance:calc(var(--orbit-start) + 100%); } }
+@media(prefers-reduced-motion:reduce) {
+  .tf-app.theme-classic .tf-module-orbit-anchor { animation:none; }
+  .tf-app.theme-classic .tf-module-orbit-card { transition:none; }
+  .tf-app.theme-classic .tf-module-motion-toggle { display:none; }
+}
+@supports not (offset-path:ellipse(100px 200px at 50% 50%)) {
+  .tf-app.theme-classic .tf-module-orbit-anchor { animation:none; top:20%; left:16%; }
+  .tf-app.theme-classic .orbit-1 .tf-module-orbit-anchor { top:70%; left:80%; }
+  .tf-app.theme-classic :is(.tf-module-orbit-track,.tf-module-motion-toggle) { display:none; }
+}

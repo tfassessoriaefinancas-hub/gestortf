@@ -2,7 +2,8 @@
 
 import { useState, type CSSProperties } from 'react';
 import { moduleAccentColors } from './module-appearance';
-import { ArrowDown, ArrowUpRight, UsersRound, Columns3, FileChartColumn, ChartNoAxesCombined, CalendarDays, Landmark, Calculator, WalletCards, ReceiptText, Handshake, ChartSpline, BriefcaseBusiness, MessageCircle, UserRoundCog, type LucideIcon } from 'lucide-react';
+import { ArrowDown, ArrowUpRight, Pause, Play, UsersRound, Columns3, FileChartColumn, ChartNoAxesCombined, CalendarDays, Landmark, Calculator, WalletCards, ReceiptText, Handshake, ChartSpline, BriefcaseBusiness, MessageCircle, UserRoundCog, type LucideIcon } from 'lucide-react';
+import './module-orbits.css';
 
 type Destination = { label: string; icon: LucideIcon; color: string };
 const destinations: Record<string, Destination> = {
@@ -70,6 +71,7 @@ type Props = {
 };
 export default function ModuleExperience({view,name,can,go,clientCount,operationCount,activeCount}:Props) {
   const [selected,setSelected]=useState(initialGroup(view));
+  const [motionPaused,setMotionPaused]=useState(false);
   const info=destinations[view];
   if(!info)return null;
   const [headline,highlight,description]=copy[view];
@@ -89,7 +91,7 @@ export default function ModuleExperience({view,name,can,go,clientCount,operation
     ...(can('atendimento')?[{id:'atendimento',label:'Em atendimento',value:activeCount,icon:Columns3}]:[]),
   ];
   const sceneLinks=(view==='numeros'?(active?.links||[]):visual.links).filter(id=>id!==view&&can(id)).slice(0,2);
-  return <section className={`tf-module-experience module-${view} layout-${visual.layout} scene-${visual.scene}`} aria-label={`Apresentação de ${info.label}`} style={{'--module-accent':info.color} as CSSProperties}>
+  return <section className={`tf-module-experience module-${view} layout-${visual.layout} scene-${visual.scene}${motionPaused?' is-motion-paused':''}`} aria-label={`Apresentação de ${info.label}`} style={{'--module-accent':info.color} as CSSProperties}>
     <header className="tf-experience-welcome"><div><span>SEU ESPAÇO DE TRABALHO</span><p>Bem-vindo, <strong>{name.split(' ')[0]}.</strong></p></div><span className="tf-experience-location"><info.icon size={16}/>{info.label}</span></header>
     <div className="tf-experience-composition">
       <div className="tf-experience-copy"><span className="tf-experience-eyebrow">GESTÃO TF · MELHOR QUE BANCO</span><h2>{headline}<br/><em>{highlight}</em></h2><p>{description}</p><button type="button" className="tf-experience-detail" onClick={details}>Explorar {info.label}<ArrowDown size={16}/></button></div>
@@ -98,7 +100,17 @@ export default function ModuleExperience({view,name,can,go,clientCount,operation
         {view!=='numeros'&&<div className="tf-module-scenery" aria-hidden="true"><i/><i/><i/></div>}
         <img src={portrait} alt="" width={667} height={1000} decoding="async"/>
         {visual.caption&&<span className="tf-module-scene-caption">{visual.caption}</span>}
-        {sceneLinks.map((id,index)=>{const item=destinations[id],Icon=item.icon;return <button type="button" key={id} className={`tf-experience-float float-${index}`} onClick={()=>navigate(id)}><Icon size={18} style={{color:item.color}}/><span>{item.label}</span><ArrowUpRight size={12}/></button>})}
+        {sceneLinks.length>0&&<nav className="tf-module-orbits" aria-label={`Atalhos flutuantes de ${info.label}`}>
+          {sceneLinks.map((id,index)=>{const item=destinations[id],Icon=item.icon;return <div key={id} className={`tf-module-orbit orbit-${index}`} style={{'--orbit-tone':item.color,'--orbit-start':index?'62%':'16%'} as CSSProperties}>
+            <div className="tf-module-orbit-track" aria-hidden="true"/>
+            <div className="tf-module-orbit-anchor">
+              <button type="button" className="tf-module-orbit-card" onClick={()=>navigate(id)} aria-label={`Abrir ${item.label}`} title={item.label}>
+                <Icon size={25} strokeWidth={1.6} aria-hidden="true"/><span>{item.label}</span><ArrowUpRight size={10} aria-hidden="true"/>
+              </button>
+            </div>
+          </div>})}
+        </nav>}
+        {sceneLinks.length>0&&<button type="button" className="tf-module-motion-toggle" onClick={()=>setMotionPaused(value=>!value)} aria-pressed={motionPaused} aria-label={motionPaused?'Retomar movimento dos atalhos':'Pausar movimento dos atalhos'} title={motionPaused?'Retomar movimento':'Pausar movimento'}>{motionPaused?<Play size={13} aria-hidden="true"/>:<Pause size={13} aria-hidden="true"/>}</button>}
       </div>
       <nav className="tf-experience-topics" aria-label="Assuntos do módulo"><small>O QUE VOCÊ QUER ACOMPANHAR?</small>{available.map((group,index)=><button key={group.id} type="button" aria-expanded={active?.id===group.id} aria-controls="tf-experience-shortcuts" onClick={()=>setSelected(group.id)} className={active?.id===group.id?'is-active':''}><span className="tf-topic-number">0{index+1}</span><span><b>{group.label}</b><small>{group.description}</small></span><ArrowUpRight size={17}/></button>)}</nav>
     </div>
