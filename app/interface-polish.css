@@ -98,3 +98,56 @@
 @media(prefers-reduced-motion:reduce) {
   .tf-app.theme-classic .tf-kanban .tf-deal-card.needs-completion .tf-card-finalize { animation:none!important; box-shadow:0 0 0 2px #70ad8930; }
 }
+
+/* Original high-resolution transparent mark, with relief on its silhouette only. */
+@media screen {
+  .tf-app.theme-classic .tf-top .tf-launcher-home {
+    background:transparent!important; border:0!important; box-shadow:none!important; overflow:visible;
+  }
+  .tf-app.theme-classic .tf-top .tf-header-logo {
+    position:relative; display:block; flex:0 0 auto; width:108px; aspect-ratio:1238/594;
+    padding:0; border:0; background:transparent!important; isolation:isolate;
+  }
+  .tf-app.theme-classic .tf-top .tf-header-logo img {
+    display:block; width:100%!important; height:100%!important; object-fit:contain;
+    background:transparent!important; border:0!important; border-radius:0!important; box-shadow:none!important;
+    filter:drop-shadow(0 -0.5px 0 #fff4d4) drop-shadow(.5px 1px 0 #886039)
+      drop-shadow(.5px 1px 0 #67492e) drop-shadow(0 3px 2px #49321a30)
+      drop-shadow(0 0 5px #ffedc24d);
+  }
+  .tf-app.theme-classic .tf-top .tf-header-logo::after {
+    content:''; position:absolute; inset:0; pointer-events:none;
+    background:linear-gradient(120deg,transparent 28%,#fff9e18c 42%,#ffffffba 45%,transparent 53%,#fff1c333 72%,transparent 83%);
+    -webkit-mask:url('/tf-logo-exact.png') center/contain no-repeat;
+    mask:url('/tf-logo-exact.png') center/contain no-repeat;
+    mix-blend-mode:screen;
+  }
+}
+@media screen and (max-width:700px) {
+  .tf-app.theme-classic .tf-top .tf-header-logo { width:92px; }
+}
+
+/* Barely visible paths and softly sculpted portrait settings in every module. */
+@media screen {
+  .tf-app.theme-classic .tf-hologram-home .tf-holo-track,
+  .tf-app.theme-classic .tf-module-experience .tf-module-orbit-track {
+    opacity:.12; box-shadow:none!important;
+  }
+  .tf-app.theme-classic .tf-hologram-home .tf-holo-spark { opacity:.18; }
+  .tf-app.theme-classic .tf-module-experience .tf-experience-halo {
+    background:radial-gradient(ellipse at 28% 20%,#fff 0%,color-mix(in srgb,var(--module-accent) 8%,#f5f8fc) 48%,color-mix(in srgb,var(--module-accent) 16%,#eaf0f7) 100%);
+    border:1px solid #ffffffa6; box-shadow:inset 3px 4px 14px #fff9,inset -5px -8px 20px #637b9210,0 18px 30px -23px #3855754d;
+  }
+  .tf-app.theme-classic .tf-module-experience .tf-module-scenery i {
+    border:1px solid color-mix(in srgb,var(--module-accent) 5%,#ffffffbd);
+    background:radial-gradient(ellipse at 25% 15%,#ffffffed,transparent 60%),linear-gradient(140deg,color-mix(in srgb,var(--module-accent) 5%,#f9fbff),color-mix(in srgb,var(--module-accent) 14%,#e9f0f7));
+    box-shadow:inset 2px 3px 7px #ffffffd9,inset -4px -5px 12px #465c7410,5px 12px 24px -16px #334b6b42;
+  }
+  .tf-app.theme-classic .tf-module-experience:is(.scene-calendar,.scene-precision) .tf-module-scenery {
+    background:radial-gradient(ellipse at 25% 15%,#ffffffed,transparent 65%),linear-gradient(145deg,color-mix(in srgb,var(--module-accent) 4%,#f9fbff),color-mix(in srgb,var(--module-accent) 13%,#edf2f8));
+    border:1px solid #ffffffb3; box-shadow:inset 2px 3px 10px #ffffffb3,inset -5px -7px 18px #536b8410,5px 14px 28px -20px #334b6b42;
+  }
+  .tf-app.theme-classic .tf-module-experience .tf-experience-scene>img {
+    filter:drop-shadow(5px 8px 6px #2439511f);
+  }
+}
