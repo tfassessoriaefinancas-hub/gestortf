@@ -1,0 +1,66 @@
+/* One smoked-glass surface system across workspaces; print styles remain separate. */
+@media screen {
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace { --ink:#f1f4f7; --muted:#bec9d2; --line:#ffffff29; --paper:#1c232c; --card:#19222db8; color:#e5edf3; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace:not(.is-classic-hub) .tf-main {
+   background-image:linear-gradient(110deg,#090e157d,#141b245e 55%,#090e157d),var(--workspace-background)!important;
+ }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content :is(
+ .tf-title,.tf-panel,.tf-entity,.tf-client-list,.tf-metric,.tf-month-comparison,.tf-result-card,.tf-operation-board,
+ .tf-access-list,.tf-access-form,.tf-access-share,.tf-partner-list,.tf-banks,.tf-bank-toolbar,.tf-quick-panel,
+ .tf-experience-stats,.tf-finance-performance>article,.tf-report-summary>div,.tf-report-groups article,
+ .tf-service-grid article,.tf-service-card,.tf-operation-card,.tf-access-list article,.tf-partner-metrics>div,
+ .tf-activity-summary>div,.tf-post-sale-summary>div,.tf-partner-trend-cards>article,.tf-partner-report-cards>article,
+ .tf-scheduled-board,.tf-history-list,.tf-post-sale-list>article,.tf-activity-list>article,.tf-fc-panel,.tf-fc-hero,
+ .tf-fc-contract-summary,.tf-fc-next-due,.tf-fc-result-total,.tf-filters,.tf-activity-filters,.tf-summary,.tf-kanban>article) {
+   background:linear-gradient(135deg,#25313ebb,#121b27aa)!important;
+   border:1px solid #edf7ff30!important; border-top-color:#ffffff4d!important;
+   box-shadow:inset 0 1px 0 #ffffff12,0 12px 30px -20px #0009!important;
+   -webkit-backdrop-filter:blur(16px); backdrop-filter:blur(16px); color:#ecf3f8!important;
+ }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content :is(h1,h2,h3,h4,b,strong) { color:#f2f6fa!important; text-shadow:none!important; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content :is(p,small,label,legend,td,th,em) { color:#c4d0da!important; text-shadow:none!important; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content :is(span,li,a) { color:inherit; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content :is(.tf-title h1,.tf-panel-title h2,.tf-access-list h2,.tf-access-form h2,.tf-fc-section-title h2) { font-weight:750!important; letter-spacing:-.4px; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-title small { color:#b7d9eb!important; font-weight:750; letter-spacing:1.3px; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content :is(.tf-list-head,.tf-op-table>header,thead,.tf-kanban>article>header,.tf-stage-total) { background:#ffffff0c!important; color:#d3e3ee!important; border-color:#ffffff24!important; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content :is(.tf-client-row,.tf-op-table>div,.tf-report-groups article,.tf-bank-catalog-heading,.tf-fc-simple-table td,.tf-fc-simple-table th) { background:transparent!important; border-color:#d8e6ef24!important; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content :is(.tf-client-row:hover,.tf-op-table>div:nth-child(even),tbody tr:nth-child(even)) { background:#ffffff06!important; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content :is(input,select,textarea) { background:#0e1824a6!important; color:#edf4fa!important; border:1px solid #cedfea42!important; box-shadow:inset 0 1px 3px #0002!important; color-scheme:dark; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content :is(input,textarea)::placeholder { color:#9dacb9!important; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content option { color:#edf4fa; background:#1c2938; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content button:not(.tf-hud-card):not(.tf-switch):not(.tf-module-orbit-card) { color:#e4f0f8!important; background-color:#d2e5f011!important; border-color:#d0e3f035!important; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content :is(.tf-primary,button.active,button.is-active,[aria-selected="true"]) { background:linear-gradient(135deg,#496679cc,#304a5ed9)!important; color:#fff!important; border-color:#c2e9fb66!important; box-shadow:inset 0 1px #ffffff26,0 0 16px #b6e3f31a!important; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content button:hover { border-color:#d5f0ff80!important; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-experience-location { padding:10px 16px; background:#c4e5f422!important; border:1px solid #d7f1ff66; border-radius:12px; color:#fff!important; font-size:15px; font-weight:800; box-shadow:0 4px 18px #0002; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-experience-stats>button { background:transparent!important; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-experience-stats>button strong { font-size:28px!important; font-weight:750!important; color:#f3f8fc!important; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-experience-stats>button small { color:#bacbd8!important; font-size:12px!important; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content :is(.tf-metric>i,.tf-client-name>i,.tf-card-avatar) { background:#c1dcea1c!important; color:#d7edf9!important; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban .tf-deal-card { background:linear-gradient(135deg,#344351b3,#1a2632c2)!important; border-color:#dfedf533!important; color:#ebf4fa!important; box-shadow:0 6px 16px #0002!important; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban .tf-deal-card :is(.tf-card-identity strong,.tf-card-detail b,.tf-card-detail span) { color:#e7f0f7!important; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban .tf-deal-card .tf-card-identity small { color:#b9cbd8!important; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban .tf-deal-card :is(.tf-card-facts,.tf-card-heading,.tf-card-identity) { background:transparent!important; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content :is(.tf-card-product,.tf-card-next,.tf-partner-access-note,.tf-access-form fieldset) { background:#ffffff09!important; color:#c7d9e6!important; border-color:#dceeff26!important; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-reports-workspace :is(.tf-report-summary,.tf-report-groups,.tf-op-table) :is(b,strong,small,em) { color:#e2edf6!important; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-reports-workspace .tf-op-table>div:not(.tf-table-empty) { background:transparent!important; border-color:#ffffff24!important; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-reports-workspace .tf-op-table em.done,
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content :is(.done,.ready,.tf-card-pending-label,.tf-card-finalize) { background:#3b936629!important; color:#b7eacb!important; border-color:#77ba934d!important; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content :is(.danger,.overdue,.tf-form-error) { color:#ffb6b6!important; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content :is(.pending,.warning) { color:#f0d49a!important; background:#90753724!important; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-banks article>span b { color:#eff6fc!important; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content :is(.tf-fc-page,.tf-fc-simple-layout,.tf-access-layout,.tf-finance-performance) { background:transparent!important; }
+ /* Dialogs use a denser glass so overlapping content stays readable. */
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace :is(.tf-modal,.tf-client-sheet) { background:#17222eef!important; border-color:#d8eaf33b!important; color:#e8f0f7!important; -webkit-backdrop-filter:blur(20px); backdrop-filter:blur(20px); }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace :is(.tf-modal,.tf-client-sheet) :is(h1,h2,h3,b,strong,label,small,p,span) { color:#dce8f2!important; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace :is(.tf-modal,.tf-client-sheet) :is(input,select,textarea) { background:#0c1724b8!important; color:#eaf3fa!important; border-color:#c1d7e347!important; color-scheme:dark; }
+}
+@media screen {
+ body .tf-settings-popover.light .tf-settings-card { background:#17222eed!important; color:#e6eff6!important; border-color:#d9edf43b!important; -webkit-backdrop-filter:blur(20px); backdrop-filter:blur(20px); }
+ body .tf-settings-popover.light :is(.tf-google-review-settings,.tf-password-settings,.tf-whatsapp-settings,.tf-settings-row) { background:linear-gradient(130deg,#cfdfeb12,#738da408)!important; border-color:#dcecf72e!important; }
+ body .tf-settings-popover.light :is(h2,h3,b) { color:#f0f6fa!important; }
+ body .tf-settings-popover.light :is(small,p,label,code) { color:#bacdda!important; }
+ body .tf-settings-popover.light :is(input,textarea,select) { background:#0d1825a8!important; color:#e8f3fc!important; border-color:#c1d8e34d!important; color-scheme:dark; }
+ body .tf-settings-popover.light :is(input,textarea)::placeholder { color:#a5b9c9!important; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban .tf-deal-card :is(.tf-card-finalize,.tf-card-pending-label) { background:#3b936629!important; color:#b7eacb!important; border-color:#77ba934d!important; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content :is(.tf-fc-result-total .pay,.tf-finance-performance footer b) { color:#b6e6c9!important; }
+}

@@ -646,7 +646,7 @@ export default function Dashboard({
     );
   return (
     <main
-      className={`tf-app light theme-classic has-workspace-scenery${view==="inicio"?" is-classic-hub":""}`}
+      className={`tf-app light theme-classic has-workspace-scenery glass-workspace${view==="inicio"?" is-classic-hub":""}`}
       style={{"--workspace-background":`url('/module-backgrounds/${view==="inicio"?"technology":moduleBackgrounds[view]||"office"}.webp')`} as React.CSSProperties}
     >
       <section className="tf-main">
