@@ -32,6 +32,16 @@ export default function ClassicHome({ name, modules, go }: Props) {
       <p>Tudo conectado. Cada detalhe sob seu controle.</p>
     </header>
     <nav className="tf-hud-console" aria-label="Todos os módulos" style={{ '--hud-rows': rowCount } as CSSProperties}>
+      <svg className="tf-hud-circuit" viewBox="0 0 1200 700" preserveAspectRatio="none" aria-hidden="true">
+        <g fill="none" stroke="currentColor" strokeWidth="1">
+          <path d="M30 140H255L310 195H415M80 555H250L320 485H435M785 185H880V95H1140M775 480H875L945 550H1170M105 330H220V365H390M815 340H1035V285H1170"/>
+          <path opacity=".45" d="M40 153H230L288 211H355M843 198H893V110H1105M800 496H860L931 568H1120"/>
+          <circle cx="600" cy="350" r="168"/><circle cx="600" cy="350" r="182" strokeDasharray="1 13"/>
+          <path strokeWidth="4" strokeDasharray="74 28 16 54" d="M600 172a178 178 0 1 1-.1 0"/>
+        </g>
+        <g fill="currentColor">{[[30,140],[255,140],[80,555],[1140,95],[1170,550],[105,330],[1170,285],[875,480]].map(([x,y])=><circle key={`${x}-${y}`} cx={x} cy={y} r="3"/>)}</g>
+        <g fill="currentColor" opacity=".5">{Array.from({length:14},(_,i)=><rect key={i} x={70+i*9} y={605-(i%4)*4} width="3" height={8+(i%4)*4}/>)}</g>
+      </svg>
       <div className="tf-hud-center">
         <div className="tf-hud-dial">
           <div className="tf-hud-dial-segments" aria-hidden="true"/>
@@ -42,6 +52,8 @@ export default function ClassicHome({ name, modules, go }: Props) {
         <small>Conectando seus negócios</small>
       </div>
       {ordered.map(({ id, label, icon: Icon }, index) => <div key={id} className={`tf-hud-tile${index < 4 ? ' is-primary' : ''}`} style={{
+        '--tile-x': `${[9, 27, 73, 91][index % 4]}%`,
+        '--tile-y': `${12 + Math.floor(index / 4) * 22 + [0, 5, -2, 4][index % 4]}%`,
         '--tile-offset': `${[-18, 15, -6, 24][index % 4]}px`,
         '--tile-column': [1, 2, 4, 5][index % 4],
         '--tile-row': Math.floor(index / 4) + 1,
