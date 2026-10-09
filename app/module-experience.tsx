@@ -4,6 +4,7 @@ import { useState, type CSSProperties } from 'react';
 import { moduleAccentColors } from './module-appearance';
 import { ArrowDown, ArrowUpRight, Pause, Play, UsersRound, Columns3, FileChartColumn, ChartNoAxesCombined, CalendarDays, Landmark, Calculator, WalletCards, ReceiptText, Handshake, ChartSpline, BriefcaseBusiness, MessageCircle, UserRoundCog, type LucideIcon } from 'lucide-react';
 import './module-orbits.css';
+import './module-motion.css';
 
 type Destination = { label: string; icon: LucideIcon; color: string };
 const destinations: Record<string, Destination> = {
@@ -91,7 +92,7 @@ export default function ModuleExperience({view,name,can,go,clientCount,operation
     ...(can('atendimento')?[{id:'atendimento',label:'Em atendimento',value:activeCount,icon:Columns3}]:[]),
   ];
   const sceneLinks=(view==='numeros'?(active?.links||[]):visual.links).filter(id=>id!==view&&can(id)).slice(0,2);
-  return <section className={`tf-module-experience module-${view} layout-${visual.layout} scene-${visual.scene}${motionPaused?' is-motion-paused':''}`} aria-label={`Apresentação de ${info.label}`} style={{'--module-accent':info.color} as CSSProperties}>
+  return <section className={`tf-module-experience has-scene-motion module-${view} layout-${visual.layout} scene-${visual.scene}${motionPaused?' is-motion-paused':''}`} aria-label={`Apresentação de ${info.label}`} style={{'--module-accent':info.color} as CSSProperties}>
     <header className="tf-experience-welcome"><div><span>SEU ESPAÇO DE TRABALHO</span><p>Bem-vindo, <strong>{name.split(' ')[0]}.</strong></p></div><span className="tf-experience-location"><info.icon size={16}/>{info.label}</span></header>
     <div className="tf-experience-composition">
       <div className="tf-experience-copy"><span className="tf-experience-eyebrow">GESTÃO TF · MELHOR QUE BANCO</span><h2>{headline}<br/><em>{highlight}</em></h2><p>{description}</p><button type="button" className="tf-experience-detail" onClick={details}>Explorar {info.label}<ArrowDown size={16}/></button></div>
@@ -114,8 +115,8 @@ export default function ModuleExperience({view,name,can,go,clientCount,operation
       </div>
       <nav className="tf-experience-topics" aria-label="Assuntos do módulo"><small>O QUE VOCÊ QUER ACOMPANHAR?</small>{available.map((group,index)=><button key={group.id} type="button" aria-expanded={active?.id===group.id} aria-controls="tf-experience-shortcuts" onClick={()=>setSelected(group.id)} className={active?.id===group.id?'is-active':''}><span className="tf-topic-number">0{index+1}</span><span><b>{group.label}</b><small>{group.description}</small></span><ArrowUpRight size={17}/></button>)}</nav>
     </div>
-    <div id="tf-experience-shortcuts" className="tf-experience-shortcuts" aria-label={`Atalhos de ${active?.label||info.label}`}>
-      {(active?.links||[]).map(id=>{const item=destinations[id],Icon=item.icon;return <button type="button" key={id} className={id===view?'is-current':undefined} aria-current={id===view?'page':undefined} onClick={()=>navigate(id)} style={{'--shortcut-color':item.color} as CSSProperties}><Icon size={22}/><span>{item.label}</span><ArrowUpRight size={14}/></button>})}
+    <div key={active?.id} id="tf-experience-shortcuts" className="tf-experience-shortcuts" aria-label={`Atalhos de ${active?.label||info.label}`}>
+      {(active?.links||[]).map((id,index)=>{const item=destinations[id],Icon=item.icon;return <button type="button" key={id} className={id===view?'is-current':undefined} aria-current={id===view?'page':undefined} onClick={()=>navigate(id)} style={{'--shortcut-color':item.color,'--motion-order':index} as CSSProperties}><Icon size={22}/><span>{item.label}</span><ArrowUpRight size={14}/></button>})}
     </div>
     {stats.length>0&&<div className="tf-experience-stats">{stats.map(({id,label,value,icon:Icon})=><button key={id} type="button" onClick={()=>navigate(id)}><Icon size={19}/><span><small>{label}</small><strong>{value.toLocaleString('pt-BR')}</strong></span><ArrowUpRight size={14}/></button>)}</div>}
   </section>;

@@ -1,0 +1,61 @@
+/* Short, staggered entrances and glass depth inspired by the supplied motion reference. */
+.tf-app.theme-classic .tf-module-experience.has-scene-motion { --scene-entry-x:18px; --scene-entry-turn:-6deg; }
+.tf-app.theme-classic .tf-module-experience.has-scene-motion.layout-portrait-left { --scene-entry-x:-18px; --scene-entry-turn:6deg; }
+.tf-app.theme-classic .tf-module-experience.has-scene-motion.layout-portrait-center { --scene-entry-x:0px; --scene-entry-turn:-4deg; }
+.tf-app.theme-classic .has-scene-motion .tf-experience-composition { perspective:1100px; }
+.tf-app.theme-classic .has-scene-motion .tf-experience-copy>* { animation:tf-module-text-enter .55s cubic-bezier(.2,.7,.2,1) backwards; }
+.tf-app.theme-classic .has-scene-motion .tf-experience-copy>h2 { animation-delay:.07s; }
+.tf-app.theme-classic .has-scene-motion .tf-experience-copy>p { animation-delay:.14s; }
+.tf-app.theme-classic .has-scene-motion .tf-experience-copy>button { animation-delay:.21s; }
+.tf-app.theme-classic .has-scene-motion .tf-experience-scene { animation:tf-module-scene-enter .75s cubic-bezier(.2,.7,.2,1) .06s backwards; }
+.tf-app.theme-classic .has-scene-motion .tf-experience-topics>button { animation:tf-module-text-enter .55s cubic-bezier(.2,.7,.2,1) .12s backwards; transition:background .2s,border-color .2s,transform .2s; }
+.tf-app.theme-classic .has-scene-motion .tf-experience-topics>button:nth-of-type(2) { animation-delay:.19s; }
+.tf-app.theme-classic .has-scene-motion .tf-experience-topics>button:nth-of-type(3) { animation-delay:.26s; }
+.tf-app.theme-classic .has-scene-motion .tf-experience-shortcuts { perspective:1000px; }
+.tf-app.theme-classic .tf-module-experience.has-scene-motion .tf-experience-shortcuts>button {
+  position:relative; isolation:isolate; overflow:hidden;
+  border:1px solid color-mix(in srgb,var(--shortcut-color) 17%,#fff);
+  border-top-color:#fff;
+  background:linear-gradient(130deg,#ffffffed,#ffffffc7 60%,color-mix(in srgb,var(--shortcut-color) 7%,#f6faff));
+  box-shadow:inset 0 1px 0 #fff,0 3px 5px #253b5306,0 13px 24px -18px #253b5359;
+  -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px);
+  transform-origin:center bottom;
+  animation:tf-module-card-enter .65s cubic-bezier(.2,.75,.2,1) calc(var(--motion-order,0) * 65ms) backwards;
+  transition:transform .24s,box-shadow .24s,border-color .24s,background .24s;
+}
+.tf-app.theme-classic .has-scene-motion .tf-experience-shortcuts>button::before {
+  content:''; position:absolute; inset:0; z-index:-1; pointer-events:none;
+  background:linear-gradient(112deg,transparent 15%,#fff9 45%,transparent 70%);
+  transform:translateX(-130%); transition:transform .55s ease;
+}
+.tf-app.theme-classic .has-scene-motion .tf-experience-shortcuts>button>svg { flex:none; transition:transform .24s; }
+.tf-app.theme-classic .has-scene-motion .tf-experience-stats>button { animation:tf-module-text-enter .6s ease .2s backwards; }
+.tf-app.theme-classic .has-scene-motion .tf-experience-stats>button:nth-child(2) { animation-delay:.27s; }
+.tf-app.theme-classic .has-scene-motion .tf-experience-stats>button:nth-child(3) { animation-delay:.34s; }
+.tf-app.theme-classic .has-scene-motion .tf-experience-shortcuts:focus-within>button,
+.tf-app.theme-classic .has-scene-motion .tf-experience-topics:focus-within>button,
+.tf-app.theme-classic .has-scene-motion .tf-experience-scene:focus-within { animation:none; }
+.tf-app.theme-classic .has-scene-motion .tf-experience-shortcuts>button:focus-visible { border-color:var(--shortcut-color); box-shadow:0 0 0 3px color-mix(in srgb,var(--shortcut-color) 12%,transparent); }
+@media(hover:hover) and (pointer:fine) {
+  .tf-app.theme-classic .has-scene-motion .tf-experience-shortcuts>button:hover { transform:translateY(-4px) rotateX(3deg); border-color:var(--shortcut-color); box-shadow:inset 0 1px 0 #fff,0 12px 26px -12px #253b534d; }
+  .tf-app.theme-classic .has-scene-motion .tf-experience-shortcuts>button:hover::before { transform:translateX(130%); }
+  .tf-app.theme-classic .has-scene-motion .tf-experience-shortcuts>button:hover>svg:last-child { transform:translate(2px,-2px); }
+  .tf-app.theme-classic .has-scene-motion .tf-experience-topics>button:hover { transform:translateX(3px); }
+}
+.tf-app.theme-classic .has-scene-motion .tf-experience-shortcuts>button:active { transform:translateY(1px) scale(.985); }
+@keyframes tf-module-text-enter { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+@keyframes tf-module-scene-enter { from { opacity:0; transform:translate3d(var(--scene-entry-x),12px,0) rotateY(var(--scene-entry-turn)) scale(.97); } to { opacity:1; transform:none; } }
+@keyframes tf-module-card-enter { from { opacity:0; transform:translate3d(-14px,18px,0) rotateX(12deg) rotateY(-4deg) scale(.97); } to { opacity:1; transform:none; } }
+@media(max-width:700px) {
+  .tf-app.theme-classic .has-scene-motion .tf-experience-scene { animation-duration:.6s; }
+  .tf-app.theme-classic .tf-module-experience.has-scene-motion .tf-experience-shortcuts>button { animation-duration:.5s; }
+}
+@media(prefers-reduced-motion:reduce) {
+  .tf-app.theme-classic .tf-module-experience.has-scene-motion .tf-experience-copy>*,
+  .tf-app.theme-classic .tf-module-experience.has-scene-motion .tf-experience-scene,
+  .tf-app.theme-classic .tf-module-experience.has-scene-motion .tf-experience-topics>button,
+  .tf-app.theme-classic .tf-module-experience.has-scene-motion .tf-experience-shortcuts>button,
+  .tf-app.theme-classic .tf-module-experience.has-scene-motion .tf-experience-stats>button { animation:none; transition:none; transform:none; }
+  .tf-app.theme-classic .tf-module-experience.has-scene-motion .tf-experience-shortcuts>button::before { display:none; }
+  .tf-app.theme-classic .tf-module-experience.has-scene-motion .tf-experience-shortcuts>button>svg { transition:none; transform:none; }
+}
