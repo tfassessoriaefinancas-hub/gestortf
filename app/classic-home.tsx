@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, type CSSProperties } from 'react';
-import { ArrowUpRight, Sparkles, type LucideIcon } from 'lucide-react';
+import { Sparkles, Settings2, Cog, type LucideIcon } from 'lucide-react';
 import './hologram-home.css';
 import './home-depth.css';
 
@@ -14,13 +14,14 @@ const labels: Record<string, string> = {
 };
 const primaryModules = ['numeros', 'atendimento', 'clientes', 'producao'];
 
-const descriptions: Record<string,string> = {
-  numeros:'Resultados e indicadores', atendimento:'Negócios em movimento', clientes:'Relacionamentos que crescem',
-  producao:'Sua operação em foco', compromissos:'Organize seu dia', bancos:'Instituições parceiras',
-  calculadora:'Simule novas possibilidades', financeiro:'Controle e clareza', comissoes:'Acompanhe seus ganhos',
-  notas:'Documentos e faturamento', parceiros:'Conexões de confiança', relatorios:'Dados para decidir',
-  servicos:'Soluções para seus clientes', posvenda:'Continue o relacionamento', usuarios:'Equipe e permissões',
-};
+// Fixed perspective planes echo the reference while keeping every menu clickable.
+const planes = [
+ [8,30,14,-14,3], [25,15,14,12,-3], [24,51,15,-10,-3],
+ [70,17,13,13,-3], [89,12,12,15,-3], [82,38,14,12,-2],
+ [68,58,13,-12,3], [8,7,11,-12,2], [8,60,12,-9,2],
+ [91,64,11,12,-2], [44,79,12,-8,2], [61,82,12,8,-2],
+ [26,82,12,-10,2], [81,85,12,12,-2], [47,2,11,-8,2],
+];
 
 export default function ClassicHome({ name, modules, go }: Props) {
   const [opening, setOpening] = useState<string | null>(null);
@@ -32,13 +33,13 @@ export default function ClassicHome({ name, modules, go }: Props) {
   const items = modules.filter(item => item.id !== 'inicio');
   const ordered = [...items.filter(item => primaryModules.includes(item.id)), ...items.filter(item => !primaryModules.includes(item.id))];
 
-  return <section className="tf-hud-home is-spatial" aria-label="Central de módulos Gestão TF">
+  return <section className="tf-hud-home is-spatial is-reference" aria-label="Central de módulos Gestão TF">
     <header className="tf-hud-heading">
       <span><Sparkles size={13} aria-hidden="true"/> OLÁ, {name.trim().split(' ')[0].toUpperCase()}</span>
       <h1>Seu universo de negócios.</h1>
       <p>Tudo conectado. Cada detalhe sob seu controle.</p>
     </header>
-    <nav className="tf-hud-console" aria-label="Todos os módulos">
+    <nav className="tf-hud-console" aria-label="Todos os módulos" style={{"--mobile-rows":Math.ceil(Math.max(0,ordered.length - 4) / 3)} as CSSProperties}>
       <svg className="tf-hud-circuit" viewBox="0 0 1200 700" preserveAspectRatio="none" aria-hidden="true">
         <g fill="none" stroke="currentColor" strokeWidth="1">
           <path d="M30 140H255L310 195H415M80 555H250L320 485H435M785 185H880V95H1140M775 480H875L945 550H1170M105 330H220V365H390M815 340H1035V285H1170"/>
@@ -49,19 +50,39 @@ export default function ClassicHome({ name, modules, go }: Props) {
         <g fill="currentColor">{[[30,140],[255,140],[80,555],[1140,95],[1170,550],[105,330],[1170,285],[875,480]].map(([x,y])=><circle key={`${x}-${y}`} cx={x} cy={y} r="3"/>)}</g>
         <g fill="currentColor" opacity=".5">{Array.from({length:14},(_,i)=><rect key={i} x={70+i*9} y={605-(i%4)*4} width="3" height={8+(i%4)*4}/>)}</g>
       </svg>
+      <div className="tf-reference-core" aria-hidden="true">
+        <svg viewBox="0 0 360 400" className="tf-reference-rings">
+          <defs><radialGradient id="tf-ref-glow"><stop stopColor="#69e9ff" stopOpacity=".35"/><stop offset="1" stopColor="#2abbd7" stopOpacity="0"/></radialGradient></defs>
+          <ellipse cx="180" cy="200" rx="175" ry="198" fill="url(#tf-ref-glow)"/>
+          <g fill="none" stroke="currentColor">
+            <ellipse cx="180" cy="200" rx="164" ry="190" opacity=".25"/>
+            <ellipse cx="180" cy="200" rx="151" ry="175" opacity=".65"/>
+            <ellipse cx="180" cy="200" rx="136" ry="158" strokeWidth="13" strokeDasharray="110 36 60 85 130 45" opacity=".8"/>
+            <ellipse cx="180" cy="200" rx="122" ry="142" strokeWidth="4" strokeDasharray="200 38 100 70" opacity=".55"/>
+            <ellipse cx="180" cy="200" rx="102" ry="118" strokeWidth="1.5" opacity=".75"/>
+            <path d="M105 251C65 164 123 101 198 112M249 150C293 236 234 299 163 286" strokeWidth="3"/>
+          </g>
+          <path d="M186 103l17 10-19 5M176 280l-18 5 15 11" fill="currentColor"/>
+        </svg>
+        <Cog className="tf-reference-cog cog-main" strokeWidth={2.8}/>
+        <Cog className="tf-reference-cog cog-small" strokeWidth={2.8}/>
+        <Settings2 className="tf-reference-cog cog-control" strokeWidth={2}/>
+      </div>
       {ordered.map(({ id, label, icon: Icon }, index) => <div key={id} className={`tf-hud-tile${primaryModules.includes(id) ? ' is-primary' : ''}`} style={{
-        '--card-yaw': `${[-7, 5, -4, 7][index % 4]}deg`,
-        '--card-roll': `${[-1.5, 1, -1, 1.5][index % 4]}deg`,
-        '--tile-offset': `${[0, 14, -4, 10][index % 4]}px`,
-        '--tone': primaryModules.includes(id) ? '#e8d6b2' : '#d0e6ef',
+        '--tile-x': `${planes[index % planes.length][0]}%`,
+        '--tile-y': `${planes[index % planes.length][1]}%`,
+        '--tile-width': `${planes[index % planes.length][2]}%`,
+        '--card-yaw': `${planes[index % planes.length][3]}deg`,
+        '--card-roll': `${planes[index % planes.length][4]}deg`,
+        '--mobile-y': `${index < 4 ? [35,180,35,180][index] : 340 + Math.floor((index - 4) / 3) * 138}px`,
+        '--mobile-x': `${index < 4 ? [16,16,84,84][index] : [17,50,83][(index - 4) % 3]}%`,
         '--float-delay': `${-index * .67}s`,
         '--float-duration': `${6 + (index % 4) * .7}s`,
       } as CSSProperties}>
         <button type="button" className={`tf-hud-card${opening === id ? ' is-opening' : ''}`} onClick={() => { if (!opening) setOpening(id); }} aria-busy={opening === id} aria-label={`Abrir ${label}`}>
           <span className="tf-hud-card-shine" aria-hidden="true"/>
-          <span className="tf-hud-icon" aria-hidden="true"><Icon className="tf-hud-icon-depth" strokeWidth={2.3}/><Icon className="tf-hud-icon-face" strokeWidth={1.6}/></span>
-          <span className="tf-hud-copy"><span className="tf-hud-label">{labels[id] || label}</span><span className="tf-hud-description">{descriptions[id]}</span></span>
-          <ArrowUpRight className="tf-hud-arrow" size={14} aria-hidden="true"/>
+          <span className="tf-hud-icon" aria-hidden="true"><Icon strokeWidth={1.8}/></span>
+          <span className="tf-hud-label">{labels[id] || label}</span>
         </button>
       </div>)}
     </nav>
