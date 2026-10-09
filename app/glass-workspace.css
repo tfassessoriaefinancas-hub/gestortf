@@ -64,3 +64,10 @@
  .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban .tf-deal-card :is(.tf-card-finalize,.tf-card-pending-label) { background:#3b936629!important; color:#b7eacb!important; border-color:#77ba934d!important; }
  .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content :is(.tf-fc-result-total .pay,.tf-finance-performance footer b) { color:#b6e6c9!important; }
 }
+/* Settings follow the same photographic night setting as the internal modules. */
+@media screen {
+ body .tf-settings-popover.light .tf-settings-card {
+  background-image:linear-gradient(110deg,#0e1720c9,#101922a8),url('/module-backgrounds/night-executive.webp')!important;
+  background-size:cover!important; background-position:center!important;
+ }
+}

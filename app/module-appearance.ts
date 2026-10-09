@@ -9,8 +9,8 @@ export const moduleAccentColors: Record<string, string> = {
 
 // Each workspace selects a scene that reflects its purpose.
 export const moduleBackgrounds: Record<string,string> = {
-  numeros:'office', atendimento:'handshake', clientes:'clients', producao:'planning',
-  financeiro:'finance', comissoes:'analytics', notas:'documents', parceiros:'handshake',
-  compromissos:'agenda', bancos:'architecture', calculadora:'finance', relatorios:'analytics',
-  servicos:'architecture', posvenda:'clients', usuarios:'team',
+  numeros:'night-executive', atendimento:'night-service', clientes:'night-service', producao:'night-planning',
+  financeiro:'night-documents', comissoes:'night-documents', notas:'night-documents', parceiros:'night-service',
+  compromissos:'night-planning', bancos:'night-executive', calculadora:'night-documents', relatorios:'night-executive',
+  servicos:'night-executive', posvenda:'night-service', usuarios:'night-planning',
 };
