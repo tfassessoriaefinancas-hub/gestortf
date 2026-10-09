@@ -41,6 +41,13 @@ const copy: Record<string,[string,string,string]> = {
   posvenda:['O cuidado continua.','Depois de cada conquista.','Mantenha o relacionamento ativo e acompanhe os próximos contatos.'],
   usuarios:['Sua equipe conectada.','Cada acesso organizado.','Gerencie usuários, parceiros e as áreas autorizadas para cada pessoa.'],
 };
+// Each workspace selects a scene that reflects its purpose.
+const moduleBackgrounds: Record<string,string> = {
+  numeros:'office', atendimento:'handshake', clientes:'clients', producao:'planning',
+  financeiro:'finance', comissoes:'analytics', notas:'documents', parceiros:'handshake',
+  compromissos:'agenda', bancos:'architecture', calculadora:'finance', relatorios:'analytics',
+  servicos:'architecture', posvenda:'clients', usuarios:'team',
+};
 type ModuleVisual = { layout:'original'|'portrait-left'|'portrait-right'|'portrait-center'; scene:string; caption:string; links:string[] };
 const visuals:Record<string,ModuleVisual> = {
   numeros:{layout:'original',scene:'original',caption:'',links:[]},
@@ -91,7 +98,7 @@ export default function ModuleExperience({view,name,can,go,clientCount,operation
     ...(can('atendimento')?[{id:'atendimento',label:'Em atendimento',value:activeCount,icon:Columns3}]:[]),
   ];
   const sceneLinks=(view==='numeros'?(active?.links||[]):visual.links).filter(id=>id!==view&&can(id)).slice(0,2);
-  return <section className={`tf-module-experience has-scene-motion module-${view} layout-${visual.layout} scene-${visual.scene}`} aria-label={`Apresentação de ${info.label}`} style={{'--module-accent':info.color} as CSSProperties}>
+  return <section className={`tf-module-experience has-scene-motion cinematic-scene module-${view} layout-${visual.layout} scene-${visual.scene}`} aria-label={`Apresentação de ${info.label}`} style={{'--module-accent':info.color,'--module-background':`url('/module-backgrounds/${moduleBackgrounds[view]||'office'}.webp')`} as CSSProperties}>
     <header className="tf-experience-welcome"><div><span>SEU ESPAÇO DE TRABALHO</span><p>Bem-vindo, <strong>{name.split(' ')[0]}.</strong></p></div><span className="tf-experience-location"><info.icon size={16}/>{info.label}</span></header>
     <div className="tf-experience-composition">
       <div className="tf-experience-copy"><span className="tf-experience-eyebrow">GESTÃO TF · MELHOR QUE BANCO</span><h2>{headline}<br/><em>{highlight}</em></h2><p>{description}</p><button type="button" className="tf-experience-detail" onClick={details}>Explorar {info.label}<ArrowDown size={16}/></button></div>

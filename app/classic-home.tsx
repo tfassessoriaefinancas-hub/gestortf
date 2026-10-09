@@ -1,7 +1,7 @@
 'use client';
 
-import { type CSSProperties } from 'react';
-import { ArrowUpRight, type LucideIcon } from 'lucide-react';
+import { useEffect, useState, type CSSProperties } from 'react';
+import { ArrowUpRight, Sparkles, type LucideIcon } from 'lucide-react';
 import { moduleAccentColors } from './module-appearance';
 import './hologram-home.css';
 
@@ -15,43 +15,47 @@ const labels: Record<string, string> = {
 const primaryModules = ['numeros', 'atendimento', 'clientes', 'producao'];
 
 export default function ClassicHome({ name, modules, go }: Props) {
+  const [opening, setOpening] = useState<string | null>(null);
+  useEffect(() => {
+    if (!opening) return;
+    const timer = window.setTimeout(() => go(opening), 180);
+    return () => window.clearTimeout(timer);
+  }, [opening, go]);
   const items = modules.filter(item => item.id !== 'inicio');
-  const rings = [
-    { id: 'inner', items: items.filter(item => primaryModules.includes(item.id)), start: 0 },
-    { id: 'outer', items: items.filter(item => !primaryModules.includes(item.id)), start: 6 },
-  ];
+  const ordered = [...items.filter(item => primaryModules.includes(item.id)), ...items.filter(item => !primaryModules.includes(item.id))];
+  const rowCount = Math.max(2, Math.ceil(ordered.length / 4));
 
-  return <section className="tf-hologram-home" aria-label="Central de módulos Gestão TF">
-    <header className="tf-holo-heading">
-      <span>OLÁ, {name.trim().split(' ')[0].toUpperCase()}</span>
+  return <section className="tf-hud-home" aria-label="Central de módulos Gestão TF">
+    <header className="tf-hud-heading">
+      <span><Sparkles size={13} aria-hidden="true"/> OLÁ, {name.trim().split(' ')[0].toUpperCase()}</span>
       <h1>Seu universo de negócios.</h1>
-      <p>Escolha um módulo e siga em frente.</p>
+      <p>Tudo conectado. Cada detalhe sob seu controle.</p>
     </header>
-    <nav className="tf-holo-space" aria-label="Todos os módulos">
-      <div className="tf-holo-core">
-        <img src="/tf-logo-exact.png" alt="TF Assessoria & Finanças" width={1238} height={594}/>
+    <nav className="tf-hud-console" aria-label="Todos os módulos" style={{ '--hud-rows': rowCount } as CSSProperties}>
+      <div className="tf-hud-center">
+        <div className="tf-hud-dial">
+          <div className="tf-hud-dial-segments" aria-hidden="true"/>
+          <div className="tf-hud-brand"><img src="/tf-logo-exact.png" alt="TF Assessoria & Finanças" width={1238} height={594}/></div>
+          <i className="tf-hud-light light-one" aria-hidden="true"/><i className="tf-hud-light light-two" aria-hidden="true"/>
+        </div>
         <span>CENTRAL DE MÓDULOS</span>
+        <small>Conectando seus negócios</small>
       </div>
-      {rings.filter(ring => ring.items.length).map(ring => <div key={ring.id} className={`tf-holo-ring tf-holo-ring-${ring.id}`}>
-        <div className="tf-holo-track" aria-hidden="true"/>
-        {[18, 55, 88].map(start => <span key={start} className="tf-holo-spark" aria-hidden="true" style={{ '--start': `${start}%` } as CSSProperties}/>)}
-        {ring.items.map(({ id, label, icon: Icon }, index) => <div key={id} className="tf-holo-anchor" style={{
-          '--start': `${ring.start + index * 100 / ring.items.length}%`,
-          '--tone': moduleAccentColors[id] || '#31618f',
-          '--glint-delay': `${-index * .73}s`,
-        } as CSSProperties}>
-          <button type="button" className="tf-holo-card" onClick={() => go(id)} aria-label={`Abrir ${label}`} title={label}>
-            <span className="tf-holo-glint" aria-hidden="true"/>
-            <Icon className="tf-holo-icon" strokeWidth={1.6} aria-hidden="true"/>
-            <span className="tf-holo-label">{labels[id] || label}</span>
-            <ArrowUpRight className="tf-holo-arrow" size={12} aria-hidden="true"/>
-          </button>
-        </div>)}
+      {ordered.map(({ id, label, icon: Icon }, index) => <div key={id} className={`tf-hud-tile${index < 4 ? ' is-primary' : ''}`} style={{
+        '--tile-column': [1, 2, 4, 5][index % 4],
+        '--tile-row': Math.floor(index / 4) + 1,
+        '--tone': moduleAccentColors[id] || '#31618f',
+        '--float-delay': `${-index * .67}s`,
+        '--float-duration': `${6 + (index % 4) * .7}s`,
+      } as CSSProperties}>
+        <button type="button" className={`tf-hud-card${opening === id ? ' is-opening' : ''}`} onClick={() => { if (!opening) setOpening(id); }} aria-busy={opening === id} aria-label={`Abrir ${label}`}>
+          <span className="tf-hud-card-shine" aria-hidden="true"/>
+          <span className="tf-hud-icon"><Icon strokeWidth={1.45} aria-hidden="true"/></span>
+          <span className="tf-hud-label">{labels[id] || label}</span>
+          <ArrowUpRight className="tf-hud-arrow" size={14} aria-hidden="true"/>
+        </button>
       </div>)}
     </nav>
-    <footer className="tf-holo-footer">
-      <span>GESTÃO TF <i aria-hidden="true"/> CONECTANDO SEUS NEGÓCIOS</span>
-
-    </footer>
+    <footer className="tf-hud-footer"><span>GESTÃO TF</span><i aria-hidden="true"/>SEU PRÓXIMO PASSO COMEÇA AQUI</footer>
   </section>;
 }
