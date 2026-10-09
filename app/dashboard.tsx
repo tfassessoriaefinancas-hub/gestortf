@@ -2721,17 +2721,13 @@ function Banks() {
           ))}
         </section>
         <section className="tf-banks">
-          <header className="tf-bank-catalog-heading"><span><small>CÓDIGO COMPE</small><b>CÓDIGO — BANCO</b></span><small>Centrais mantidas em fonte oficial</small></header>
-          {visibleBanks.map((bank,index) => (
+          <header className="tf-bank-catalog-heading"><span><small>INSTITUIÇÕES</small><b>Bancos e plataformas</b></span><small>Centrais mantidas em fonte oficial</small></header>
+          {visibleBanks.map((bank) => (
             <article key={bank.code}>
-              <strong className="tf-bank-order">{String(index+1).padStart(2,'0')}</strong>
-              <i className="tf-bank-code-tile" style={{ background: bank.color }}>{bank.code}</i>
               <i className="tf-bank-logo"><img src={`/bank-logos/${bank.code}.svg`} alt={`Logomarca ${bank.name}`} width={50} height={46} loading="lazy"/></i>
               <span>
-                <b>{bank.code} — {bank.name}</b>
-                <small>{bank.service || "Instituição financeira"}{bank.phone ? ` · ${bank.phone}` : " · Central no site oficial"}</small>
+                <b>{bank.name}</b>
               </span>
-              <em>Ativo</em>
               <a href={bank.officialUrl} target="_blank" rel="noreferrer" aria-label={`Abrir atendimento oficial de ${bank.name}`}><ExternalLink /></a>
             </article>
           ))}
@@ -2833,7 +2829,7 @@ function ReportsFiltered({
     URL.revokeObjectURL(a.href);
   };
   return (
-    <>
+    <section className="tf-reports-workspace">
       <Title
         over="INTELIGÊNCIA COMERCIAL"
         title="Relatórios"
@@ -2933,7 +2929,7 @@ function ReportsFiltered({
           )}
         </div>
       </section>
-    </>
+    </section>
   );
 }
 const permissionLabels:Record<string,string>={inicio:'Início',clientes:'Clientes',atendimento:'Atendimento / Kanban',producao:'Produção',parceiros:'Parceiros',servicos:'Serviços',financeiro:'Financeiro / Comissões',notas:'Notas fiscais',bancos:'Bancos e financiamentos',calculadora:'Calculadora financeira',relatorios:'Relatórios',posvenda:'Pós-venda'};

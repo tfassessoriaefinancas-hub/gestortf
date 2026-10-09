@@ -13,8 +13,8 @@
 .tf-app.theme-classic .tf-holo-core>span { color:#335674; font-size:8px; font-weight:750; letter-spacing:2px; white-space:nowrap; }
 .tf-app.theme-classic .tf-holo-ring { position:absolute; inset:0; pointer-events:none; --duration:100s; --direction:normal; --rx:24%; --ry:170px; --card-width:150px; --card-height:66px; }
 .tf-app.theme-classic .tf-holo-ring-outer { --duration:140s; --direction:reverse; --rx:calc(50% - 44px); --ry:285px; --card-width:60px; --card-height:60px; }
-.tf-app.theme-classic .tf-holo-track { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:calc(var(--rx) * 2); height:calc(var(--ry) * 2); border:1px solid #ffffff70; border-radius:50%; box-shadow:0 0 22px #e4f5ff15; }
-.tf-app.theme-classic .tf-holo-ring-outer .tf-holo-track { border-color:#ffffff48; }
+.tf-app.theme-classic .tf-holo-track { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:calc(var(--rx) * 2); height:calc(var(--ry) * 2); border:1px solid #ffffff30; border-radius:50%; box-shadow:0 0 22px #e4f5ff15; }
+.tf-app.theme-classic .tf-holo-ring-outer .tf-holo-track { border-color:#ffffff20; }
 /* A zero-sized path follower leaves every card upright while it travels. */
 .tf-app.theme-classic :is(.tf-holo-anchor,.tf-holo-spark) {
   position:absolute; top:0; left:0; width:0; height:0;

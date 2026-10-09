@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, type CSSProperties } from 'react';
-import { ArrowUpRight, Pause, Play, type LucideIcon } from 'lucide-react';
+import { type CSSProperties } from 'react';
+import { ArrowUpRight, type LucideIcon } from 'lucide-react';
 import { moduleAccentColors } from './module-appearance';
 import './hologram-home.css';
 
@@ -15,14 +15,13 @@ const labels: Record<string, string> = {
 const primaryModules = ['numeros', 'atendimento', 'clientes', 'producao'];
 
 export default function ClassicHome({ name, modules, go }: Props) {
-  const [paused, setPaused] = useState(false);
   const items = modules.filter(item => item.id !== 'inicio');
   const rings = [
     { id: 'inner', items: items.filter(item => primaryModules.includes(item.id)), start: 0 },
     { id: 'outer', items: items.filter(item => !primaryModules.includes(item.id)), start: 6 },
   ];
 
-  return <section className={`tf-hologram-home${paused ? ' is-paused' : ''}`} aria-label="Central de módulos Gestão TF">
+  return <section className="tf-hologram-home" aria-label="Central de módulos Gestão TF">
     <header className="tf-holo-heading">
       <span>OLÁ, {name.trim().split(' ')[0].toUpperCase()}</span>
       <h1>Seu universo de negócios.</h1>
@@ -52,10 +51,7 @@ export default function ClassicHome({ name, modules, go }: Props) {
     </nav>
     <footer className="tf-holo-footer">
       <span>GESTÃO TF <i aria-hidden="true"/> CONECTANDO SEUS NEGÓCIOS</span>
-      <button type="button" onClick={() => setPaused(value => !value)} aria-pressed={paused} aria-label={paused ? 'Retomar movimento dos ícones' : 'Pausar movimento dos ícones'}>
-        {paused ? <Play size={13} aria-hidden="true"/> : <Pause size={13} aria-hidden="true"/>}
-        {paused ? 'Retomar movimento' : 'Pausar movimento'}
-      </button>
+
     </footer>
   </section>;
 }
