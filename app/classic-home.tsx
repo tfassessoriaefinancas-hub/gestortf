@@ -14,12 +14,12 @@ const labels: Record<string, string> = {
 };
 const primaryModules = ['numeros', 'atendimento', 'clientes', 'producao'];
 
-// Bright accents belong only to the navigation, keeping workspace status colors intact.
-const homeAccents: Record<string,string> = {
-  numeros:'#f4c975', atendimento:'#76c8ff', clientes:'#c8a4ff', producao:'#76e1b5',
-  compromissos:'#ffba8d', bancos:'#91beff', calculadora:'#bba8ff', financeiro:'#7ce2b3',
-  comissoes:'#a6e7c0', notas:'#ff9fb9', parceiros:'#80dedb', relatorios:'#a5b8ff',
-  servicos:'#ebca84', posvenda:'#80dabf', usuarios:'#e2aaf0',
+const descriptions: Record<string,string> = {
+  numeros:'Resultados e indicadores', atendimento:'Negócios em movimento', clientes:'Relacionamentos que crescem',
+  producao:'Sua operação em foco', compromissos:'Organize seu dia', bancos:'Instituições parceiras',
+  calculadora:'Simule novas possibilidades', financeiro:'Controle e clareza', comissoes:'Acompanhe seus ganhos',
+  notas:'Documentos e faturamento', parceiros:'Conexões de confiança', relatorios:'Dados para decidir',
+  servicos:'Soluções para seus clientes', posvenda:'Continue o relacionamento', usuarios:'Equipe e permissões',
 };
 
 export default function ClassicHome({ name, modules, go }: Props) {
@@ -49,18 +49,18 @@ export default function ClassicHome({ name, modules, go }: Props) {
         <g fill="currentColor">{[[30,140],[255,140],[80,555],[1140,95],[1170,550],[105,330],[1170,285],[875,480]].map(([x,y])=><circle key={`${x}-${y}`} cx={x} cy={y} r="3"/>)}</g>
         <g fill="currentColor" opacity=".5">{Array.from({length:14},(_,i)=><rect key={i} x={70+i*9} y={605-(i%4)*4} width="3" height={8+(i%4)*4}/>)}</g>
       </svg>
-      {ordered.map(({ id, label, icon: Icon }, index) => <div key={id} className={`tf-hud-tile${index < 4 ? ' is-primary' : ''}`} style={{
+      {ordered.map(({ id, label, icon: Icon }, index) => <div key={id} className={`tf-hud-tile${primaryModules.includes(id) ? ' is-primary' : ''}`} style={{
         '--card-yaw': `${[-7, 5, -4, 7][index % 4]}deg`,
         '--card-roll': `${[-1.5, 1, -1, 1.5][index % 4]}deg`,
         '--tile-offset': `${[0, 14, -4, 10][index % 4]}px`,
-        '--tone': homeAccents[id] || '#91cfff',
+        '--tone': primaryModules.includes(id) ? '#e8d6b2' : '#d0e6ef',
         '--float-delay': `${-index * .67}s`,
         '--float-duration': `${6 + (index % 4) * .7}s`,
       } as CSSProperties}>
         <button type="button" className={`tf-hud-card${opening === id ? ' is-opening' : ''}`} onClick={() => { if (!opening) setOpening(id); }} aria-busy={opening === id} aria-label={`Abrir ${label}`}>
           <span className="tf-hud-card-shine" aria-hidden="true"/>
-          <span className="tf-hud-icon"><Icon strokeWidth={2} aria-hidden="true"/></span>
-          <span className="tf-hud-label">{labels[id] || label}</span>
+          <span className="tf-hud-icon" aria-hidden="true"><Icon className="tf-hud-icon-depth" strokeWidth={2.3}/><Icon className="tf-hud-icon-face" strokeWidth={1.6}/></span>
+          <span className="tf-hud-copy"><span className="tf-hud-label">{labels[id] || label}</span><span className="tf-hud-description">{descriptions[id]}</span></span>
           <ArrowUpRight className="tf-hud-arrow" size={14} aria-hidden="true"/>
         </button>
       </div>)}
