@@ -1,9 +1,8 @@
 'use client';
 
 import { useEffect, useState, type CSSProperties } from 'react';
-import { Sparkles, Settings2, Cog, type LucideIcon } from 'lucide-react';
+import { Sparkles, Cog, type LucideIcon } from 'lucide-react';
 import './hologram-home.css';
-import './home-depth.css';
 
 type Module = { id: string; label: string; icon: LucideIcon };
 type Props = { name: string; modules: Module[]; go: (id: string) => void };
@@ -14,13 +13,19 @@ const labels: Record<string, string> = {
 };
 const primaryModules = ['numeros', 'atendimento', 'clientes', 'producao'];
 
-// Fixed perspective planes echo the reference while keeping every menu clickable.
+// Photo and controls share one coordinate space: pen tip at 48.4%, 46.5%.
 const planes = [
- [8,30,14,-14,3], [25,15,14,12,-3], [24,51,15,-10,-3],
- [70,17,13,13,-3], [89,12,12,15,-3], [82,38,14,12,-2],
- [68,58,13,-12,3], [8,7,11,-12,2], [8,60,12,-9,2],
- [91,64,11,12,-2], [44,79,12,-8,2], [61,82,12,8,-2],
- [26,82,12,-10,2], [81,85,12,12,-2], [47,2,11,-8,2],
+ [10,35,11,-16,2], [26,21,11,-12,-3], [13,62,11,-14,2],
+ [72,20,10,14,-3], [72,55,10,12,-2], [90,65,10,14,-2],
+ [88,43,10,14,-3], [10,12,10,-14,2], [55,13,10,10,-2],
+ [88,15,10,14,-3], [28,79,11,-10,2], [48,83,11,8,-2],
+ [68,80,11,12,-2], [88,87,11,14,-2],
+];
+// A compact perimeter on phones leaves the hand and pen visible in the center.
+const mobilePlanes = [
+ [15,29], [15,10], [15,48], [84,12], [84,49], [15,67],
+ [84,68], [16,84], [49,8], [84,31], [50,81], [32,100],
+ [84,85], [68,100],
 ];
 
 export default function ClassicHome({ name, modules, go }: Props) {
@@ -39,8 +44,13 @@ export default function ClassicHome({ name, modules, go }: Props) {
       <h1>Seu universo de negócios.</h1>
       <p>Tudo conectado. Cada detalhe sob seu controle.</p>
     </header>
-    <nav className="tf-hud-console" aria-label="Todos os módulos" style={{"--mobile-rows":Math.ceil(Math.max(0,ordered.length - 4) / 3)} as CSSProperties}>
-      <svg className="tf-hud-circuit" viewBox="0 0 1200 700" preserveAspectRatio="none" aria-hidden="true">
+    <nav className="tf-hud-console" aria-label="Todos os módulos">
+      <div className="tf-hud-scene" aria-hidden="true">
+        {/* Keep the photo in its own plane so the pen and dial stay aligned. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/tf-pen-console-v2.webp" alt="" width="1536" height="1024" fetchPriority="high" />
+      </div>
+      <svg className="tf-hud-circuit" viewBox="0 0 1200 800" preserveAspectRatio="none" aria-hidden="true">
         <g fill="none" stroke="currentColor" strokeWidth="1">
           <path d="M30 140H255L310 195H415M80 555H250L320 485H435M785 185H880V95H1140M775 480H875L945 550H1170M105 330H220V365H390M815 340H1035V285H1170"/>
           <path opacity=".45" d="M40 153H230L288 211H355M843 198H893V110H1105M800 496H860L931 568H1120"/>
@@ -66,7 +76,7 @@ export default function ClassicHome({ name, modules, go }: Props) {
         </svg>
         <Cog className="tf-reference-cog cog-main" strokeWidth={2.8}/>
         <Cog className="tf-reference-cog cog-small" strokeWidth={2.8}/>
-        <Settings2 className="tf-reference-cog cog-control" strokeWidth={2}/>
+        <span className="tf-reference-contact"/>
       </div>
       {ordered.map(({ id, label, icon: Icon }, index) => <div key={id} className={`tf-hud-tile${primaryModules.includes(id) ? ' is-primary' : ''}`} style={{
         '--tile-x': `${planes[index % planes.length][0]}%`,
@@ -74,14 +84,14 @@ export default function ClassicHome({ name, modules, go }: Props) {
         '--tile-width': `${planes[index % planes.length][2]}%`,
         '--card-yaw': `${planes[index % planes.length][3]}deg`,
         '--card-roll': `${planes[index % planes.length][4]}deg`,
-        '--mobile-y': `${index < 4 ? [35,180,35,180][index] : 340 + Math.floor((index - 4) / 3) * 138}px`,
-        '--mobile-x': `${index < 4 ? [16,16,84,84][index] : [17,50,83][(index - 4) % 3]}%`,
+        '--mobile-y': `${mobilePlanes[index % mobilePlanes.length][1]}%`,
+        '--mobile-x': `${mobilePlanes[index % mobilePlanes.length][0]}%`,
         '--float-delay': `${-index * .67}s`,
         '--float-duration': `${6 + (index % 4) * .7}s`,
       } as CSSProperties}>
         <button type="button" className={`tf-hud-card${opening === id ? ' is-opening' : ''}`} onClick={() => { if (!opening) setOpening(id); }} aria-busy={opening === id} aria-label={`Abrir ${label}`}>
           <span className="tf-hud-card-shine" aria-hidden="true"/>
-          <span className="tf-hud-icon" aria-hidden="true"><Icon strokeWidth={1.8}/></span>
+          <span className="tf-hud-icon" aria-hidden="true"><Icon strokeWidth={2.2}/></span>
           <span className="tf-hud-label">{labels[id] || label}</span>
         </button>
       </div>)}
