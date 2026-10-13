@@ -12,6 +12,7 @@ import './interface-polish.css';
 import './cinematic-scenes.css';
 import './workspace-scenery.css';
 import './glass-workspace.css';
+import './kanban-progress.css';
 import './home-depth.css';
 import './print-overrides.css';
 

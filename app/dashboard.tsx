@@ -13,6 +13,7 @@ import { readApiPayload } from "../lib/api-response";
 import type { CanonicalOperation } from "../lib/operations";
 import FinancialCalculator from "./financial-calculator";
 import ClassicHome from "./classic-home";
+import DealProgress from "./deal-progress";
 import { moduleBackgrounds } from "./module-appearance";
 import ModuleExperience from "./module-experience";
 import {
@@ -2064,6 +2065,7 @@ function Kanban({
                     }}
                     className={`tf-deal-card deal-stage-${i} ${d.returnAt&&d.returnStatus!=="concluido"&&d.returnAt<=nowIso?'return-due':''} ${stage === "finalizado" && (d.needsCompletion || d.status !== "concluido") ? "needs-completion" : ""}`}
                   >
+                    <div className="tf-deal-ribbon"><span>{name}</span></div>
                     <button
                       type="button"
                       className="tf-deal-options"
@@ -2112,6 +2114,7 @@ function Kanban({
                       <span className="tf-card-phone tf-card-detail"><b>Telefone</b><span>{formatPhone(d.phone)||'Não informado'}</span></span>
                       <small className="tf-card-detail"><b>Nascimento</b><span>{formatDateBr(d.birthDate)||'Não informado'}</span></small>
                     </div>
+                    <DealProgress step={i} total={columns.length} stage={name} createdAt={d.createdAt}/>
                     {stage === "finalizado" && (d.needsCompletion || d.status !== "concluido")&&<em className="tf-card-pending-label">FINALIZAR CADASTRO</em>}
                     {d.returnAt&&d.returnStatus!=="concluido"&&<span className="tf-card-return"><Clock3/> {new Date(d.returnAt).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})} · {d.returnReason}</span>}
                     <div className="tf-card-actions">
