@@ -144,6 +144,26 @@
 .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban .tf-deal-stack .tf-deal-card .tf-card-actions::before, .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban .tf-deal-stack .tf-deal-card .tf-card-actions::after { content:none!important; }
 }
 
+/* Decorative product photos sit beneath a light veil; finalized cards omit the attribute. */
+@media screen {
+.tf-deal-card[data-card-image="imovel"] { --card-photo:url('/kanban-images/imovel.webp'); }
+.tf-deal-card[data-card-image="veiculo"] { --card-photo:url('/kanban-images/veiculo.webp'); }
+.tf-deal-card[data-card-image="aposentados"] { --card-photo:url('/kanban-images/aposentados.webp'); }
+.tf-deal-card[data-card-image="assessoria"] { --card-photo:url('/kanban-images/assessoria.webp'); }
+.tf-deal-card[data-card-image="fgts"] { --card-photo:url('/kanban-images/fgts.webp'); }
+.tf-deal-card[data-card-image="clt"] { --card-photo:url('/kanban-images/clt.webp'); }
+.tf-deal-card[data-card-image="consignado"] { --card-photo:url('/kanban-images/consignado.webp'); }
+.tf-deal-card[data-card-image="consorcio"] { --card-photo:url('/kanban-images/consorcio.webp'); }
+.tf-deal-card[data-card-image="seguros"] { --card-photo:url('/kanban-images/seguros.webp'); }
+.tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban .tf-deal-stack .tf-deal-card[data-card-image] {
+  background-image:linear-gradient(135deg,rgba(247,250,252,.93) 0%,rgba(241,247,251,.79) 52%,rgba(230,240,247,.90) 100%),var(--card-photo)!important;
+  background-color:#edf3f7!important;
+  background-size:cover!important;
+  background-position:center!important;
+  background-repeat:no-repeat!important;
+}
+}
+
 /* Lightly tinted glass column headers with readable stage counts. */
 @media screen {
 .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban>article.stage-0 { --column-tint:#76b5dc; }

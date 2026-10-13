@@ -76,7 +76,7 @@ export default function ModuleExperience({view,name,can,go,clientCount,operation
   if(!info)return null;
   const [headline,highlight,description]=copy[view];
   const visual=visuals[view];
-  const portrait=view==='numeros'?'/tf-client-consultant.webp':`/module-portraits/${view==='comissoes'?'financeiro':view}.webp`;
+  const portrait=view==='numeros'?'/tf-client-consultant.webp':`/module-portraits/${view==='comissoes'?'financeiro':view==='atendimento'?'atendimento-mulher':view}.webp`;
   const available=groups.map(group=>({...group,links:group.links.filter(id=>can(id))})).filter(group=>group.links.length);
   const active=available.find(group=>group.id===selected)||available[0];
   const details=()=>{

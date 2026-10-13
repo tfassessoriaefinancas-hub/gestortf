@@ -14,6 +14,7 @@ import type { CanonicalOperation } from "../lib/operations";
 import FinancialCalculator from "./financial-calculator";
 import ClassicHome from "./classic-home";
 import DealProgress from "./deal-progress";
+import { kanbanImagery } from "../lib/kanban-imagery";
 import { moduleBackgrounds } from "./module-appearance";
 import ModuleExperience from "./module-experience";
 import {
@@ -2049,6 +2050,7 @@ function Kanban({
                   <div
                     key={d.id}
                     data-deal-id={d.id}
+                    data-card-image={kanbanImagery(d)}
                     aria-busy={movingIds.has(d.id)}
                     draggable={!movingIds.has(d.id)}
                     onDragStart={(e) => {
