@@ -18,13 +18,14 @@
 .tf-network-connections .is-active circle { fill:#fff2c7; opacity:1; }
 .tf-network-pulse { filter:drop-shadow(0 0 3px #ffc771); }
 .tf-network-origin { position:absolute; left:31%; top:40%; translate:-50% -50%; width:clamp(115px,14vw,190px); pointer-events:none; }
-.tf-network-origin::before { content:''; position:absolute; inset:-20px; background:radial-gradient(ellipse,#ffc46b18,transparent 70%); }
+.tf-network-origin::before { content:''; position:absolute; inset:-32px; background:radial-gradient(ellipse,#ffdf995c 0%,#eeb85330 34%,transparent 70%); filter:blur(5px); animation:tf-network-glow 4s ease-in-out infinite; }
 /* Recolor only the lettering, preserving the original logo silhouette and gold symbol. */
 .tf-network-origin::after { content:''; position:absolute; inset:0; background:#fff; mask:url('/tf-logo-exact.png') center/contain no-repeat; -webkit-mask:url('/tf-logo-exact.png') center/contain no-repeat; clip-path:inset(76% 0 0 0); pointer-events:none; }
-.tf-network-origin>img { position:relative; display:block; width:100%; height:auto; filter:drop-shadow(0 0 7px #edc17d55); }
+.tf-network-origin>img { position:relative; display:block; width:100%; height:auto; filter:drop-shadow(0 0 3px #fff2caab) drop-shadow(0 0 11px #ffd07ccc) drop-shadow(0 0 23px #e8b75880); }
 .tf-network-node { position:absolute; left:var(--node-x); top:var(--node-y); translate:-50% -50%; width:11%; min-width:78px; min-height:88px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; padding:6px 3px; border:0; border-radius:16px; background:transparent; color:#ffffff; cursor:pointer; -webkit-tap-highlight-color:transparent; animation:tf-network-float 7s ease-in-out var(--node-delay) infinite; }
 .tf-network-glyph { position:relative; display:grid; place-items:center; width:48px; height:48px; filter:drop-shadow(0 3px 10px #ffffff30); transition:transform .25s,filter .25s; }
-.tf-network-glyph>svg { position:relative; z-index:1; color:#fff!important; width:31px; height:31px; filter:drop-shadow(0 0 6px #ffffff99); }
+.tf-network-glyph::before { content:""; position:absolute; inset:-12px; pointer-events:none; background:radial-gradient(circle,#ffffff47 0%,#ffffff1f 33%,transparent 68%); filter:blur(3px); animation:tf-network-glow 4s ease-in-out var(--node-delay) infinite; }
+.tf-network-glyph>svg { position:relative; z-index:1; color:#fff!important; width:31px; height:31px; filter:drop-shadow(0 0 2px #fff) drop-shadow(0 0 6px #ffffffd9) drop-shadow(0 0 13px #ffffff99); }
 .tf-network-glyph>.tf-network-arrow { position:absolute; right:-5px; top:1px; width:13px; height:13px; opacity:0; transition:opacity .2s; }
 .tf-app.theme-classic .tf-network-label { color:#e3edf3!important; max-width:132px; font-size:12px; font-weight:650; line-height:1.3; text-align:center; text-shadow:0 2px 5px #000000,0 0 10px #000000; }
 .tf-network-node.is-primary .tf-network-glyph { width:54px; height:54px; }
@@ -37,6 +38,7 @@
 .tf-app.theme-classic .tf-network-footer strong { font-weight:650; color:#e9d4ac!important; font-size:14px; letter-spacing:4px; }
 .tf-network-footer span { font-size:8px; }
 @keyframes tf-network-float { 0%,100% { transform:translateY(2px); } 50% { transform:translateY(-3px); } }
+@keyframes tf-network-glow { 0%,100% { opacity:.65; transform:scale(.92); } 50% { opacity:1; transform:scale(1.12); } }
 @keyframes tf-network-ring { to { rotate:360deg; } }
 @media(min-width:701px) and (max-width:1000px) {
  .tf-network-heading { top:3%; }
@@ -70,4 +72,4 @@
  .tf-app.theme-classic .tf-network-label { font-size:11px; max-width:110px; }
  .tf-network-footer { position:relative; left:auto; bottom:auto; align-items:center; margin-top:30px; }
 }
-@media(prefers-reduced-motion:reduce) { .tf-network-node,.tf-network-origin>i:nth-child(2) { animation:none; } .tf-network-pulse { display:none; } .tf-network-home * { transition:none!important; } }
+@media(prefers-reduced-motion:reduce) { .tf-network-node,.tf-network-origin::before,.tf-network-glyph::before { animation:none; } .tf-network-pulse { display:none; } .tf-network-home * { transition:none!important; } }
