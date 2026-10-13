@@ -28,7 +28,7 @@
  .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content :is(input,select,textarea) { background:#0e1824a6!important; color:#edf4fa!important; border:1px solid #cedfea42!important; box-shadow:inset 0 1px 3px #0002!important; color-scheme:dark; }
  .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content :is(input,textarea)::placeholder { color:#9dacb9!important; }
  .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content option { color:#edf4fa; background:#1c2938; }
- .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content button:not(.tf-hud-card):not(.tf-switch):not(.tf-module-orbit-card) { color:#e4f0f8!important; background-color:#d2e5f011!important; border-color:#d0e3f035!important; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content button:not(.tf-hud-card):not(.tf-switch):not(.tf-module-orbit-card):not(.tf-network-node) { color:#e4f0f8!important; background-color:#d2e5f011!important; border-color:#d0e3f035!important; }
  .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content :is(.tf-primary,button.active,button.is-active,[aria-selected="true"]) { background:linear-gradient(135deg,#496679cc,#304a5ed9)!important; color:#fff!important; border-color:#c2e9fb66!important; box-shadow:inset 0 1px #ffffff26,0 0 16px #b6e3f31a!important; }
  .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content button:hover { border-color:#d5f0ff80!important; }
  .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-experience-location { padding:10px 16px; background:#c4e5f422!important; border:1px solid #d7f1ff66; border-radius:12px; color:#fff!important; font-size:15px; font-weight:800; box-shadow:0 4px 18px #0002; }
