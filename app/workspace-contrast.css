@@ -13,7 +13,7 @@
  .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban-summary { background:#142532b8!important; border-color:#d4e5f329!important; }
  .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban-summary :is(b,small) { color:#e4eff7!important; }
  .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content :is(.tf-metric[data-metric="Comissões pagas"] strong, .tf-finance-performance footer b, .tf-commission strong) { color:#7cdda8!important; }
- .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban { grid-template-columns:repeat(5,minmax(0,calc((100% - 30px)/4)))!important; gap:10px!important; width:100%!important; max-width:100%!important; min-width:0!important; overflow-x:auto!important; scroll-snap-type:x proximity; scrollbar-width:auto; padding-bottom:14px!important; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban { grid-template-columns:repeat(5,minmax(240px,calc((100% - 30px)/4)))!important; gap:10px!important; width:100%!important; max-width:100%!important; min-width:0!important; overflow-x:auto!important; scroll-snap-type:x proximity; scrollbar-width:auto; padding-bottom:14px!important; }
  .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban>article>header { min-height:58px!important; padding:14px 8px 10px!important; }
  .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban>article>header em { background:#e5edf5!important; color:#172d40!important; border:1px solid #b8cbd8!important; font-size:13px!important; font-weight:800; }
  .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban .tf-stage-total { background:transparent!important; padding:7px 8px!important; }
@@ -85,5 +85,34 @@
 .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban>article>header b { overflow-wrap:anywhere; }
 .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban .tf-deal-stack .tf-deal-card { min-width:0!important; box-sizing:border-box!important; }
 }
-@media screen and (min-width:1280px) { .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban { grid-template-columns:repeat(5,minmax(0,1fr))!important; } }
+@media screen and (min-width:1600px) { .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban { grid-template-columns:repeat(5,minmax(0,1fr))!important; } }
 @media screen and (min-width:601px) and (max-width:999px) { .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban { grid-template-columns:repeat(5,minmax(0,calc((100% - 10px)/2)))!important; } }
+
+/* Uniform card tracks keep progress and actions aligned across all stages. */
+@media screen {
+.tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban .tf-deal-stack .tf-deal-card { grid-template-columns:minmax(0,1fr)!important; grid-template-rows:40px 20px 34px 68px minmax(22px,auto) 30px 32px; row-gap:5px!important; padding:38px 10px 10px!important; min-height:334px!important; background:linear-gradient(145deg,#edf4f8dd,#dce8f1c9)!important; backdrop-filter:blur(16px)!important; -webkit-backdrop-filter:blur(16px)!important; border-color:#ffffff8a!important; box-shadow:inset 0 1px 0 #ffffffbd,0 6px 18px #0002!important; }
+.tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban .tf-deal-stack .tf-deal-card .tf-card-heading { grid-row:1!important; grid-column:1!important; height:40px; min-width:0; }
+.tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban .tf-deal-stack .tf-deal-card .tf-card-identity strong { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:13px!important; }
+.tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban .tf-deal-stack .tf-deal-card>.tf-card-product { grid-row:2!important; grid-column:1!important; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban .tf-deal-stack .tf-deal-card .tf-card-facts { grid-row:3!important; grid-column:1!important; }
+.tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban .tf-deal-stack .tf-deal-card .tf-deal-progress { grid-row:4!important; grid-column:1!important; min-width:0; width:100%; box-sizing:border-box; height:68px; padding:4px 8px!important; background:color-mix(in srgb,var(--deal-accent) 9%,#edf3f8d9)!important; }
+.tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban .tf-deal-stack .tf-deal-card .tf-deal-progress-ring { width:60px!important; height:60px!important; min-width:60px!important; flex:0 0 60px!important; overflow:visible!important; }
+.tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban .tf-deal-stack .tf-deal-card .tf-deal-progress-ring svg { width:60px!important; height:60px!important; overflow:visible!important; }
+.tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban .tf-deal-stack .tf-deal-card .tf-progress-center { inset:0!important; width:60px!important; height:60px!important; overflow:visible!important; }
+.tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban .tf-deal-stack .tf-deal-card .tf-progress-center strong { font-size:16px!important; width:auto!important; min-width:0!important; padding:0!important; overflow:visible!important; white-space:nowrap!important; }
+.tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban .tf-deal-stack .tf-deal-card .tf-card-actions { grid-row:6!important; grid-column:1!important; padding:0!important; margin:0!important; }
+.tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban .tf-deal-stack .tf-deal-card .tf-card-finalize { grid-row:7!important; grid-column:1!important; width:100%!important; min-height:32px!important; padding:6px 8px!important; font-size:12px!important; line-height:1.4!important; font-weight:750!important; background:#216d50!important; color:#fff!important; border:1px solid #18553e!important; text-shadow:none!important; white-space:normal!important; opacity:1!important; box-shadow:none!important; }
+.tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban .tf-deal-stack .tf-deal-card .tf-card-pending-label { grid-row:5!important; grid-column:1!important; padding:3px 6px!important; color:#15583e!important; background:#cce6d8!important; border:1px solid #87b7a0!important; font-size:10px!important; }
+.tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban .tf-deal-stack .tf-deal-card>.tf-card-detail { grid-row:5!important; grid-column:1!important; margin:0!important; }
+.tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban .tf-deal-stack .tf-deal-card .tf-card-return { grid-row:5!important; grid-column:1!important; background:#f3e9d5!important; color:#604612!important; padding:3px 6px!important; }
+.tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban .tf-deal-stack .tf-deal-card>[role="status"] { grid-row:5!important; grid-column:1!important; color:#253f52!important; }
+.tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban .tf-deal-stack .tf-deal-card:has(.tf-card-pending-label) .tf-card-return { grid-row:8!important; }
+.tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban .tf-deal-stack .tf-deal-card:has(>.tf-card-detail) .tf-card-return { grid-row:8!important; }
+}
+
+@media screen {
+.tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban .tf-deal-stack .tf-deal-card .tf-deal-progress-copy { height:48px!important; display:grid!important; grid-template-rows:16px 28px!important; align-content:start!important; align-items:start!important; justify-items:end; gap:4px!important; min-width:0!important; }
+.tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban .tf-deal-stack .tf-deal-card .tf-deal-stage-label { grid-row:1; line-height:16px!important; height:16px!important; margin:0!important; padding:0!important; white-space:nowrap!important; }
+.tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban .tf-deal-stack .tf-deal-card .tf-deal-included { grid-row:2; align-self:start; display:flex!important; flex-direction:column!important; gap:0!important; line-height:14px!important; font-size:9px!important; }
+.tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban .tf-deal-stack .tf-deal-card .tf-deal-included :is(span,time) { line-height:14px!important; }
+}
