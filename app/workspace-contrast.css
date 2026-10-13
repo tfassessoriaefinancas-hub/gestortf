@@ -1,0 +1,69 @@
+/* Explicit surface and text pairs for legacy panels; only Kanban cards are light. */
+@media screen {
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content :is(.tf-experience-stats,.tf-experience-stats>button,.tf-client-scene-stat) { background:none!important; border:0!important; box-shadow:none!important; backdrop-filter:none!important; -webkit-backdrop-filter:none!important; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content :is(.tf-experience-stats,.tf-client-scene-stat)::before,.tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content :is(.tf-experience-stats,.tf-client-scene-stat)::after { content:none!important; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content :is(.tf-panel-title,.tf-operation-board>header,.tf-result-card>header,.tf-comparison-header,.tf-access-list>header,.tf-scheduled-board>header) { background:transparent!important; border-color:#ffffff20!important; color:#eef5fa!important; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content :is(.tf-service-band,.tf-commission>div,.tf-commission>div:nth-child(even),.tf-invoices>div,.tf-kpi-strip article,.tf-group,.tf-banks article,.tf-partner-row,.tf-report-detail,.tf-service-live-total) { background:#152632c7!important; color:#e6f0f7!important; border-color:#d4e5f32b!important; box-shadow:none!important; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content :is(.tf-service-band,.tf-commission,.tf-operation-board,.tf-result-card,.tf-kpi-strip,.tf-group,.tf-banks,.tf-invoices) :is(h2,h3,b,strong) { color:#eff6fc!important; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content :is(.tf-service-band,.tf-commission,.tf-operation-board,.tf-result-card,.tf-kpi-strip,.tf-group,.tf-banks,.tf-invoices) :is(small,p,span,em) { color:#c2d2df!important; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content :is(.tf-band-values>span,.tf-result-card li button,.tf-operation-board>footer,.tf-board-labels,.tf-service-live-total>div,.tf-invoice-row,.tf-history-list article) { background:#ffffff06!important; color:#d8e8f1!important; border-color:#ffffff20!important; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-service-band>strong { color:#f2f7fb!important; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban-owner { background:#142532b8!important; color:#e2edf6!important; border:1px solid #d4e5f329!important; box-shadow:none!important; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban-owner :is(span,b,small) { color:#d7e5f0!important; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban-summary { background:#142532b8!important; border-color:#d4e5f329!important; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban-summary :is(b,small) { color:#e4eff7!important; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content :is(.tf-metric[data-metric="Comissões pagas"] strong, .tf-finance-performance footer b, .tf-commission strong) { color:#7cdda8!important; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban { grid-template-columns:repeat(5,minmax(350px,1fr))!important; gap:14px!important; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban>article>header { min-height:58px!important; padding:14px 8px 10px!important; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban>article>header em { background:#e5edf5!important; color:#172d40!important; border:1px solid #b8cbd8!important; font-size:13px!important; font-weight:800; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban .tf-stage-total { background:transparent!important; padding:7px 8px!important; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban .tf-deal-stack .tf-deal-card { --deal-accent:#286a91; display:grid!important; grid-template-columns:minmax(0,1fr) 98px; align-items:start; column-gap:12px; row-gap:8px; padding:12px!important; width:100%!important; min-height:0!important; margin:0 0 10px!important; background:#f8fafdec!important; border:1px solid #d6e2eb!important; border-radius:13px!important; box-shadow:0 5px 15px #0002!important; color:#1c3447!important; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban .tf-deal-stack .tf-deal-card.deal-stage-1 { --deal-accent:#65539b; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban .tf-deal-stack .tf-deal-card.deal-stage-2 { --deal-accent:#916b21; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban .tf-deal-stack .tf-deal-card.deal-stage-3 { --deal-accent:#167780; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban .tf-deal-stack .tf-deal-card.deal-stage-4 { --deal-accent:#19744f; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban .tf-deal-stack .tf-deal-card .tf-deal-ribbon { grid-column:1; grid-row:1; margin:0!important; padding:4px 8px!important; border-radius:6px; max-width:100%; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban .tf-deal-stack .tf-deal-card .tf-deal-options { top:10px!important; right:10px!important; color:#345268!important; background:#e7edf3!important; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban .tf-deal-stack .tf-deal-card .tf-card-heading { grid-column:1; grid-row:2; grid-template-columns:28px minmax(0,1fr)!important; gap:7px!important; margin:0!important; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban .tf-deal-stack .tf-deal-card .tf-card-avatar { width:28px!important; height:28px!important; font-size:10px!important; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban .tf-deal-stack .tf-deal-card .tf-card-identity strong { color:#193449!important; font-size:13px!important; line-height:1.35!important; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban .tf-deal-stack .tf-deal-card .tf-card-identity small { color:#536a7c!important; font-size:10px!important; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban .tf-deal-stack .tf-deal-card>.tf-card-product { grid-column:1; grid-row:3; margin:0!important; padding:4px 6px!important; font-size:10px!important; line-height:1.3!important; background:#e8eff5!important; color:#3a5366!important; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban .tf-deal-stack .tf-deal-card .tf-card-product svg { width:12px!important; height:12px!important; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban .tf-deal-stack .tf-deal-card .tf-card-facts { grid-column:1; grid-row:4; gap:4px!important; padding:0!important; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban .tf-deal-stack .tf-deal-card .tf-card-facts .tf-card-detail { grid-template-columns:62px minmax(0,1fr)!important; gap:4px!important; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban .tf-deal-stack .tf-deal-card .tf-card-facts .tf-card-detail b { color:#607487!important; font-size:10px!important; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban .tf-deal-stack .tf-deal-card .tf-card-facts .tf-card-detail>span { color:#243e51!important; font-size:10px!important; text-align:left!important; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban .tf-deal-stack .tf-deal-card .tf-deal-progress { grid-column:2; grid-row:2 / 5; display:flex!important; flex-direction:column; justify-content:center; align-self:stretch; align-items:center; gap:6px; margin:0!important; padding:8px 4px!important; background:#eaf0f5!important; border-color:#dbe5ee!important; border-radius:10px; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban .tf-deal-stack .tf-deal-card .tf-deal-progress-ring { width:50px!important; height:50px!important; min-width:50px; flex-basis:auto; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban .tf-deal-stack .tf-deal-card .tf-deal-progress-ring svg { width:50px!important; height:50px!important; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban .tf-deal-stack .tf-deal-card .tf-progress-track { stroke:#cfdae3; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban .tf-deal-stack .tf-deal-card .tf-progress-center strong { font-size:16px!important; color:var(--deal-accent)!important; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban .tf-deal-stack .tf-deal-card .tf-progress-center strong small { font-size:9px!important; color:var(--deal-accent)!important; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban .tf-deal-stack .tf-deal-card .tf-deal-progress-copy { align-items:center!important; text-align:center!important; gap:4px; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban .tf-deal-stack .tf-deal-card .tf-deal-stage-label { font-size:10px!important; color:var(--deal-accent)!important; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban .tf-deal-stack .tf-deal-card .tf-deal-included { color:#526b7e!important; font-size:9px!important; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban .tf-deal-stack .tf-deal-card .tf-deal-included>span { color:#63798b!important; font-size:9px!important; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban .tf-deal-stack .tf-deal-card .tf-deal-included time { color:#2a4559!important; font-size:10px!important; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban .tf-deal-stack .tf-deal-card .tf-card-actions { grid-column:1 / -1; margin:2px 0 0!important; padding:6px 0 0!important; border-color:#dce5ec!important; gap:5px!important; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban .tf-deal-stack .tf-deal-card .tf-card-actions button { height:28px!important; color:#35566d!important; background:#e8eef4!important; border-color:#d5e0e9!important; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban .tf-deal-stack .tf-deal-card .tf-card-actions button svg { color:inherit!important; width:14px!important; height:14px!important; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban .tf-deal-stack .tf-deal-card :is(.tf-card-return,.tf-card-pending-label,.tf-card-finalize) { grid-column:1 / -1; margin:0!important; font-size:10px!important; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban .tf-deal-stack .tf-deal-card .tf-card-return { color:#825d19!important; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban .tf-deal-stack .tf-deal-card .tf-card-finalize { color:#176241!important; background:#e2f1e8!important; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban .tf-deal-stack .tf-deal-card .tf-deal-menu { background:#f7fafc!important; color:#21394a!important; border-color:#c9d7e2!important; z-index:10; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban .tf-deal-stack .tf-deal-card .tf-deal-menu button { color:#21394a!important; background:transparent!important; }
+}
+@media screen and (max-width:600px) { .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban { grid-template-columns:repeat(5,minmax(320px,88vw))!important; } }
+@media screen {
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-module-experience.cinematic-scene .tf-experience-stats>button { background:none!important; border:0!important; box-shadow:none!important; backdrop-filter:none!important; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban .tf-deal-stack .tf-deal-card>.tf-card-detail { grid-column:1; color:#536b7e!important; font-size:10px!important; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban .tf-deal-stack .tf-deal-card>.tf-card-detail b { color:#365166!important; }
+}
+@media screen {
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content :is(.tf-quick-panel>header,.tf-activity-summary>article,.tf-comparison-total>span,.tf-comparison-tooltip,.tf-activity-list time) { background:#1c2e3be8!important; border-color:#d2e5f02b!important; color:#dbeaf4!important; box-shadow:none!important; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content :is(.tf-activity-summary,.tf-comparison-total,.tf-comparison-tooltip,.tf-activity-list) :is(b,strong,small,em,time) { color:#dceaf4!important; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-premium-donut::before { background:#1b2b38!important; box-shadow:none!important; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content :is(.tf-commission,.tf-invoices) em.done { background:#206f4933!important; color:#9ce1b8!important; border-color:#77bd943b!important; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content :is(.tf-commission,.tf-invoices) em.pending { background:#80652d33!important; color:#edcf91!important; border-color:#d4b26a40!important; }
+}

@@ -887,7 +887,7 @@ function Metric({
   note: string;
 }) {
   return (
-    <article className="tf-metric">
+    <article className="tf-metric" data-metric={label}>
       <i>{icon}</i>
       <span>
         <small>{label}</small>

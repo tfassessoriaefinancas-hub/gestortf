@@ -14,6 +14,7 @@ import './workspace-scenery.css';
 import './glass-workspace.css';
 import './kanban-progress.css';
 import './home-depth.css';
+import './workspace-contrast.css';
 import './print-overrides.css';
 
 const manrope = localFont({
