@@ -90,7 +90,7 @@
 
 /* Uniform card tracks keep progress and actions aligned across all stages. */
 @media screen {
-.tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban .tf-deal-stack .tf-deal-card { grid-template-columns:minmax(0,1fr)!important; grid-template-rows:40px 20px 34px 68px minmax(22px,auto) 30px 32px; row-gap:5px!important; padding:38px 10px 10px!important; min-height:334px!important; background:linear-gradient(145deg,#edf4f8dd,#dce8f1c9)!important; backdrop-filter:blur(16px)!important; -webkit-backdrop-filter:blur(16px)!important; border-color:#ffffff8a!important; box-shadow:inset 0 1px 0 #ffffffbd,0 6px 18px #0002!important; }
+.tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban .tf-deal-stack .tf-deal-card { grid-template-columns:minmax(0,1fr)!important; grid-template-rows:40px 20px 34px 68px auto 30px auto; row-gap:5px!important; padding:38px 10px 10px!important; min-height:0!important; align-content:start; background:linear-gradient(145deg,#edf4f8dd,#dce8f1c9)!important; backdrop-filter:blur(16px)!important; -webkit-backdrop-filter:blur(16px)!important; border-color:#ffffff8a!important; box-shadow:inset 0 1px 0 #ffffffbd,0 6px 18px #0002!important; }
 .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban .tf-deal-stack .tf-deal-card .tf-card-heading { grid-row:1!important; grid-column:1!important; height:40px; min-width:0; }
 .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban .tf-deal-stack .tf-deal-card .tf-card-identity strong { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:13px!important; }
 .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban .tf-deal-stack .tf-deal-card>.tf-card-product { grid-row:2!important; grid-column:1!important; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
@@ -136,4 +136,10 @@
 .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban .tf-deal-stack .tf-deal-card .tf-card-actions .tf-card-next { background:color-mix(in srgb,var(--deal-accent) 15%,#e9f1f6)!important; border-color:color-mix(in srgb,var(--deal-accent) 24%,#edf3f7)!important; color:var(--deal-accent)!important; }
 .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban .tf-deal-stack .tf-deal-card .tf-card-finalize { background:linear-gradient(110deg,#236e53,#19563f)!important; border-color:#397b60!important; border-radius:9px!important; box-shadow:inset 0 1px #ffffff24,0 3px 7px #174d3826!important; letter-spacing:.1px; }
 .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban .tf-deal-stack .tf-deal-card .tf-card-pending-label { background:#d1e7dc99!important; border-color:#8fbfa65c!important; border-radius:7px!important; font-size:9px!important; letter-spacing:.35px; font-weight:700; }
+}
+
+/* Collapse unused footer tracks; keep extra space only for real notices/actions. */
+@media screen {
+.tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban .tf-deal-stack .tf-deal-card .tf-card-actions { border:0!important; box-shadow:none!important; background:transparent!important; padding:0!important; margin:0!important; }
+.tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban .tf-deal-stack .tf-deal-card .tf-card-actions::before, .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-kanban .tf-deal-stack .tf-deal-card .tf-card-actions::after { content:none!important; }
 }
