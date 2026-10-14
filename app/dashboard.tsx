@@ -14,7 +14,7 @@ import type { CanonicalOperation } from "../lib/operations";
 import FinancialCalculator from "./financial-calculator";
 import ClassicHome from "./classic-home";
 import DealProgress from "./deal-progress";
-import { kanbanImagery } from "../lib/kanban-imagery";
+import { kanbanImagery, kanbanPhotoAssignments } from "../lib/kanban-imagery";
 import { moduleBackgrounds } from "./module-appearance";
 import ModuleExperience from "./module-experience";
 import {
@@ -648,7 +648,8 @@ export default function Dashboard({
     );
   return (
     <main
-      className={`tf-app light theme-classic has-workspace-scenery glass-workspace${view==="inicio"?" is-classic-hub":""}`}
+      className={`tf-app light theme-classic has-workspace-scenery glass-workspace tf-ui-refined${view==="inicio"?" is-classic-hub":""}`}
+      data-workspace-view={view}
       style={{"--workspace-background":`url('/module-backgrounds/${view==="inicio"?"technology":moduleBackgrounds[view]||"office"}.webp')`} as React.CSSProperties}
     >
       <section className="tf-main">
@@ -690,6 +691,7 @@ export default function Dashboard({
             ...menu.filter(([id])=>id!=="inicio"&&can(id)).map(([id,icon,label])=>({id,icon,label})),
             ...(user.role==="admin"?[{id:"usuarios",icon:UserRoundCog,label:"Usuários e acessos"}]:[])
           ]} go={(id)=>{setView(id as View);setMobileMenu(false);window.scrollTo(0,0)}} />}
+          {view === "numeros" && dueActivities.length > 0 && <button type="button" className="tf-home-activity-alert tf-priority-agenda" onClick={() => setView("compromissos")} aria-label={`Abrir agenda: ${dueActivities.length} compromissos para hoje ou atrasados`}><i><CalendarClock/><span/></i><span><small>SUA AGENDA PRECISA DE ATENÇÃO</small><strong>{dueActivities.length} {dueActivities.length === 1 ? "compromisso para acompanhar" : "compromissos para acompanhar"}</strong><em>{todayActivities.length} hoje · {dueActivities.length - todayActivities.length} {dueActivities.length - todayActivities.length === 1 ? "atrasado" : "atrasados"}</em></span><ChevronRight/></button>}
           {view!=="inicio"&&<ModuleExperience key={view} view={view} name={user.name} can={id=>id==="usuarios"?user.role==="admin":can(id as View)} go={id=>{setView(id as View);window.scrollTo(0,0)}} clientCount={allClients.length} operationCount={allOps.length} activeCount={deals.filter(deal=>deal.stage!=="finalizado").length}/>}
           <div id="tf-module-workspace" className="tf-module-workspace" tabIndex={-1}>
           {(view === "numeros") && (
@@ -703,7 +705,6 @@ export default function Dashboard({
               monthPeriod={currentPeriod}
               activeDeals={deals.filter(deal=>deal.stage!=="finalizado")}
               activityCount={dueActivities.length}
-              todayActivityCount={todayActivities.length}
             />
           )}{" "}
           {view === "clientes" && (
@@ -1077,7 +1078,6 @@ function Home({
   monthPeriod,
   activeDeals,
   activityCount,
-  todayActivityCount,
 }: {
   numbersOnly?: boolean;
   go: (v: View) => void;
@@ -1088,8 +1088,8 @@ function Home({
   monthPeriod: string;
   activeDeals: Deal[];
   activityCount: number;
-  todayActivityCount: number;
 }) {
+  const [selectedKpi, setSelectedKpi] = useState<string | null>(null);
   const [selectedDistribution, setSelectedDistribution] = useState<string | null>(null);
   const [hoveredDistribution, setHoveredDistribution] = useState<string | null>(null);
   const [hoveredComparisonIndex, setHoveredComparisonIndex] = useState<number | null>(null);
@@ -1200,40 +1200,19 @@ function Home({
             Atendimentos, produção e resultados organizados em uma única visão.
           </p>
         </div>
-        {todayActivityCount>0&&<button type="button" className="tf-home-activity-alert" onClick={()=>go("compromissos")} aria-label={`Abrir ${todayActivityCount} ${todayActivityCount===1?"compromisso":"compromissos"} de hoje`}><i><CalendarClock/><span/></i><span><small>ATENÇÃO PARA HOJE</small><strong>Você tem {todayActivityCount} {todayActivityCount===1?"compromisso":"compromissos"} hoje</strong><em>Abra a agenda para conferir horários e detalhes.</em></span><ChevronRight/></button>}
       </section>
-      <section className="tf-kpi-strip">
-        <article className="tf-kpi-navigate">
-          <button type="button" onClick={()=>openMonth(currentPeriod)} aria-label={`Ver os ${monthClients} clientes do mês`}>
-            <small>CLIENTES DO MÊS</small>
-            <strong>{monthClients}</strong>
-            <span>Base histórica: {clientCount.toLocaleString("pt-BR")}</span>
-            <em>Ver clientes do mês →</em>
+      <section className="tf-kpi-strip" aria-label="Indicadores do mês">
+        {[
+          { id: "clientes", label: "CLIENTES DO MÊS", value: monthClients, note: `Base histórica: ${clientCount.toLocaleString("pt-BR")}`, action: "Ver clientes do mês →", open: () => openMonth(currentPeriod) },
+          { id: "producao", label: "PRODUÇÃO", value: brl(monthTotal), note: `${currentMonthRows.length} operações em ${periodLabel(currentPeriod)}` },
+          { id: "comissoes", label: "COMISSÕES", value: brl(monthCommission), note: `Pagas ${brl(monthCommissionPaid)} · A receber ${brl(monthCommissionPending)}` },
+          { id: "andamento", label: "EM ANDAMENTO", value: activeDealCount, note: "Novos atendimentos" },
+          { id: "agenda", label: "COMPROMISSOS E NEGÓCIOS", value: activityCount, note: activityCount ? `${activityCount} para hoje ou atrasado${activityCount === 1 ? "" : "s"}` : "Agenda do escritório em dia", action: "Ver atividades →", open: () => go("compromissos") },
+        ].map(item => <article key={item.id} className={`tf-kpi-navigate${selectedKpi === item.id ? " is-selected" : ""}${item.id === "agenda" ? ` tf-activity-kpi${activityCount ? " due" : ""}` : ""}`}>
+          <button type="button" aria-pressed={item.open ? undefined : selectedKpi === item.id} onClick={() => { setSelectedKpi(item.id); item.open?.(); }}>
+            <small>{item.label}</small><strong>{item.value}</strong><span>{item.note}</span>{item.action && <em>{item.action}</em>}
           </button>
-        </article>
-        <article>
-          <small>PRODUÇÃO</small>
-          <strong>{brl(monthTotal)}</strong>
-          <span>{currentMonthRows.length} operações em {periodLabel(currentPeriod)}</span>
-        </article>
-        <article>
-          <small>COMISSÕES</small>
-          <strong>{brl(monthCommission)}</strong>
-          <span>Pagas {brl(monthCommissionPaid)} · A receber {brl(monthCommissionPending)}</span>
-        </article>
-        <article>
-          <small>EM ANDAMENTO</small>
-          <strong>{activeDealCount}</strong>
-          <span>Novos atendimentos</span>
-        </article>
-        <article className={`tf-kpi-navigate tf-activity-kpi${activityCount?" due":""}`}>
-          <button type="button" onClick={()=>go("compromissos")} aria-label="Abrir compromissos e negócios">
-            <small>COMPROMISSOS E NEGÓCIOS</small>
-            <strong>{activityCount}</strong>
-            <span>{activityCount?`${activityCount} para hoje ou atrasado${activityCount===1?'':'s'}`:'Agenda do escritório em dia'}</span>
-            <em>Ver atividades →</em>
-          </button>
-        </article>
+        </article>)}
       </section>
       <section className="tf-executive-chart tf-month-comparison">
         <header className="tf-comparison-header">
@@ -1459,7 +1438,7 @@ function Home({
             ＋
             <span>
               <b>Novo atendimento</b>
-              <small>Iniciar no Kanban</small>
+              <small>Iniciar atendimento</small>
             </span>
           </button>
         </div>
@@ -1644,7 +1623,7 @@ function Production({ rows, clientsData, initialPeriod="2026-09", openClient }: 
           <div className="tf-production-modalities">{productionGroups.map(group=>{const groupClients=Array.from(new Set(group.rows.map(operation=>operation.clientId))).map(id=>clientsData.find(client=>client.id===id)).filter(Boolean) as Client[];return <section className={`tf-production-modality tone-${group.tone}`} key={group.name}><header><h4>{group.name}</h4><span>{groupClients.length} {groupClients.length===1?"cliente":"clientes"} · {group.rows.length} {group.rows.length===1?"operação":"operações"}</span></header><div className="tf-production-modality-clients">{groupClients.map(client=>{const clientRows=group.rows.filter(operation=>operation.clientId===client.id);return <button type="button" key={client.id} onClick={()=>openClient(client)}><span><strong>{client.name}</strong><small>{clientRows.length} {clientRows.length===1?"operação":"operações"}</small></span><b>{brl(clientRows.reduce((sum,operation)=>sum+operation.value,0))}</b><i>›</i></button>})}</div></section>})}</div>
         </section>
         {filtered.length ? (
-          <div className="tf-production-operation-groups">{productionGroups.map(group=><section className={`tf-production-operation-group tone-${group.tone}`} key={group.name}><header><h3>{group.name}</h3><span>{group.rows.length} {group.rows.length===1?"operação":"operações"} · {brl(group.rows.reduce((sum,operation)=>sum+operation.value,0))}</span></header><OpTable rows={group.rows} clientsData={clientsData} openClient={openClient}/></section>)}</div>
+          <div className="tf-production-operation-groups">{productionGroups.map(group=><section className={`tf-production-operation-group tone-${group.tone}`} data-product={group.name} key={group.name}><header><h3>{group.name}</h3><span>{group.rows.length} {group.rows.length===1?"operação":"operações"} · {brl(group.rows.reduce((sum,operation)=>sum+operation.value,0))}</span></header><OpTable rows={group.rows} clientsData={clientsData} openClient={openClient}/></section>)}</div>
         ) : (
           <div className="tf-table-empty">
             <i>▤</i>
@@ -1800,6 +1779,7 @@ function Kanban({
   const nowDate=new Date(clock);
   const nowIso = new Date(clock-nowDate.getTimezoneOffset()*60000).toISOString().slice(0,16);
   const visibleDeals=deals.filter(d=>kanbanOwner==="owner"?!d.assignedUserId:d.assignedUserId===Number(kanbanOwner));
+  const cardPhotos = kanbanPhotoAssignments(visibleDeals);
   useEffect(()=>{const ids=visibleDeals.map(deal=>deal.id);let stored:number[]=[];try{stored=JSON.parse(localStorage.getItem(`tf_kanban_order_${kanbanOwner}`)||"[]")}catch{}setDealOrder([...stored.filter(id=>ids.includes(id)),...ids.filter(id=>!stored.includes(id))])},[kanbanOwner,deals]);
   const reorderDeals=(sourceId:number,targetId:number)=>{setDealOrder(current=>{const next=current.filter(id=>id!==sourceId),targetIndex=next.indexOf(targetId);next.splice(targetIndex<0?next.length:targetIndex,0,sourceId);localStorage.setItem(`tf_kanban_order_${kanbanOwner}`,JSON.stringify(next));return next})};
   const pendingReturns = visibleDeals.filter((d)=>d.returnAt&&d.returnStatus!=="concluido");
@@ -2007,7 +1987,7 @@ function Kanban({
       />
       {todayReturns.length>0&&<button className="tf-return-alert" onClick={()=>setShowReturns(true)}><Clock3/><span><b>{todayReturns.length===1?'Há 1 cliente para atender hoje':`Há ${todayReturns.length} clientes para atender hoje`}</b><small>Abra a lista e escolha em qual etapa cada atendimento deve recomeçar.</small></span></button>}
       <div className="tf-kanban-owner">
-        <span><UserRoundCog/><b>Kanban exibido</b></span>
+        <span><UserRoundCog/><b>Atendimento exibido</b></span>
         <select value={kanbanOwner} onChange={e=>setKanbanOwner(e.target.value)} disabled={user.role==="employee"}>
           {user.role==="admin"&&<option value="owner">Gestor TF</option>}
           {members.filter(m=>m.active&&m.permissions.includes('atendimento')).map(m=><option key={m.id} value={m.id}>{m.name}</option>)}
@@ -2051,6 +2031,7 @@ function Kanban({
                     key={d.id}
                     data-deal-id={d.id}
                     data-card-image={kanbanImagery(d)}
+                    style={cardPhotos.has(d.id) ? {"--card-photo": `url("${cardPhotos.get(d.id)}")`} as React.CSSProperties : undefined}
                     aria-busy={movingIds.has(d.id)}
                     draggable={!movingIds.has(d.id)}
                     onDragStart={(e) => {
@@ -2107,7 +2088,7 @@ function Kanban({
                     )}
                     <div className="tf-card-heading">
                       <i className="tf-card-avatar" aria-hidden="true">{d.name.trim().split(/\s+/).filter(Boolean).slice(0,2).map(part=>part[0]).join('').toUpperCase()||'TF'}</i>
-                      <div className="tf-card-identity"><strong>{d.name}</strong><small>CPF {formatCpf(d.cpf)||'não informado'}</small></div>
+                      <div className="tf-card-identity"><strong>{d.name}</strong>{digits(d.cpf) && <small>CPF: {formatCpf(d.cpf)}</small>}</div>
                     </div>
                     <span className="tf-card-product"><BriefcaseBusiness aria-hidden="true"/>{d.product||"Serviço não informado"}</span>
                     {d.product==="Crédito com garantia"&&d.guaranteeType&&<small className="tf-card-detail"><b>Garantia:</b> {d.guaranteeType}</small>}
@@ -2399,8 +2380,8 @@ function Kanban({
             </h2>
             <p>
               {confirmAction.permanent
-                ? `O atendimento de ${confirmAction.deal.name} será removido do Kanban e não poderá ser recuperado.`
-                : `O atendimento de ${confirmAction.deal.name} será cancelado e retirado do Kanban ativo.`}
+                ? `O atendimento de ${confirmAction.deal.name} será removido do Atendimento e não poderá ser recuperado.`
+                : `O atendimento de ${confirmAction.deal.name} será cancelado e retirado do Atendimento ativo.`}
             </p>
             <div className="tf-action-confirm-buttons">
               <button type="button" className="tf-secondary" onClick={() => setConfirmAction(null)}>
@@ -2730,7 +2711,7 @@ function Banks() {
         <section className="tf-banks">
           <header className="tf-bank-catalog-heading"><span><small>INSTITUIÇÕES</small><b>Bancos e plataformas</b></span><small>Centrais mantidas em fonte oficial</small></header>
           {visibleBanks.map((bank) => (
-            <article key={bank.code}>
+            <article key={bank.code} data-bank={bank.code}>
               <i className="tf-bank-logo"><img src={`/bank-logos/${bank.code}.svg`} alt={`Logomarca ${bank.name}`} width={50} height={46} loading="lazy"/></i>
               <span>
                 <b>{bank.name}</b>
@@ -2939,7 +2920,7 @@ function ReportsFiltered({
     </section>
   );
 }
-const permissionLabels:Record<string,string>={inicio:'Início',clientes:'Clientes',atendimento:'Atendimento / Kanban',producao:'Produção',parceiros:'Parceiros',servicos:'Serviços',financeiro:'Financeiro / Comissões',notas:'Notas fiscais',bancos:'Bancos e financiamentos',calculadora:'Calculadora financeira',relatorios:'Relatórios',posvenda:'Pós-venda'};
+const permissionLabels:Record<string,string>={inicio:'Início',clientes:'Clientes',atendimento:'Atendimento',producao:'Produção',parceiros:'Parceiros',servicos:'Serviços',financeiro:'Financeiro / Comissões',notas:'Notas fiscais',bancos:'Bancos e financiamentos',calculadora:'Calculadora financeira',relatorios:'Relatórios',posvenda:'Pós-venda'};
 function AccessManagement({members,setMembers,partners}:{members:TeamMember[];setMembers:React.Dispatch<React.SetStateAction<TeamMember[]>>;partners:PartnerRecord[]}){
  const empty={id:0,name:'',email:'',login:'',password:'',active:true,permissions:['inicio','atendimento'] as View[],partnerId:null as number|null};
  const [form,setForm]=useState<TeamMember>(empty),[saving,setSaving]=useState(false),[message,setMessage]=useState(''),[copied,setCopied]=useState(false),[lastInvite,setLastInvite]=useState<TeamMember|null>(null);
@@ -2949,7 +2930,7 @@ function AccessManagement({members,setMembers,partners}:{members:TeamMember[];se
  const deleteMember=async(member:TeamMember)=>{if(!window.confirm(`Excluir o acesso de ${member.name}? O histórico será preservado e o login será revogado.`))return;const r=await fetch(`/api/access-users?id=${member.id}`,{method:'DELETE'}),x=await r.json();if(r.ok)setMembers(xs=>xs.map(m=>m.id===x.member.id?x.member:m));else setMessage(x.error||'Não foi possível excluir o usuário.')};
  const copyAccessLink=async()=>{try{await navigator.clipboard.writeText(accessUrl);setCopied(true);setTimeout(()=>setCopied(false),2200)}catch{setMessage(`Link de acesso: ${accessUrl}`)}};
  const visiblePermissions=(member:TeamMember)=>member.permissions.filter(p=>p!=='inicio').map(p=>permissionLabels[p]).filter(Boolean).sort((a,b)=>a.localeCompare(b,'pt-BR',{sensitivity:'base'}));
- return <><Title over="EQUIPE E SEGURANÇA" title="Usuários e acessos" text="Cadastre funcionários ou parceiros e envie o link do sistema." action="Novo acesso" onAction={()=>setForm(empty)}/><section className="tf-access-layout"><div className="tf-access-list"><header><div><small>USUÁRIOS CADASTRADOS</small><h2>Equipe e parceiros</h2></div><b>{members.filter(m=>m.active).length} ativos</b></header>{[...members].sort((a,b)=>a.name.localeCompare(b.name,'pt-BR',{sensitivity:'base'})).map((member,index)=>{const permissions=visiblePermissions(member),partnerName=partners.find(partner=>partner.id===member.partnerId)?.name||member.partnerName;return <article key={member.id} className={`${!member.active?'inactive ':''}member-tone-${index%6}`}><i>{member.name.split(/\s+/).slice(0,2).map(n=>n[0]).join('').toUpperCase()}</i><div><b>{member.name}</b><small>{member.login||member.email}</small><p>{partnerName?`Parceiro · ${partnerName}`:permissions.length?permissions.join(' · '):'Somente acesso básico'}</p></div><em>{member.active?'Ativo':'Pausado'}</em><button onClick={()=>setForm({...member,password:''})}>Editar</button><button onClick={()=>toggleActive(member)}>{member.active?'Pausar':'Reativar'}</button><button className="danger" onClick={()=>deleteMember(member)}>Excluir usuário</button></article>})}{!members.length&&<div className="tf-access-empty"><UserRoundCog/><b>Nenhum subacesso criado</b><small>Cadastre o primeiro acesso ao lado.</small></div>}</div><form className="tf-access-form" onSubmit={save}><small>{form.id?'EDITAR ACESSO':'NOVO ACESSO'}</small><h2>{form.id?form.name:'Cadastrar usuário'}</h2><p>Use qualquer e-mail válido. Selecione um parceiro para limitar o acesso somente à produção dele.</p><div className="tf-access-share"><span><b>Link para entrar no Gestão TF</b><small>Depois de salvar, envie o convite diretamente por e-mail ou copie o link.</small></span><code>{accessUrl}</code><button type="button" onClick={copyAccessLink}><Copy/>{copied?'Link copiado':'Copiar link'}</button>{lastInvite&&<a href={`mailto:${lastInvite.email}?subject=${encodeURIComponent('Seu acesso ao Gestão TF')}&body=${encodeURIComponent(`Olá, ${lastInvite.name}! Seu acesso ao Gestão TF está pronto. Entre por este link: ${accessUrl}`)}`}><Send/>Enviar por e-mail</a>}</div><label>Nome<input required value={form.name} onChange={e=>setForm(x=>({...x,name:e.target.value}))} placeholder="Nome do usuário"/></label><label>Login de acesso<input required={Boolean(form.partnerId)} value={form.login||''} onChange={e=>setForm(x=>({...x,login:e.target.value}))} placeholder="Ex.: ggveiculos" autoCapitalize="none" spellCheck={false}/></label><label>E-mail de acesso<input required type="email" value={form.email} onChange={e=>setForm(x=>({...x,email:e.target.value}))} placeholder="nome@empresa.com"/></label><label>{form.id?"Nova senha (opcional)":"Senha de acesso"}<input type="password" autoComplete="new-password" minLength={form.partnerId?6:8} maxLength={256} required={!form.id} value={form.password||''} onChange={e=>setForm(x=>({...x,password:e.target.value}))}/></label><label>Vincular a parceiro<select value={form.partnerId||''} onChange={event=>setForm(current=>({...current,partnerId:event.target.value?Number(event.target.value):null}))}><option value="">Equipe TF · acesso interno</option>{partners.filter(partner=>partner.id>0).map(partner=><option key={partner.id} value={partner.id}>{partner.name}</option>)}</select></label>{form.partnerId?<div className="tf-partner-access-note"><ShieldCheck/><span><b>Acesso restrito ao parceiro</b><small>Este usuário verá somente clientes, produção, relatórios e acertos desse parceiro.</small></span></div>:<fieldset><legend>Áreas autorizadas</legend>{Object.entries(permissionLabels).filter(([id])=>id!=='inicio').sort(([,a],[,b])=>a.localeCompare(b,'pt-BR',{sensitivity:'base'})).map(([id,label])=><label key={id}><input type="checkbox" checked={form.permissions.includes(id as View)} onChange={e=>setForm(x=>({...x,permissions:e.target.checked?[...x.permissions,id as View]:x.permissions.filter(p=>p!==id)}))}/><span><b>{label}</b>{id==='atendimento'&&<small>Kanban individual, sem visualizar o seu.</small>}</span></label>)}</fieldset>}{message&&<em>{message}</em>}<footer>{form.id&&<button type="button" onClick={()=>setForm(empty)}>Cancelar</button>}<button className="tf-primary" disabled={saving}>{saving?'Salvando...':'Salvar acesso'}</button></footer></form></section></>;
+ return <><Title over="EQUIPE E SEGURANÇA" title="Usuários e acessos" text="Cadastre funcionários ou parceiros e envie o link do sistema." action="Novo acesso" onAction={()=>setForm(empty)}/><section className="tf-access-layout"><div className="tf-access-list"><header><div><small>USUÁRIOS CADASTRADOS</small><h2>Equipe e parceiros</h2></div><b>{members.filter(m=>m.active).length} ativos</b></header>{[...members].sort((a,b)=>a.name.localeCompare(b.name,'pt-BR',{sensitivity:'base'})).map((member,index)=>{const permissions=visiblePermissions(member),partnerName=partners.find(partner=>partner.id===member.partnerId)?.name||member.partnerName;return <article key={member.id} className={`${!member.active?'inactive ':''}member-tone-${index%6}`}><i>{member.name.split(/\s+/).slice(0,2).map(n=>n[0]).join('').toUpperCase()}</i><div><b>{member.name}</b><small>{member.login||member.email}</small><p>{partnerName?`Parceiro · ${partnerName}`:permissions.length?permissions.join(' · '):'Somente acesso básico'}</p></div><em>{member.active?'Ativo':'Pausado'}</em><button onClick={()=>setForm({...member,password:''})}>Editar</button><button onClick={()=>toggleActive(member)}>{member.active?'Pausar':'Reativar'}</button><button className="danger" onClick={()=>deleteMember(member)}>Excluir usuário</button></article>})}{!members.length&&<div className="tf-access-empty"><UserRoundCog/><b>Nenhum subacesso criado</b><small>Cadastre o primeiro acesso ao lado.</small></div>}</div><form className="tf-access-form" onSubmit={save}><small>{form.id?'EDITAR ACESSO':'NOVO ACESSO'}</small><h2>{form.id?form.name:'Cadastrar usuário'}</h2><p>Use qualquer e-mail válido. Selecione um parceiro para limitar o acesso somente à produção dele.</p><div className="tf-access-share"><span><b>Link para entrar no Gestão TF</b><small>Depois de salvar, envie o convite diretamente por e-mail ou copie o link.</small></span><code>{accessUrl}</code><button type="button" onClick={copyAccessLink}><Copy/>{copied?'Link copiado':'Copiar link'}</button>{lastInvite&&<a href={`mailto:${lastInvite.email}?subject=${encodeURIComponent('Seu acesso ao Gestão TF')}&body=${encodeURIComponent(`Olá, ${lastInvite.name}! Seu acesso ao Gestão TF está pronto. Entre por este link: ${accessUrl}`)}`}><Send/>Enviar por e-mail</a>}</div><label>Nome<input required value={form.name} onChange={e=>setForm(x=>({...x,name:e.target.value}))} placeholder="Nome do usuário"/></label><label>Login de acesso<input required={Boolean(form.partnerId)} value={form.login||''} onChange={e=>setForm(x=>({...x,login:e.target.value}))} placeholder="Ex.: ggveiculos" autoCapitalize="none" spellCheck={false}/></label><label>E-mail de acesso<input required type="email" value={form.email} onChange={e=>setForm(x=>({...x,email:e.target.value}))} placeholder="nome@empresa.com"/></label><label>{form.id?"Nova senha (opcional)":"Senha de acesso"}<input type="password" autoComplete="new-password" minLength={form.partnerId?6:8} maxLength={256} required={!form.id} value={form.password||''} onChange={e=>setForm(x=>({...x,password:e.target.value}))}/></label><label>Vincular a parceiro<select value={form.partnerId||''} onChange={event=>setForm(current=>({...current,partnerId:event.target.value?Number(event.target.value):null}))}><option value="">Equipe TF · acesso interno</option>{partners.filter(partner=>partner.id>0).map(partner=><option key={partner.id} value={partner.id}>{partner.name}</option>)}</select></label>{form.partnerId?<div className="tf-partner-access-note"><ShieldCheck/><span><b>Acesso restrito ao parceiro</b><small>Este usuário verá somente clientes, produção, relatórios e acertos desse parceiro.</small></span></div>:<fieldset><legend>Áreas autorizadas</legend>{Object.entries(permissionLabels).filter(([id])=>id!=='inicio').sort(([,a],[,b])=>a.localeCompare(b,'pt-BR',{sensitivity:'base'})).map(([id,label])=><label key={id}><input type="checkbox" checked={form.permissions.includes(id as View)} onChange={e=>setForm(x=>({...x,permissions:e.target.checked?[...x.permissions,id as View]:x.permissions.filter(p=>p!==id)}))}/><span><b>{label}</b>{id==='atendimento'&&<small>Atendimento individual, sem visualizar o seu.</small>}</span></label>)}</fieldset>}{message&&<em>{message}</em>}<footer>{form.id&&<button type="button" onClick={()=>setForm(empty)}>Cancelar</button>}<button className="tf-primary" disabled={saving}>{saving?'Salvando...':'Salvar acesso'}</button></footer></form></section></>;
 }
 
 function SettingsPanel({ close, serverAuthenticated }: { close: () => void; serverAuthenticated?: boolean }) {
@@ -3095,7 +3076,7 @@ function SettingsPanel({ close, serverAuthenticated }: { close: () => void; serv
             <div>
               <small>INTEGRAÇÃO OFICIAL</small>
               <h3>Gestor TF no WhatsApp</h3>
-              <p>Comandos de texto e voz conectados ao mesmo Kanban.</p>
+              <p>Comandos de texto e voz conectados ao mesmo painel de Atendimento.</p>
             </div>
           </header>
           <div className="tf-wa-status">

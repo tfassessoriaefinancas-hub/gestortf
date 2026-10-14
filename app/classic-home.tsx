@@ -7,7 +7,7 @@ import './finance-network-home.css';
 type Module = { id: string; label: string; icon: LucideIcon };
 type Props = { name: string; modules: Module[]; go: (id: string) => void };
 const labels: Record<string, string> = {
-  numeros: 'Painel de Gestão', atendimento: 'Kanban', compromissos: 'Agenda',
+  numeros: 'Painel de Gestão', atendimento: 'Atendimento', compromissos: 'Agenda',
   bancos: 'Bancos', calculadora: 'Calculadora', financeiro: 'Financeiro',
   usuarios: 'Usuários e acessos',
 };
@@ -60,7 +60,7 @@ export default function ClassicHome({ name, modules, go }: Props) {
       <div className="tf-network-nodes">
         {ordered.map(({id,label,icon:Icon},i) => <button key={id} type="button"
           className={`tf-network-node${primaryModules.includes(id)?' is-primary':''}${opening===id?' is-opening':''}`}
-          style={{'--node-delay':`${-i*.73}s`,'--node-duration':`${6.4+(i%5)*.65}s`,'--sprite-x':`${(spriteOrder.indexOf(id)%3)*50}%`,'--sprite-y':`${-spriteRows[Math.floor(spriteOrder.indexOf(id)/3)]/(971/3)}em`} as CSSProperties}
+          style={{'--node-delay':`${-i*.73}s`,'--node-duration':`${8.4+(i%5)*.7}s`,'--sprite-x':`${(spriteOrder.indexOf(id)%3)*50}%`,'--sprite-y':`${-spriteRows[Math.floor(spriteOrder.indexOf(id)/3)]/(971/3)}em`} as CSSProperties}
           onMouseEnter={()=>setActive(id)} onMouseLeave={()=>setActive(null)} onFocus={()=>setActive(id)} onBlur={()=>setActive(null)}
           onClick={()=>{if(!opening)setOpening(id);}} aria-busy={opening===id} aria-label={`Abrir ${label}`}>
           <span className="tf-network-glyph" aria-hidden="true">{spriteOrder.includes(id)?<span className="tf-network-metal-icon"/>:<Icon strokeWidth={1.65}/>}<ArrowUpRight className="tf-network-arrow"/></span>

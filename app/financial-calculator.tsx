@@ -115,7 +115,7 @@ export default function FinancialCalculator({ publicMode = false }: { publicMode
     <header className="tf-fc-hero">
       <div><small>SIMULAÇÃO DE LIQUIDAÇÃO ANTECIPADA</small><h1>Antecipar parcelas</h1><p>Descubra quanto o cliente pagará e qual será o desconto dos juros futuros.</p></div>
       <div className="tf-fc-header-actions">
-        <div className="tf-fc-reference"><Calculator /><span><small>CÁLCULO</small><b>Automático e referencial</b></span></div>
+        <div className="tf-fc-reference"><Calculator /><span><b>Cálculo automático</b><small>Simulação referencial</small></span></div>
         <button type="button" className="tf-fc-icon-action" onClick={shareCalculator} title="Compartilhar calculadora" aria-label="Compartilhar calculadora"><Link2 /></button>
         {publicMode && <button type="button" className="tf-fc-icon-action install" onClick={installCalculator} title="Instalar no computador" aria-label="Instalar calculadora no computador"><Download /></button>}
       </div>
@@ -123,7 +123,7 @@ export default function FinancialCalculator({ publicMode = false }: { publicMode
 
     <div className="tf-fc-simple-layout">
       <section className="tf-fc-panel tf-fc-contract-card">
-        <div className="tf-fc-section-title"><span><CircleDollarSign /></span><div><small>DADOS DO CONTRATO</small><h2>Preencha o que você possui</h2></div></div>
+        <div className="tf-fc-section-title"><span><CircleDollarSign /></span><div><small>01 · DADOS DO CONTRATO</small><h2>Informações do financiamento</h2></div></div>
         <p className="tf-fc-help">A taxa pode ficar vazia. Com valor financiado, prazo e parcela, ela será encontrada automaticamente.</p>
         <div className="tf-fc-grid two">
           <Field label="Valor financiado" note={values.principalWasCalculated ? `Calculado: ${formatMoney(values.financed)}` : undefined}><MoneyField value={principal} onChange={setPrincipal} /></Field>
@@ -142,7 +142,7 @@ export default function FinancialCalculator({ publicMode = false }: { publicMode
       </section>
 
       <section className="tf-fc-panel tf-fc-anticipation-card">
-        <div className="tf-fc-section-title"><span><ArrowDownToLine /></span><div><small>ANTECIPAÇÃO</small><h2>Escolha como deseja pagar</h2></div></div>
+        <div className="tf-fc-section-title"><span><ArrowDownToLine /></span><div><small>02 · ANTECIPAÇÃO</small><h2>Como deseja antecipar?</h2></div></div>
         <p className="tf-fc-help">Os valores apresentados são válidos para a data escolhida.</p>
         <Field label="Data do pagamento" note={remaining[0] ? `Próximo vencimento: ${dateBr(remaining[0].dueDate)}` : undefined}><input type="date" value={paymentDate} onChange={event => setPaymentDate(event.target.value)} /></Field>
 

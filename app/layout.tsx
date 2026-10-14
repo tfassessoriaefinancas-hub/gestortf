@@ -16,6 +16,7 @@ import './kanban-progress.css';
 import './home-depth.css';
 import './workspace-contrast.css';
 import './workspace-surfaces.css';
+import './module-refinements.css';
 import './print-overrides.css';
 
 const manrope = localFont({
@@ -47,7 +48,7 @@ export const metadata: Metadata = {
   description: 'Sistema Gestão TF para clientes de crédito, seguros, finanças pessoais e serviços financeiros.',
   manifest: '/manifest.webmanifest',
   applicationName: 'Gestão TF',
-  appleWebApp: { capable: true, statusBarStyle: 'default', title: 'Gestão TF' },
+  appleWebApp: { capable: true, statusBarStyle: 'black-translucent', title: 'Gestão TF' },
   icons: {
     icon: [{ url: '/tf-emblem.png?v=53', type: 'image/png', sizes: '418x429' }],
     shortcut: '/tf-emblem.png?v=53',
@@ -62,7 +63,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pt-BR" suppressHydrationWarning>
-      <head><meta name="theme-color" content="#ffffff" /></head>
+      <head><meta name="theme-color" content="#101820" /></head>
       <body
         className={`${manrope.variable} ${cormorant.variable} antialiased`}
       >

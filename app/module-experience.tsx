@@ -64,14 +64,13 @@ const groups = [
   { id:'relacionamento',label:'Relacionamento',description:'Clientes e oportunidades',links:['atendimento','clientes','parceiros','posvenda'] },
   { id:'rotina',label:'Rotina e documentos',description:'Ferramentas do escritório',links:['compromissos','notas','bancos','calculadora','servicos','usuarios'] },
 ];
-function initialGroup(view:string) { return groups.find(group=>group.links.includes(view))?.id || 'resultados'; }
 
 type Props = {
   view:string; name:string; can:(view:string)=>boolean; go:(view:string)=>void;
   clientCount:number; operationCount:number; activeCount:number;
 };
 export default function ModuleExperience({view,name,can,go,clientCount,operationCount,activeCount}:Props) {
-  const [selected,setSelected]=useState(initialGroup(view));
+  const [selected,setSelected]=useState('resultados');
   const info=destinations[view];
   if(!info)return null;
   const [headline,highlight,description]=copy[view];
