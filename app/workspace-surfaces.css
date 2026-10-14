@@ -1,0 +1,95 @@
+/* Screen-only surface pairs for every module. Report printing keeps its paper palette. */
+@media screen {
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace #tf-module-workspace  {
+  --surface-main:linear-gradient(135deg,#25313ee8,#121b27e0); --surface-inset:#15232ee6; --surface-row:#ffffff07; --surface-border:#c9dce72b; --surface-text:#edf3f7; --surface-muted:#bccbd5; --tf-money:#88d3b0; color:var(--surface-text);
+ }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace #tf-module-workspace :is(.tf-command-hero,.tf-title,.tf-panel,.tf-entity,.tf-client-list,.tf-metric,.tf-month-comparison,
+ .tf-result-card,.tf-operation-board,.tf-quick-panel,.tf-report-hero,.tf-partner-executive,.tf-partner-list,
+ .tf-access-list,.tf-access-form,.tf-access-share,.tf-banks,.tf-bank-toolbar,.tf-service-grid article,
+ .tf-finance-performance>article,.tf-kpi-strip>article,.tf-activity-summary>article,.tf-activity-list>article,
+ .tf-activity-empty,.tf-post-sale-summary>article,.tf-post-sale-summary>div,.tf-post-sale-list>article,
+ .tf-post-sale-template,.tf-production-operation-group,.tf-production-compare>div>article,.tf-report-summary>div,
+ .tf-report-groups article,.tf-partner-source-group,.tf-partner-settlement,.tf-partner-trend,
+ .tf-scheduled-board,.tf-history-list,.tf-filters,.tf-activity-filters,
+ .tf-fc-hero,.tf-fc-panel,.tf-fc-contract-card,.tf-fc-anticipation-card,.tf-fc-contract-summary,.tf-fc-result-total,.tf-fc-next-due) {
+  background:var(--surface-main)!important; color:var(--surface-text)!important; border-color:var(--surface-border)!important; box-shadow:inset 0 1px #ffffff0b,0 8px 22px #0002!important;
+ }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace #tf-module-workspace :is(.tf-production-controls,.tf-production-modality,.tf-production-clients,.tf-production-modality-clients,
+ .tf-comparison-total>span,.tf-service-band,.tf-service-live-total,.tf-group,.tf-banks article,
+ .tf-post-sale-details,.tf-post-sale-note,.tf-post-sale-variables,.tf-additional-operations,.tf-invoice-file,
+ .tf-partner-metrics>div,.tf-partner-trend-cards>article,.tf-partner-report-cards>article,
+ .tf-partner-additional,.tf-partner-deductions,.tf-partner-access-note,.tf-access-form fieldset,
+ .tf-fc-reference,.tf-fc-help,.tf-fc-result,.tf-fc-order>label,.tf-fc-contract-summary>div,.tf-fc-contract-summary>span) {
+  background:var(--surface-inset)!important; color:var(--surface-text)!important; border-color:var(--surface-border)!important; box-shadow:none!important;
+ }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace #tf-module-workspace :is(.tf-kpi-strip,.tf-overview-layout,.tf-metrics,.tf-production-operation-groups,.tf-production-modalities,.tf-finance-performance,.tf-fc-simple-layout,.tf-fc-page) {
+  background:transparent!important; box-shadow:none!important;
+ }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace #tf-module-workspace :is(.tf-panel-title,.tf-command-hero::before,.tf-operation-board>header,.tf-operation-board>footer,.tf-result-card>header,.tf-comparison-header,.tf-board-labels,.tf-list-head,.tf-production-modality>header,.tf-production-operation-group>header,.tf-partner-executive>header,.tf-partner-settlement>header,.tf-access-list>header,thead,th) {
+  background:var(--surface-row)!important; border-color:var(--surface-border)!important; color:var(--surface-muted)!important;
+ }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace #tf-module-workspace :is(.tf-client-row,.tf-op-row,.tf-op-table>div,.tf-commission>div,.tf-invoices>div,.tf-invoice-row,.tf-history-list article,.tf-band-values>span,.tf-service-live-total>div,.tf-production-modality-clients>button,.tf-partner-detail-table>div,.tf-fc-simple-table td) {
+  background:var(--surface-row)!important; border-color:var(--surface-border)!important; color:var(--surface-text)!important; box-shadow:none!important;
+ }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace #tf-module-workspace :is(.tf-client-row,.tf-op-row,.tf-commission>div,.tf-invoices>div):nth-child(even) {
+  background:#ffffff0b!important;
+ }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace #tf-module-workspace :is(.tf-client-row,.tf-op-row):hover {
+  background:#c4dbe513!important;
+ }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace #tf-module-workspace :is(h1,h2,h3,h4,b,strong):not(.tf-deal-card *):not(.tf-partner-report *) {
+  color:var(--surface-text)!important; text-shadow:none!important;
+ }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace #tf-module-workspace :is(p,small,label,legend,time):not(.tf-deal-card *):not(.tf-partner-report *) {
+  color:var(--surface-muted)!important;
+ }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace #tf-module-workspace :is(.tf-table-empty,.tf-activity-empty,.tf-access-empty,.tf-fc-empty,.tf-comparison-empty,.tf-pie-center>span,.tf-comparison-total span,.tf-comparison-legend,.tf-kpi-strip article span,.tf-production-compare article span,.tf-partner-source-group.gg small) {
+  color:var(--surface-muted)!important;
+ }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace #tf-module-workspace :is(input,select,textarea):not(.tf-deal-card *) {
+  background:#0e1923f0!important; color:var(--surface-text)!important; border-color:#aec5d344!important; color-scheme:dark!important; box-shadow:none!important;
+ }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace #tf-module-workspace select option {
+  background:#17232e!important; color:var(--surface-text)!important;
+ }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace #tf-module-workspace :is(input,textarea)::placeholder {
+  color:#94a8b7!important;
+ }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace #tf-module-workspace :is(.tf-filters,.tf-activity-filters,.tf-production-controls,.tf-quick-panel,.tf-result-card li,.tf-entity,.tf-fc-header-actions,.tf-operation-board>header,.tf-result-card>header,.tf-quick-panel>header,.tf-operation-board>footer) button:not(.tf-primary) {
+  background:#afcbd512!important; border-color:var(--surface-border)!important; color:#dce9f0!important; box-shadow:none!important;
+ }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace #tf-module-workspace :is(.tf-result-card li button>span,.tf-result-card li button>span>small,.tf-result-card li button>b,.tf-banks article>a,.tf-market-services article header>em,.tf-finance-performance header em,.tf-fc-reference>span,.tf-fc-section-title>span,.tf-fc-icon-action,.tf-activity-list time) {
+  background:#c4d6e011!important; border-color:var(--surface-border)!important; color:#d5e3eb!important;
+ }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace #tf-module-workspace :is(.tf-result-card li.selected button,.tf-filters button.active,.tf-fc-order>label.active) {
+  background:#c3a46a20!important; border-color:#c3a46a66!important; color:#f3deb4!important;
+ }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace #tf-module-workspace :is(.tf-comparison-tooltip,.tf-pie-tooltip) {
+  background:#16232ff5!important; color:var(--surface-text)!important; border-color:var(--surface-border)!important; box-shadow:0 10px 25px #0005!important;
+ }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace #tf-module-workspace .tf-result-card .tf-pie-core {
+  fill:#182630!important; stroke:#182630!important;
+ }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace #tf-module-workspace .tf-result-card .tf-premium-donut>.tf-pie-svg>path {
+  stroke:#182630!important;
+ }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace #tf-module-workspace .tf-premium-donut::before {
+  background:#182630!important; box-shadow:none!important;
+ }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace #tf-module-workspace :is(.tf-finance-rail,.tf-finance-track) {
+  background:#bbcfdb1f!important;
+ }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace #tf-module-workspace :is(.tf-comparison-svg text,.tf-chart-core text) {
+  fill:var(--surface-muted)!important;
+ }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace #tf-module-workspace :is(.tf-status.pago,.tf-commission em.done,.tf-invoices em.done,.tf-post-sale-completed) {
+  background:#3a99762b!important; color:#a3e1c2!important; border-color:#78bf9c45!important;
+ }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace #tf-module-workspace :is(.tf-commission em.pending,.tf-invoices em.pending) {
+  background:#b7934026!important; color:#f1d69c!important; border-color:#b7934055!important;
+ }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace #tf-module-workspace footer>button:not(.tf-primary):not(.tf-deal-card *) { background:#afcbd512!important; color:#dce9f0!important; border-color:#c9dce72b!important; box-shadow:none!important; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace #tf-module-workspace button.danger { color:#ffb5b5!important; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-module-experience.cinematic-scene .tf-experience-float { background:#182530d9!important; color:#e5edf2!important; border-color:#c9dce72b!important; box-shadow:0 5px 18px #0003!important; }
+ .tf-app.theme-classic.has-workspace-scenery.glass-workspace :is(.tf-modal,.tf-client-sheet) :is(.tf-sheet,.tf-sheet-block,.tf-invoice-file,.tf-additional-operations) { background:#15232eeb!important; color:#edf3f7!important; border-color:#c9dce72b!important; }
+}

@@ -21,7 +21,7 @@
 .tf-network-origin::before { content:none; }
 /* Recolor only the lettering, preserving the original logo silhouette and gold symbol. */
 .tf-network-origin::after { content:''; position:absolute; inset:0; background:#fff; mask:url('/tf-logo-exact.png') center/contain no-repeat; -webkit-mask:url('/tf-logo-exact.png') center/contain no-repeat; clip-path:inset(76% 0 0 0); pointer-events:none; }
-.tf-network-origin>img { position:relative; display:block; width:100%; height:auto; filter:drop-shadow(0 0 5px #e8b75838); }
+.tf-network-origin>img { position:relative; display:block; width:100%; height:auto; filter:drop-shadow(0 0 5px #e8b75866) drop-shadow(0 0 9px #edcf9120); }
 .tf-network-node { position:absolute; left:var(--node-x); top:var(--node-y); translate:-50% -50%; width:11%; min-width:78px; min-height:88px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; padding:6px 3px; border:0; border-radius:16px; background:transparent; color:#ffffff; cursor:pointer; -webkit-tap-highlight-color:transparent; animation:tf-network-float 7s ease-in-out var(--node-delay) infinite; }
 .tf-network-glyph { position:relative; display:grid; place-items:center; width:48px; height:48px; filter:none; transition:transform .25s,filter .25s; }
 .tf-network-glyph::before { content:none; }
@@ -75,7 +75,7 @@
 
 /* Metallic artwork is one transparent atlas, with no card or backplate. */
 .tf-network-glyph,.tf-network-node.is-primary .tf-network-glyph { width:76px; height:76px; }
-.tf-network-metal-icon { display:block; width:1em; height:1em; font-size:76px; background-image:url('/tf-metal-icons-v1.webp'); background-repeat:no-repeat; background-size:300% auto; background-position:var(--sprite-x) var(--sprite-y); filter:drop-shadow(0 3px 3px #0008); }
+.tf-network-metal-icon { display:block; width:1em; height:1em; font-size:76px; background-image:url('/tf-metal-icons-v1.webp'); background-repeat:no-repeat; background-size:300% auto; background-position:var(--sprite-x) var(--sprite-y); filter:drop-shadow(0 2px 3px #0008) drop-shadow(0 0 4px #fff3d64d); }
 @media(min-width:701px) and (max-width:1000px) {
  .tf-network-glyph,.tf-network-node.is-primary .tf-network-glyph { width:60px; height:60px; }
  .tf-network-metal-icon { font-size:60px; }
