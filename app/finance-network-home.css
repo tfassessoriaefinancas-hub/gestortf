@@ -1,5 +1,6 @@
 /* The photo, fingertip and real module controls share one composition. */
-.tf-app.theme-classic .tf-network-home { position:relative; isolation:isolate; margin:auto; max-width:1440px; min-height:calc(100svh - 74px); padding-bottom:24px; overflow:hidden; background:#060606; color:#edf5fa; }
+.tf-app.theme-classic.has-workspace-scenery.glass-workspace.is-classic-hub .tf-content { width:100%; max-width:none!important; margin:0; padding:0!important; }
+.tf-app.theme-classic .tf-network-home { position:relative; isolation:isolate; margin:0; width:100%; max-width:none; min-height:calc(100svh - 74px); padding-bottom:24px; overflow:hidden; background:#060606; color:#edf5fa; }
 .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-content .tf-network-home button.tf-network-node { color:#ffffff!important; background:none!important; border:0!important; box-shadow:none!important; backdrop-filter:none!important; -webkit-backdrop-filter:none!important; }
 .tf-network-home * { box-sizing:border-box; }
 .tf-network-heading { position:absolute; left:5%; top:4.5%; width:31%; z-index:3; pointer-events:none; }

@@ -22,7 +22,8 @@ function orbitPosition(index: number, count: number, turn = 0) {
   const ringCount = outer ? count - innerCount : innerCount;
   const slot = outer ? index - innerCount : index;
   const angle = (slot / Math.max(1, ringCount) + (outer ? .5 / innerCount : 0)) * Math.PI * 2 + turn - Math.PI / 2;
-  return [65 + Math.cos(angle) * (outer ? 27 : 14), 52 + Math.sin(angle) * (outer ? 40 : 27)];
+  // Keep the whole orbit clear of the logo, including while it rotates.
+  return [70 + Math.cos(angle) * (outer ? 22 : 11), 52 + Math.sin(angle) * (outer ? 40 : 27)];
 }
 
 export default function ClassicHome({ name, modules, go }: Props) {
