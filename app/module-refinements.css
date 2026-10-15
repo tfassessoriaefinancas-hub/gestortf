@@ -5,9 +5,16 @@
     --refine-line:#d5e7f12e;
     .tf-top,.tf-mobile-heading { background:transparent!important; border:0!important; box-shadow:none!important; backdrop-filter:none!important; -webkit-backdrop-filter:none!important; }
     .tf-mobile-heading strong,.tf-launcher-home>span { color:#fff!important; }
-    .tf-top .tf-header-logo img { filter:brightness(0) invert(1)!important; }
-    .tf-network-origin>img { filter:brightness(0) invert(1) drop-shadow(0 0 10px #ffffff24)!important; }
-    .tf-network-origin::after { display:none; }
+    .tf-top .tf-header-logo img { filter:none!important; }
+    .tf-network-origin>img { filter:drop-shadow(0 0 6px #e8b75824)!important; }
+    /* Keep the original gold emblem; only the lettering below it is white. */
+    .tf-top .tf-header-logo::after,.tf-network-origin::after {
+      content:''; display:block!important; position:absolute; inset:0; pointer-events:none;
+      background:#fff!important; mix-blend-mode:normal;
+      mask:url('/tf-logo-no-bg.png') center/contain no-repeat;
+      -webkit-mask:url('/tf-logo-no-bg.png') center/contain no-repeat;
+      clip-path:inset(76% 0 0 0);
+    }
     .tf-network-metal-icon { filter:grayscale(1) brightness(1.28) drop-shadow(0 5px 5px #0009) drop-shadow(0 0 6px #ffffff45); }
     .tf-network-connections line { stroke:#e6f4ff; }
     .tf-network-connections circle { fill:#f4faff; }
