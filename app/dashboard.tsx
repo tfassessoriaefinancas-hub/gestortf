@@ -381,6 +381,7 @@ const sliceLabelPoint = (start: number, end: number, radius = 84) => {
   return { x: 160 + radius * Math.cos(angle), y: 135 + radius * Math.sin(angle) };
 };
 const fmt = (v: string) => formatDateBr(v);
+const productLabel = (product: string) => product === "FGTS" ? "Fgts" : product;
 const productOptions = [
   "Consignado INSS",
   "Consignado Federal (SIAPE)",
@@ -388,13 +389,14 @@ const productOptions = [
   "Consignado Municipal",
   "Consignado CLT",
   "Consórcio",
+  "Demanda jurídica",
   "Financiamento",
   "Crédito com garantia",
   "FGTS",
   "Proteção Auto",
   "Seguros",
   "Assessoria Financeira",
-].sort((a, b) => a.length - b.length || a.localeCompare(b, "pt-BR"));
+].sort((a, b) => productLabel(a).length - productLabel(b).length || productLabel(a).localeCompare(productLabel(b), "pt-BR"));
 const agreementOptions=["INSS","CLT / Crédito do Trabalhador","Federal (SIAPE)","Estadual","Municipal","Veículo","Consórcio","FGTS","EVOGARD","Seguros","Assessoria Financeira"];
 const contractTypeOptionsFor=(agreement:string)=>{
   const value=agreement.toLocaleLowerCase("pt-BR");
@@ -419,6 +421,7 @@ const operationOptionsByProduct: Record<string,string[]> = {
   "Consignado":["Aumento de margem","Contrato novo","Margem livre","Novo INSS","Portabilidade","Refinanciamento","Servidor público"],
   "Consórcio":["Consórcio imobiliário","Consórcio de automóvel","Consórcio de motocicleta","Consórcio de embarcação","Consórcio de aeronave","Consórcio de máquinas e equipamentos","Consórcio de veículos pesados","Consórcio de outros bens móveis","Consórcio de serviços"],
   "Crédito com garantia":["Garantia de imóvel","Garantia de veículo","Home equity","Refinanciamento de veículo"],
+  "Demanda jurídica":["Demanda jurídica"],
   "FGTS":["Antecipação do saque-aniversário","Consulta de saldo","Quitação antecipada"],
   "INSS":["Aumento de margem","Benefício novo","Cartão consignado","Contrato novo","Margem livre","Portabilidade","Refinanciamento"],
   "Financiamento":["Financiamento","Crédito com garantia"],
@@ -2090,7 +2093,7 @@ function Kanban({
                       <i className="tf-card-avatar" aria-hidden="true">{d.name.trim().split(/\s+/).filter(Boolean).slice(0,2).map(part=>part[0]).join('').toUpperCase()||'TF'}</i>
                       <div className="tf-card-identity"><strong>{d.name}</strong>{digits(d.cpf) && <small>CPF: {formatCpf(d.cpf)}</small>}</div>
                     </div>
-                    <span className="tf-card-product"><BriefcaseBusiness aria-hidden="true"/>{d.product||"Serviço não informado"}</span>
+                    <span className="tf-card-product"><BriefcaseBusiness aria-hidden="true"/>{productLabel(d.product||"Serviço não informado")}</span>
                     {d.product==="Crédito com garantia"&&d.guaranteeType&&<small className="tf-card-detail"><b>Garantia:</b> {d.guaranteeType}</small>}
                     {movingIds.has(d.id)&&<span role="status">Salvando etapa…</span>}
                     <div className="tf-card-facts">
@@ -2170,7 +2173,7 @@ function Kanban({
             <small>{formStep===1?"INÍCIO DO ATENDIMENTO":"DADOS DO ATENDIMENTO"}</small>
             <h2>{formStep===1?"Novo atendimento":"Especificações da operação"}</h2>
             <p>{formStep===1?"Escolha o serviço do cliente.":"Todos os campos são opcionais e podem ser preenchidos depois."}</p>
-            <label>Serviço<select name="product" value={selectedProduct} disabled={creating} onChange={e=>{setSelectedProduct(e.target.value);setCreateForm(current=>({...current,operationType:""}))}}>{productOptions.map(option=><option key={option}>{option}</option>)}</select></label>
+            <label>Serviço<select name="product" value={selectedProduct} disabled={creating} onChange={e=>{setSelectedProduct(e.target.value);setCreateForm(current=>({...current,operationType:""}))}}>{productOptions.map(option=><option key={option} value={option}>{productLabel(option)}</option>)}</select></label>
             {formStep===1?<button className="tf-primary">Continuar</button>:<>
               <label>Nome completo<input name="name" autoFocus placeholder="Opcional" value={createForm.name} onChange={e=>setCreateForm(current=>({...current,name:e.target.value.toLocaleUpperCase("pt-BR")}))}/></label>
               {selectedProduct==="Crédito com garantia"?<label>Tipo de garantia<select name="guaranteeType" value={createForm.guaranteeType} onChange={e=>setCreateForm(current=>({...current,guaranteeType:e.target.value}))}><option>Veículo</option><option>Imobiliário</option></select></label>:<label>Tipo de operação<select name="operationType" value={createForm.operationType||operationOptionsFor(selectedProduct)[0]} onChange={e=>setCreateForm(current=>({...current,operationType:e.target.value}))}>{operationOptionsFor(selectedProduct).map(option=><option key={option}>{option}</option>)}</select></label>}
@@ -2202,7 +2205,7 @@ function Kanban({
               <label>CPF<input inputMode="numeric" maxLength={14} value={editForm.cpf||""} onChange={e=>setEditForm(x=>({...x,cpf:maskCpf(e.target.value)}))}/></label>
               <label>Data de nascimento<input inputMode="numeric" maxLength={10} placeholder="DD/MM/AAAA" value={editForm.birthDate||""} onChange={e=>setEditForm(x=>({...x,birthDate:maskDate(e.target.value)}))}/></label>
               <label>Telefone / WhatsApp<input inputMode="tel" maxLength={15} value={editForm.phone||""} onChange={e=>setEditForm(x=>({...x,phone:maskPhone(e.target.value)}))}/></label>
-              <label>Serviço<select value={editForm.product||"Financiamento"} onChange={e=>setEditForm(x=>({...x,product:e.target.value}))}>{productOptions.map(option=><option key={option}>{option}</option>)}</select></label>
+              <label>Serviço<select value={editForm.product||"Financiamento"} onChange={e=>setEditForm(x=>({...x,product:e.target.value}))}>{productOptions.map(option=><option key={option} value={option}>{productLabel(option)}</option>)}</select></label>
               {editForm.product==="Crédito com garantia"&&<label>Tipo de garantia<select value={editForm.guaranteeType||"Veículo"} onChange={e=>setEditForm(x=>({...x,guaranteeType:e.target.value}))}><option>Veículo</option><option>Imobiliário</option></select></label>}
               {editForm.product==="Financiamento"?<>
                 <label>Valor total do veículo<CurrencyInput value={editForm.vehicleValue||""} onChange={value=>setEditForm(x=>({...x,vehicleValue:value,financedValue:formatMoneyInput(Math.max(0,parseMoneyBr(value)-parseMoneyBr(x.downPayment)))}))}/></label>
@@ -3464,7 +3467,7 @@ function QuickDocumentUpload() {
                 value={product}
                 onChange={(e) => setProduct(e.target.value)}
               >
-                {productOptions.map((option)=><option key={option}>{option}</option>)}
+                {productOptions.map((option)=><option key={option} value={option}>{productLabel(option)}</option>)}
               </select>
             </label>
             <button className="tf-primary" disabled={busy}>
@@ -3591,7 +3594,7 @@ function QuickDocumentUploadInStage({open,onClose}:{open:boolean;onClose:()=>voi
                 value={product}
                 onChange={(e) => setProduct(e.target.value)}
               >
-                {productOptions.map((option)=><option key={option}>{option}</option>)}
+                {productOptions.map((option)=><option key={option} value={option}>{productLabel(option)}</option>)}
               </select>
             </label>
             <button className="tf-primary" disabled={busy||reading}>
