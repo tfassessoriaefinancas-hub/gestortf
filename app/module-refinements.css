@@ -324,3 +324,27 @@
 @media screen and (max-width:640px) {
   .tf-app.theme-classic.has-workspace-scenery.glass-workspace.tf-ui-refined .tf-content .tf-module-experience.has-scene-motion.cinematic-scene .tf-experience-stats { grid-template-columns:1fr!important; }
 }
+
+/* Always-visible attendance actions, including on touch screens. */
+@media screen {
+  .tf-app.tf-ui-refined #tf-module-workspace .tf-kanban .tf-deal-card>.tf-deal-options {
+    position:relative!important; inset:auto!important; display:flex!important; align-items:center; justify-content:center;
+    width:100%!important; height:auto!important; min-height:40px!important; margin:0 0 14px!important; padding:8px 12px!important;
+    border:1px solid #c7e4f26b!important; border-radius:12px!important; background:#365265e6!important; color:#fff!important;
+    font-size:14px!important; font-weight:750!important; letter-spacing:0!important; opacity:1!important; visibility:visible!important; cursor:pointer;
+  }
+  .tf-app.tf-ui-refined #tf-module-workspace .tf-kanban .tf-deal-card>.tf-deal-menu {
+    position:relative!important; inset:auto!important; width:100%!important; margin:0 0 14px!important; box-sizing:border-box;
+    background:#172b3b!important; border:1px solid #c7e4f24d!important; border-radius:14px!important;
+  }
+  .tf-app.tf-ui-refined #tf-module-workspace .tf-kanban .tf-deal-menu>button {
+    min-height:42px!important; font-size:14px!important; color:#f2f8fc!important;
+  }
+  .tf-app.tf-ui-refined #tf-module-workspace .tf-kanban .tf-deal-menu>button.danger { color:#ffb7b7!important; }
+  .tf-app.tf-ui-refined #tf-module-workspace .tf-kanban .tf-deal-card>.tf-card-close-attendance {
+    display:flex!important; align-items:center; justify-content:center; width:100%!important; min-height:44px!important;
+    margin:12px 0 0!important; padding:10px 12px!important; border:1px solid #f0bd8d88!important; border-radius:12px!important;
+    background:#73482de6!important; color:#fff2e6!important; font-size:14px!important; font-weight:750!important; cursor:pointer;
+  }
+  .tf-app.tf-ui-refined #tf-module-workspace .tf-kanban .tf-deal-card>:is(.tf-deal-options,.tf-card-close-attendance):focus-visible { outline:2px solid #fff!important; outline-offset:3px; }
+}

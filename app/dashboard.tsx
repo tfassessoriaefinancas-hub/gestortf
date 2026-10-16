@@ -2063,9 +2063,10 @@ function Kanban({
                       type="button"
                       className="tf-deal-options"
                       aria-label={`Opções de ${d.name}`}
+                      aria-expanded={menuId === d.id}
                       onClick={() => setMenuId(menuId === d.id ? null : d.id)}
                     >
-                      •••
+                      Opções ⋯
                     </button>
                     {menuId === d.id && (
                       <div className="tf-deal-menu">
@@ -2132,6 +2133,9 @@ function Kanban({
                         </button>
                       )}
                     </div>
+                    <button type="button" className="tf-card-close-attendance" disabled={movingIds.has(d.id)} onClick={()=>{setMenuId(null);setClosingDeal(d);setClosureReason("Operação reprovada");setClosureNotes("");setClosureError("");}}>
+                      Encerrar atendimento
+                    </button>
                     {stage === "finalizado" && (
                       <button
                         className="tf-card-finalize"
