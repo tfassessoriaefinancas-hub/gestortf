@@ -15,7 +15,7 @@ export async function GET(request:Request){
   if(!canClients&&!canProduction)return json({clients:[],operations:[],receivables:[],nextOffset:null});
   const memberScopeField=user.partnerId?'partner_id':'assigned_user_id',memberScopeId=user.partnerId||user.memberId,memberFilter=user.role==='employee'?` AND o.${memberScopeField}=?`:'';
   const clientSql=user.role==='employee'
-    ? `SELECT c.id,c.name,c.cpf,c.benefit_number,c.birth_date,c.phone,c.city FROM clients c WHERE c.owner_id IN (?,?) AND c.deleted_at IS NULL AND EXISTS (SELECT 1 FROM operations o WHERE o.client_id=c.id AND o.owner_id IN (?,?) AND o.deleted_at IS NULL${completedOperationFilter} AND o.${memberScopeField}=?) ORDER BY c.updated_at DESC,c.id DESC LIMIT ${limit} OFFSET ${offset}`
+    ? `SELECT c.id,c.name,c.cpf,c.benefit_number,c.birth_date,c.phone,c.city FROM clients c WHERE c.owner_id IN (?,?) AND c.deleted_at IS NULL AND EXISTS (SELECT 1 FROM operations o WHERE o.client_id=c.id AND o.owner_id IN (?,?) AND o.deleted_at IS NULL AND (o.completed_at IS NOT NULL OR o.is_historical=1 OR o.status='cancelado') AND o.${memberScopeField}=?) ORDER BY c.updated_at DESC,c.id DESC LIMIT ${limit} OFFSET ${offset}`
     : `SELECT c.id,c.name,c.cpf,c.benefit_number,c.birth_date,c.phone,c.city FROM clients c WHERE c.deleted_at IS NULL AND c.owner_id IN (?,?) ORDER BY c.updated_at DESC,c.id DESC LIMIT ${limit} OFFSET ${offset}`;
   const receivableScope=` AND cm.owner_id IN (?,?)${memberFilter}`;
   const receivableSql=`SELECT cm.id,cm.operation_id,o.client_name AS name,cm.value_cents,cm.expected_at,cm.status,cm.notes,o.original_product,o.value_cents AS operation_value_cents,o.notes AS operation_notes,o.commissions,o.stored_ila_rate_bps FROM commissions cm JOIN (${operationSelect} WHERE c.deleted_at IS NULL) o ON o.id=cm.operation_id WHERE cm.deleted_at IS NULL AND o.deleted_at IS NULL AND cm.status NOT IN ('recebida','paga','cancelada','historica') AND lower(COALESCE(cm.notes,'')) NOT LIKE 'base após ila parceiro gg%' AND lower(COALESCE(cm.notes,'')) NOT LIKE 'bonificação parceiro gg%'${completedOperationFilter}${receivableScope} ORDER BY cm.expected_at ASC,cm.id ASC LIMIT ${limit} OFFSET ${offset}`;
@@ -34,3 +34,4 @@ export async function GET(request:Request){
     })
   });
 }
+

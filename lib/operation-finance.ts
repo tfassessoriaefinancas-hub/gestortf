@@ -45,11 +45,13 @@ export function operationFinance(valueCents: number, notes: Record<string, unkno
   const grossRows = ordinary.filter(isGrossCommission);
   const storedRate = grossRows.find(row => row.rate_bps != null)?.rate_bps;
   const explicitRate = notes.commissionRate != null && notes.commissionRate !== '';
-  const hasRate = explicitRate || storedRate != null;
+  const fixedAmount = notes.commissionAmountCents == null || notes.commissionAmountCents === '' ? null : Number(notes.commissionAmountCents);
+  const hasAmount = fixedAmount != null && Number.isSafeInteger(fixedAmount) && fixedAmount >= 0;
+  const hasRate = !hasAmount && (explicitRate || storedRate != null);
   const legacyBase = commissions.filter(isPartnerLegacyBase).reduce((sum, row) => sum + Number(row.value_cents), 0);
   const storedGross = grossRows.reduce((sum, row) => sum + Number(row.value_cents), 0);
   const rate = explicitRate ? parseRate(notes.commissionRate) : storedRate != null ? Number(storedRate) / 100 : 0;
-  const grossCents = hasRate ? Math.round(valueCents * rate / 100)
+  const grossCents = hasAmount ? fixedAmount! : hasRate ? Math.round(valueCents * rate / 100)
     : grossRows.length ? storedGross
     : legacyBase > 0 ? Math.round(legacyBase / (storedIlaRate < 100 ? 1 - storedIlaRate / 100 : 1)) : 0;
   const fees = Object.fromEntries(Object.entries(feeLabels).map(([key, label]) => [key,
@@ -66,6 +68,7 @@ export function operationFinance(valueCents: number, notes: Record<string, unkno
   const receivedCents = paidPart(grossRows.length ? grossRows : commissions.filter(isPartnerLegacyBase), grossCents) + Object.entries(feeLabels).reduce((sum, [key, label]) => sum + paidPart(ordinary.filter(row => row.notes === label), fees[key as keyof typeof feeLabels]), 0);
   return {
     commissionRate: hasRate ? rate : valueCents > 0 ? grossCents / valueCents * 100 : 0,
+    commissionAmount: hasAmount ? fixedAmount! / 100 : null,
     hasCommissionRate: hasRate, grossCents, totalCents, receivedCents,
     pendingCents: Math.max(0, totalCents - receivedCents),
     commissionPaid: totalCents > 0 ? receivedCents >= totalCents : Boolean(notes.commissionPaid),
@@ -139,3 +142,4 @@ export function partnerSettlementFinance(baseNet: number, baseThiagoShare: numbe
     partnerShare: Math.max(0, safeBasePartner + safeAdditional),
   };
 }
+

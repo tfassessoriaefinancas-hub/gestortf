@@ -1,3 +1,4 @@
+import { closeDeal } from '@/lib/close-deal';
 import { env } from '@/lib/runtime';
 import { readOperations } from '@/lib/operations';
 import { updateClientRecord, updateOperationRecord, RecordUpdateError } from '@/lib/update-operation';
@@ -24,7 +25,7 @@ export async function GET(){
   const canonical=operation?{name:operation.clientName,cpf:operation.clientCpf,birthDate:operation.clientBirthDate,phone:operation.clientPhone,benefit:operation.clientBenefit,
    product:operation.product,bank:operation.bank,producer:operation.producer,origin:operation.origin,promoter:operation.promoter,operationType:operation.operationType,
    agreement:operation.agreement,guaranteeType:operation.guaranteeType,contractType:operation.contractType,dueDay:operation.dueDay,productionIndicator:operation.productionIndicator,
-   value:operation.value,installment:operation.installment,term:String(operation.term||''),commissionRate:String(operation.commissionRate),commissionCustomRate:'',commissionPaid:operation.commissionPaid?'Sim':'Não',commissionInstallments:String(operation.commissionInstallments),commissionDueDate:operation.revenueDueDate,
+   value:operation.value,installment:operation.installment,term:String(operation.term||''),commissionRate:String(operation.commissionRate),commissionCustomRate:'',commissionAmount:operation.commissionAmount == null ? '' : String(operation.commissionAmount),commissionPaid:operation.commissionPaid?'Sim':'Não',commissionInstallments:String(operation.commissionInstallments),commissionDueDate:operation.revenueDueDate,
    adhesionFee:operation.adhesionFee,advisoryFee:operation.advisoryFee,bonus:operation.bonus,quotaQuantity:String(operation.quotaQuantity||1),quotaUnitValue:operation.quotaUnitValue,fipeValue:operation.fipeValue,postSale:operation.postSale,postSaleNotes:operation.postSaleNotes,
    vehiclePlate:operation.vehiclePlate,vehicleValue:operation.vehicleValue,downPayment:operation.downPayment,financedValue:operation.financedValue,desiredCredit:operation.desiredCredit,loanValue:operation.value,
    ...(operation.completedAt?{operationDate:operation.date,paidDate:operation.paidDate,contractStatus:operation.status}:{})}:{};
@@ -66,6 +67,10 @@ export async function POST(request:Request){
 export async function PATCH(request:Request){
  const user=await getTfAccess();if(!user||!hasTfPermission(user,'atendimento'))return json({error:'Não autorizado'},401);
  const body=await request.json() as Record<string,unknown>,id=Number(body.id),stage=String(body.stage||'');
+ if(id&&body.action==='close'){
+  try { return json({ok:true,...await closeDeal(env.DB,user,id,String(body.reason||''),String(body.observations||'').trim())}); }
+  catch(error){if(error instanceof RecordUpdateError)return json({error:error.message},error.status);console.error('Falha ao encerrar atendimento.',error);return json({error:'Não foi possível encerrar o atendimento.'},500);}
+ }
  if(id&&body.action==='edit'){
   const current=await ownedDeal(user,id);
   if(!current)return json({error:'Atendimento não encontrado.'},404);
@@ -213,7 +218,7 @@ export async function PATCH(request:Request){
  const updatedOperation=await updateOperationRecord(env.DB,user,operationId,{...d,name,cpf,product:finalizedProduct,operationType:finalizedOperationType,operationDate:isoDate(d.operationDate)||new Date().toISOString().slice(0,10),birthDate:d.birthDate||base.birthDate,phone:phoneBr(d.phone||base.phone),
   origin:operationOrigin,commissionRate,commissionPaid:d.commissionPaid,revenueDueDate:isoDate(d.commissionDueDate)||paidAt||isoDate(d.operationDate),
   status:operationStatus,paidAt,completedAt:new Date().toISOString()});
- const pendingRows=await env.DB.prepare("SELECT id,value_cents,expected_at,status,notes FROM commissions WHERE operation_id=? AND deleted_at IS NULL AND value_cents>0 AND status NOT IN ('recebida','paga','historica','cancelada') AND (rate_bps IS NOT NULL OR notes IN ('Taxa de adesão','Taxa de assessoria','Bonificação'))").bind(operationId).all<{id:number;value_cents:number;expected_at:string|null;status:string;notes:string|null}>();
+ const pendingRows=await env.DB.prepare("SELECT id,value_cents,expected_at,status,notes FROM commissions WHERE operation_id=? AND deleted_at IS NULL AND value_cents>0 AND status NOT IN ('recebida','paga','historica','cancelada') AND lower(COALESCE(notes,'')) NOT LIKE 'base após ila parceiro gg%' AND lower(COALESCE(notes,'')) NOT LIKE 'bonificação parceiro gg%'").bind(operationId).all<{id:number;value_cents:number;expected_at:string|null;status:string;notes:string|null}>();
  const receivables=pendingRows.results.map(item=>({id:item.id,operationId,name:updatedOperation.clientName,value:Number(item.value_cents)/100,dueDate:item.expected_at||'',status:item.status,type:item.notes||'Comissão',product:updatedOperation.product}));
  if(d.invoiceRequired!=='Sim'&&base.invoiceNumber){
   await env.DB.prepare('UPDATE invoices SET deleted_at=?,updated_at=? WHERE owner_id IN (?,?) AND number=? AND deleted_at IS NULL').bind(now,now,user.ownerKeys[0],user.ownerKeys[1],String(base.invoiceNumber)).run();
@@ -259,3 +264,4 @@ async function resolveAssignee(access:TfAccess,value:unknown):Promise<number|nul
  const row=await env.DB.prepare('SELECT id FROM access_users WHERE id=? AND owner_id=? AND active=1').bind(id,access.ownerKey).first<{id:number}>();
  return row?.id;
 }
+

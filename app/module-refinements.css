@@ -208,6 +208,40 @@
   }
 }
 
+
+/* The finalization dialog follows the same dark glass surfaces as Atendimento. */
+@media screen {
+  .tf-app.theme-classic.has-workspace-scenery.glass-workspace.tf-ui-refined #tf-module-workspace .tf-modal.tf-modal-wide:has(.tf-finalize-status) {
+    background:linear-gradient(135deg,#25313ef5,#121b27f5)!important;
+    color:#edf3f7!important; border-color:#c9dce73d!important;
+    .tf-finalize-alert { background:#39876624!important; border:1px solid #91d7b747!important; color:#c5f0da!important; box-shadow:none!important; }
+    .tf-finalize-alert :is(b,small,span) { color:#c5f0da!important; }
+    .tf-finalize-alert>span { background:#75bf9b26!important; border:1px solid #91d7b747!important; }
+    .tf-finalize-title { color:#f2f7fb!important; background:transparent!important; }
+    .tf-finalize-status { display:inline-flex; padding:7px 11px; border:1px solid #91d7b747!important; border-radius:9px; background:#39876624!important; color:#b8e9cf!important; }
+    .tf-finalize-status svg { color:inherit!important; }
+    .tf-final-sections,.tf-form-grid { background:transparent!important; box-shadow:none!important; }
+    .tf-final-section,.tf-final-status { background:#a7c6d509!important; border:1px solid #c9dce72b!important; box-shadow:none!important; }
+    .tf-final-section>header { background:transparent!important; }
+    .tf-final-section>header small { background:#a7c6d512!important; color:#bedbe9!important; border-color:#c9dce73d!important; }
+    :is(h2,h3,b,strong,label) { color:#edf3f7!important; }
+    :is(p,small,.tf-field-note) { color:#becfdc!important; }
+    :is(input,select,textarea) { background:#0e1923e6!important; color:#edf3f7!important; border-color:#aec5d344!important; color-scheme:dark!important; }
+    :is(input,textarea)::placeholder { color:#94a8b7!important; }
+    :is(input,select,textarea):focus-visible { outline:2px solid #9bcfe3; outline-offset:2px; }
+    :is(input,select,textarea):disabled { background:#c9dce70c!important; color:#94a8b7!important; opacity:.7; }
+    select option { background:#17232e!important; color:#edf3f7!important; }
+    output { color:#9dddbd!important; background:transparent!important; }
+    .tf-smart-options { background:#17232efc!important; border-color:#aec5d344!important; box-shadow:0 12px 30px #0005!important; }
+    .tf-smart-option,.tf-smart-options button { background:transparent!important; color:#e4eef5!important; }
+    .tf-smart-options button:is(:hover,:focus-visible,[aria-selected="true"]) { background:#9bcfe322!important; color:#fff!important; }
+    .tf-smart-create-cue { background:transparent!important; color:#bedbe9!important; }
+    .tf-additional-operations,.tf-additional-operations article { background:#a7c6d509!important; border-color:#c9dce72b!important; color:#edf3f7!important; }
+    .tf-final-actions { background:transparent!important; }
+    .tf-final-actions .tf-secondary { background:#a7c6d512!important; color:#e4eef5!important; border-color:#aec5d344!important; }
+  }
+}
+
 @keyframes tf-agenda-attention { 0%,100% { filter:brightness(1); } 50% { filter:brightness(1.15); } }
 @keyframes tf-network-float { 0%,100% { transform:translate3d(calc(-1 * var(--float-x)),3px,0) rotate(-.6deg); } 25% { transform:translate3d(1px,calc(-1 * var(--float-y)),0) rotate(.4deg); } 50% { transform:translate3d(var(--float-x),-2px,0) rotate(.6deg); } 75% { transform:translate3d(-1px,var(--float-y),0) rotate(-.4deg); } }
 
@@ -267,35 +301,26 @@
   }
 }
 
-/* The finalization dialog follows the same dark glass surfaces as Atendimento. */
+
+/* Shared, rounded summary across every module. */
 @media screen {
-  .tf-app.theme-classic.has-workspace-scenery.glass-workspace.tf-ui-refined #tf-module-workspace .tf-modal.tf-modal-wide:has(.tf-finalize-status) {
-    background:linear-gradient(135deg,#25313ef5,#121b27f5)!important;
-    color:#edf3f7!important; border-color:#c9dce73d!important;
-    .tf-finalize-alert { background:#39876624!important; border:1px solid #91d7b747!important; color:#c5f0da!important; box-shadow:none!important; }
-    .tf-finalize-alert :is(b,small,span) { color:#c5f0da!important; }
-    .tf-finalize-alert>span { background:#75bf9b26!important; border:1px solid #91d7b747!important; }
-    .tf-finalize-title { color:#f2f7fb!important; background:transparent!important; }
-    .tf-finalize-status { display:inline-flex; padding:7px 11px; border:1px solid #91d7b747!important; border-radius:9px; background:#39876624!important; color:#b8e9cf!important; }
-    .tf-finalize-status svg { color:inherit!important; }
-    .tf-final-sections,.tf-form-grid { background:transparent!important; box-shadow:none!important; }
-    .tf-final-section,.tf-final-status { background:#a7c6d509!important; border:1px solid #c9dce72b!important; box-shadow:none!important; }
-    .tf-final-section>header { background:transparent!important; }
-    .tf-final-section>header small { background:#a7c6d512!important; color:#bedbe9!important; border-color:#c9dce73d!important; }
-    :is(h2,h3,b,strong,label) { color:#edf3f7!important; }
-    :is(p,small,.tf-field-note) { color:#becfdc!important; }
-    :is(input,select,textarea) { background:#0e1923e6!important; color:#edf3f7!important; border-color:#aec5d344!important; color-scheme:dark!important; }
-    :is(input,textarea)::placeholder { color:#94a8b7!important; }
-    :is(input,select,textarea):focus-visible { outline:2px solid #9bcfe3; outline-offset:2px; }
-    :is(input,select,textarea):disabled { background:#c9dce70c!important; color:#94a8b7!important; opacity:.7; }
-    select option { background:#17232e!important; color:#edf3f7!important; }
-    output { color:#9dddbd!important; background:transparent!important; }
-    .tf-smart-options { background:#17232efc!important; border-color:#aec5d344!important; box-shadow:0 12px 30px #0005!important; }
-    .tf-smart-option,.tf-smart-options button { background:transparent!important; color:#e4eef5!important; }
-    .tf-smart-options button:is(:hover,:focus-visible,[aria-selected="true"]) { background:#9bcfe322!important; color:#fff!important; }
-    .tf-smart-create-cue { background:transparent!important; color:#bedbe9!important; }
-    .tf-additional-operations,.tf-additional-operations article { background:#a7c6d509!important; border-color:#c9dce72b!important; color:#edf3f7!important; }
-    .tf-final-actions { background:transparent!important; }
-    .tf-final-actions .tf-secondary { background:#a7c6d512!important; color:#e4eef5!important; border-color:#aec5d344!important; }
+  .tf-app.theme-classic.has-workspace-scenery.glass-workspace.tf-ui-refined .tf-content .tf-module-experience.has-scene-motion.cinematic-scene .tf-experience-stats {
+    display:grid!important; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px!important;
+    padding:10px!important; border:1px solid #d8eaf333!important; border-radius:24px!important;
+    background:linear-gradient(135deg,#42536366,#19253155)!important;
+    box-shadow:0 12px 30px -18px #0009,inset 0 1px 0 #ffffff12!important;
+    backdrop-filter:blur(14px)!important; -webkit-backdrop-filter:blur(14px)!important;
+    overflow:hidden;
   }
+  .tf-app.theme-classic.has-workspace-scenery.glass-workspace.tf-ui-refined .tf-content .tf-module-experience.has-scene-motion.cinematic-scene .tf-experience-stats>button {
+    padding:14px 18px!important; border:0!important; border-radius:18px!important;
+    background:transparent!important; box-shadow:none!important;
+    transition:background .2s ease,transform .2s ease;
+  }
+  .tf-app.theme-classic.has-workspace-scenery.glass-workspace.tf-ui-refined .tf-content .tf-module-experience.has-scene-motion.cinematic-scene .tf-experience-stats>button:is(:hover,:focus-visible) {
+    background:#d6edff18!important; outline:2px solid #c2e9fb66; outline-offset:-2px;
+  }
+}
+@media screen and (max-width:640px) {
+  .tf-app.theme-classic.has-workspace-scenery.glass-workspace.tf-ui-refined .tf-content .tf-module-experience.has-scene-motion.cinematic-scene .tf-experience-stats { grid-template-columns:1fr!important; }
 }

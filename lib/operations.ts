@@ -41,7 +41,7 @@ export function operationFromRow(row: OperationRow) {
     term: Number(row.term || 0), date: text('operation_date') || '1900-01-01', paidDate: text('paid_at'),
     completedAt: text('completed_at'), status: text('status') || 'em_atendimento',
     commission: finance.totalCents / 100, grossCommission: finance.grossCents / 100,
-    commissionRate: finance.commissionRate, hasCommissionRate: finance.hasCommissionRate,
+    commissionAmount: finance.commissionAmount, commissionRate: finance.commissionRate, hasCommissionRate: finance.hasCommissionRate,
     commissionReceived: finance.receivedCents / 100, commissionPending: finance.pendingCents / 100,
     commissionInstallments: Number(extra.commissionInstallments || ordinary.filter(item => item.rate_bps != null).length || 1),
     commissionPaid: finance.commissionPaid, revenueDueDate: due,
@@ -78,3 +78,4 @@ export async function readOperations(db: ApplicationDatabase, access: OperationA
   const rows = await db.prepare(`${operationSelect} WHERE ${scope} ORDER BY o.updated_at DESC,o.id DESC${paging}`).bind(...values).all<OperationRow>();
   return rows.results.map(operationFromRow);
 }
+

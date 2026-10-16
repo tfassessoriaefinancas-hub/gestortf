@@ -59,6 +59,14 @@ export async function updateOperationRecord(db: ApplicationDatabase, access: Ope
     for (const key of ['agreement', 'guaranteeType', 'contractType', 'dueDay', 'productionIndicator', 'postSale', 'postSaleNotes', 'observations', 'groupQuota']) if (has(patch, key)) extra[key] = String(patch[key] ?? '');
     for (const key of ['adhesionFee', 'advisoryFee', 'bonus', 'quotaUnitValue', 'fipeValue']) if (has(patch, key)) extra[`${key}Cents`] = toCents(patch[key]);
     for (const key of ['quotaQuantity', 'commissionInstallments']) if (has(patch, key)) extra[key] = Math.max(key === 'commissionInstallments' ? 1 : 0, Number(patch[key]) || 0);
+    if (has(patch, 'commissionAmount')) {
+      if (patch.commissionAmount == null || String(patch.commissionAmount).trim() === '') delete extra.commissionAmountCents;
+      else {
+        const amount = parseMoney(patch.commissionAmount), cents = toCents(patch.commissionAmount);
+        if (amount < 0 || !Number.isSafeInteger(cents) || !/\d/.test(String(patch.commissionAmount))) throw new RecordUpdateError('Informe um valor de comissão válido, maior ou igual a zero.');
+        extra.commissionAmountCents = cents;
+      }
+    }
     if (has(patch, 'commissionRate')) extra.commissionRate = parseRate(patch.commissionRate);
     if (has(patch, 'commissionPaid')) extra.commissionPaid = patch.commissionPaid === true || patch.commissionPaid === 'Sim';
     if (has(patch, 'revenueDueDate')) extra.revenueDueDate = date(patch.revenueDueDate) || '';
@@ -80,7 +88,7 @@ export async function updateOperationRecord(db: ApplicationDatabase, access: Ope
     const paidChanged = has(patch, 'commissionPaid') && Boolean(extra.commissionPaid) !== before.commissionPaid;
     const dueChanged = has(patch, 'revenueDueDate') && date(patch.revenueDueDate) !== (before.revenueDueDate || null);
     const storedRevenue = (row.commissions || []).filter(item => !isPartnerLegacyBase(item) && !isPartnerBonus(item)).reduce((sum, item) => sum + Number(item.value_cents), 0);
-    const financialChanged = storedRevenue !== toCents(after.commission) || ['value', 'commissionRate', 'adhesionFee', 'advisoryFee', 'bonus', 'commissionInstallments'].some(key => has(patch, key) && parseMoney(patch[key]) !== Number(before[key as keyof typeof before] || 0));
+    const financialChanged = before.commissionAmount !== after.commissionAmount || storedRevenue !== toCents(after.commission) || ['value', 'commissionRate', 'adhesionFee', 'advisoryFee', 'bonus', 'commissionInstallments'].some(key => has(patch, key) && parseMoney(patch[key]) !== Number(before[key as keyof typeof before] || 0));
     const due = date(patch.revenueDueDate || before.revenueDueDate || next.operation_date);
     if (financialChanged && after.commission > 0 && !extra.commissionPaid && !due) throw new RecordUpdateError('Informe o vencimento da receita.');
 
@@ -116,3 +124,4 @@ export async function updateOperationRecord(db: ApplicationDatabase, access: Ope
   };
   return transactionClient ? action(transactionClient) : db.transaction(action);
 }
+

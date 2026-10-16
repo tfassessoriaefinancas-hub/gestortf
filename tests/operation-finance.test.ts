@@ -75,3 +75,28 @@ test('imported partner statements preserve exact cents', () => {
   assert.equal(imported.thiagoShare, 618.12);
   assert.equal(imported.partnerShare, 618.11);
 });
+
+
+test('fixed commission keeps exact cents and overrides every percentage', () => {
+  const rows: CommissionRow[] = [{id:1,rate_bps:375,value_cents:159937,status:'prevista',notes:'Comissão'}];
+  const result=operationFinance(4265000,{commissionRate:3.6,commissionAmountCents:46938,advisoryFeeCents:10000},rows);
+  assert.equal(result.commissionAmount,469.38);
+  assert.equal(result.hasCommissionRate,false);
+  assert.equal(result.grossCents,46938);
+  assert.equal(result.totalCents,56938);
+  assert.equal(result.pendingCents,56938);
+  assert.equal(revenueAmounts(result,rows).get(1),46938);
+  assert.equal(operationFinance(5000000,{commissionRate:6,commissionAmountCents:0},rows).grossCents,0);
+  assert.equal(operationFinance(5000000,{commissionRate:6,commissionAmountCents:null},rows).grossCents,300000);
+});
+
+test('fixed commission retains partial payment history and cent totals', () => {
+  const rows: CommissionRow[] = [
+    {id:1,rate_bps:null,value_cents:23469,status:'recebida',notes:'Comissão · Parcela 1/2'},
+    {id:2,rate_bps:null,value_cents:23469,status:'prevista',notes:'Comissão · Parcela 2/2'},
+  ];
+  const result=operationFinance(1234567,{commissionAmountCents:46938},rows);
+  assert.equal(result.receivedCents,23469);
+  assert.equal(result.pendingCents,23469);
+  assert.deepEqual([...revenueAmounts(result,rows)],[[1,23469],[2,23469]]);
+});
