@@ -266,3 +266,36 @@
     font-size:16px!important; font-weight:500; text-align:left; text-transform:none!important;
   }
 }
+
+/* The finalization dialog follows the same dark glass surfaces as Atendimento. */
+@media screen {
+  .tf-app.theme-classic.has-workspace-scenery.glass-workspace.tf-ui-refined #tf-module-workspace .tf-modal.tf-modal-wide:has(.tf-finalize-status) {
+    background:linear-gradient(135deg,#25313ef5,#121b27f5)!important;
+    color:#edf3f7!important; border-color:#c9dce73d!important;
+    .tf-finalize-alert { background:#39876624!important; border:1px solid #91d7b747!important; color:#c5f0da!important; box-shadow:none!important; }
+    .tf-finalize-alert :is(b,small,span) { color:#c5f0da!important; }
+    .tf-finalize-alert>span { background:#75bf9b26!important; border:1px solid #91d7b747!important; }
+    .tf-finalize-title { color:#f2f7fb!important; background:transparent!important; }
+    .tf-finalize-status { display:inline-flex; padding:7px 11px; border:1px solid #91d7b747!important; border-radius:9px; background:#39876624!important; color:#b8e9cf!important; }
+    .tf-finalize-status svg { color:inherit!important; }
+    .tf-final-sections,.tf-form-grid { background:transparent!important; box-shadow:none!important; }
+    .tf-final-section,.tf-final-status { background:#a7c6d509!important; border:1px solid #c9dce72b!important; box-shadow:none!important; }
+    .tf-final-section>header { background:transparent!important; }
+    .tf-final-section>header small { background:#a7c6d512!important; color:#bedbe9!important; border-color:#c9dce73d!important; }
+    :is(h2,h3,b,strong,label) { color:#edf3f7!important; }
+    :is(p,small,.tf-field-note) { color:#becfdc!important; }
+    :is(input,select,textarea) { background:#0e1923e6!important; color:#edf3f7!important; border-color:#aec5d344!important; color-scheme:dark!important; }
+    :is(input,textarea)::placeholder { color:#94a8b7!important; }
+    :is(input,select,textarea):focus-visible { outline:2px solid #9bcfe3; outline-offset:2px; }
+    :is(input,select,textarea):disabled { background:#c9dce70c!important; color:#94a8b7!important; opacity:.7; }
+    select option { background:#17232e!important; color:#edf3f7!important; }
+    output { color:#9dddbd!important; background:transparent!important; }
+    .tf-smart-options { background:#17232efc!important; border-color:#aec5d344!important; box-shadow:0 12px 30px #0005!important; }
+    .tf-smart-option,.tf-smart-options button { background:transparent!important; color:#e4eef5!important; }
+    .tf-smart-options button:is(:hover,:focus-visible,[aria-selected="true"]) { background:#9bcfe322!important; color:#fff!important; }
+    .tf-smart-create-cue { background:transparent!important; color:#bedbe9!important; }
+    .tf-additional-operations,.tf-additional-operations article { background:#a7c6d509!important; border-color:#c9dce72b!important; color:#edf3f7!important; }
+    .tf-final-actions { background:transparent!important; }
+    .tf-final-actions .tf-secondary { background:#a7c6d512!important; color:#e4eef5!important; border-color:#aec5d344!important; }
+  }
+}
