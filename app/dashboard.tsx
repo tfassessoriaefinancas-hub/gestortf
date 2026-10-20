@@ -2059,17 +2059,46 @@ function Kanban({
                     className={`tf-deal-card deal-stage-${i} ${d.returnAt&&d.returnStatus!=="concluido"&&d.returnAt<=nowIso?'return-due':''} ${stage === "finalizado" && (d.needsCompletion || d.status !== "concluido") ? "needs-completion" : ""}`}
                   >
                     <div className="tf-deal-ribbon"><span>{name}</span></div>
-                    <button
-                      type="button"
-                      className="tf-deal-options"
-                      aria-label={`Opções de ${d.name}`}
-                      aria-expanded={menuId === d.id}
-                      onClick={() => setMenuId(menuId === d.id ? null : d.id)}
-                    >
-                      Opções ⋯
-                    </button>
+                    <div className="tf-card-heading">
+                      <i className="tf-card-avatar" aria-hidden="true">{d.name.trim().split(/\s+/).filter(Boolean).slice(0,2).map(part=>part[0]).join('').toUpperCase()||'TF'}</i>
+                      <div className="tf-card-identity"><strong>{d.name}</strong>{digits(d.cpf) && <small>CPF: {formatCpf(d.cpf)}</small>}</div>
+                    </div>
+                    <span className="tf-card-product"><BriefcaseBusiness aria-hidden="true"/>{productLabel(d.product||"Serviço não informado")}</span>
+                    {isLegalDemand(d.product)&&d.operationType&&d.operationType!==d.product&&<small className="tf-card-detail"><b>Processo:</b> {d.operationType}</small>}
+                    {d.product==="Crédito com garantia"&&d.guaranteeType&&<small className="tf-card-detail"><b>Garantia:</b> {d.guaranteeType}</small>}
+                    {movingIds.has(d.id)&&<span role="status">Salvando etapa…</span>}
+                    <div className="tf-card-facts">
+                      <span className="tf-card-phone tf-card-detail"><b>Telefone</b><span>{formatPhone(d.phone)||'Não informado'}</span></span>
+                      <small className="tf-card-detail"><b>Nascimento</b><span>{formatDateBr(d.birthDate)||'Não informado'}</span></small>
+                    </div>
+                    <DealProgress step={i} total={columns.length} stage={name} createdAt={d.createdAt}/>
+                    {stage === "finalizado" && (d.needsCompletion || d.status !== "concluido")&&<em className="tf-card-pending-label">FINALIZAR CADASTRO</em>}
+                    {d.returnAt&&d.returnStatus!=="concluido"&&<span className="tf-card-return"><Clock3/> {new Date(d.returnAt).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})} · {d.returnReason}</span>}
+                    <div className="tf-card-actions">
+                      <button type="button" className="tf-card-whatsapp" title="WhatsApp" disabled={!digits(d.phone)} onClick={()=>window.open(`https://wa.me/55${digits(d.phone)}`,'_blank')}><MessageCircle/><span>WhatsApp</span></button>
+                      <button type="button" title="Ligar" disabled={!digits(d.phone)} onClick={()=>{window.location.href=`tel:${digits(d.phone)}`}}><Phone/></button>
+                      <button type="button" title="Agendar retorno" onClick={()=>openReturn(d)}><CalendarDays/></button>
+                      <button type="button" title="Histórico" onClick={()=>setHistoryDeal(d)}><History/></button>
+                      <button type="button" title="Documentos" onClick={()=>setDocumentsDeal(d)}><Paperclip/></button>
+                      <button type="button" className="tf-card-tool" title="Opções do atendimento" aria-label={`Opções do atendimento de ${d.name}`} aria-expanded={menuId===d.id} aria-controls={`tf-deal-menu-${d.id}`} onClick={()=>setMenuId(menuId===d.id?null:d.id)}><SettingsIcon aria-hidden="true"/></button>
+                      <button type="button" className="tf-card-tool tf-card-close-tool" title="Encerrar atendimento" aria-label={`Encerrar atendimento de ${d.name}`} disabled={movingIds.has(d.id)} onClick={()=>{setMenuId(null);setClosingDeal(d);setClosureReason("Operação reprovada");setClosureNotes("");setClosureError("");}}><X aria-hidden="true"/></button>
+                      {stage !== "finalizado" && (
+                        <button
+                          type="button"
+                          className="tf-card-next"
+                          disabled={movingIds.has(d.id)}
+                          title="Avançar para a próxima etapa"
+                          aria-label={`Avançar atendimento de ${d.name}`}
+                          onClick={() =>
+                            move(d, columns[Math.min(i + 1, columns.length - 1)][0])
+                          }
+                        >
+                          <span>Avançar</span><ChevronRight />
+                        </button>
+                      )}
+                    </div>
                     {menuId === d.id && (
-                      <div className="tf-deal-menu">
+                      <div className="tf-deal-menu" id={`tf-deal-menu-${d.id}`}>
                         {stage === "finalizado" && <button type="button" onClick={()=>{setMenuId(null);void move(d,"finalizado")}}>
                           Abrir finalização
                         </button>}
@@ -2097,45 +2126,6 @@ function Kanban({
                         </button>
                       </div>
                     )}
-                    <div className="tf-card-heading">
-                      <i className="tf-card-avatar" aria-hidden="true">{d.name.trim().split(/\s+/).filter(Boolean).slice(0,2).map(part=>part[0]).join('').toUpperCase()||'TF'}</i>
-                      <div className="tf-card-identity"><strong>{d.name}</strong>{digits(d.cpf) && <small>CPF: {formatCpf(d.cpf)}</small>}</div>
-                    </div>
-                    <span className="tf-card-product"><BriefcaseBusiness aria-hidden="true"/>{productLabel(d.product||"Serviço não informado")}</span>
-                    {isLegalDemand(d.product)&&d.operationType&&d.operationType!==d.product&&<small className="tf-card-detail"><b>Processo:</b> {d.operationType}</small>}
-                    {d.product==="Crédito com garantia"&&d.guaranteeType&&<small className="tf-card-detail"><b>Garantia:</b> {d.guaranteeType}</small>}
-                    {movingIds.has(d.id)&&<span role="status">Salvando etapa…</span>}
-                    <div className="tf-card-facts">
-                      <span className="tf-card-phone tf-card-detail"><b>Telefone</b><span>{formatPhone(d.phone)||'Não informado'}</span></span>
-                      <small className="tf-card-detail"><b>Nascimento</b><span>{formatDateBr(d.birthDate)||'Não informado'}</span></small>
-                    </div>
-                    <DealProgress step={i} total={columns.length} stage={name} createdAt={d.createdAt}/>
-                    {stage === "finalizado" && (d.needsCompletion || d.status !== "concluido")&&<em className="tf-card-pending-label">FINALIZAR CADASTRO</em>}
-                    {d.returnAt&&d.returnStatus!=="concluido"&&<span className="tf-card-return"><Clock3/> {new Date(d.returnAt).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})} · {d.returnReason}</span>}
-                    <div className="tf-card-actions">
-                      <button type="button" className="tf-card-whatsapp" title="WhatsApp" disabled={!digits(d.phone)} onClick={()=>window.open(`https://wa.me/55${digits(d.phone)}`,'_blank')}><MessageCircle/><span>WhatsApp</span></button>
-                      <button type="button" title="Ligar" disabled={!digits(d.phone)} onClick={()=>{window.location.href=`tel:${digits(d.phone)}`}}><Phone/></button>
-                      <button type="button" title="Agendar retorno" onClick={()=>openReturn(d)}><CalendarDays/></button>
-                      <button type="button" title="Histórico" onClick={()=>setHistoryDeal(d)}><History/></button>
-                      <button type="button" title="Documentos" onClick={()=>setDocumentsDeal(d)}><Paperclip/></button>
-                      {stage !== "finalizado" && (
-                        <button
-                          type="button"
-                          className="tf-card-next"
-                          disabled={movingIds.has(d.id)}
-                          title="Avançar para a próxima etapa"
-                          aria-label={`Avançar atendimento de ${d.name}`}
-                          onClick={() =>
-                            move(d, columns[Math.min(i + 1, columns.length - 1)][0])
-                          }
-                        >
-                          <span>Avançar</span><ChevronRight />
-                        </button>
-                      )}
-                    </div>
-                    <button type="button" className="tf-card-close-attendance" disabled={movingIds.has(d.id)} onClick={()=>{setMenuId(null);setClosingDeal(d);setClosureReason("Operação reprovada");setClosureNotes("");setClosureError("");}}>
-                      Encerrar atendimento
-                    </button>
                     {stage === "finalizado" && (
                       <button
                         className="tf-card-finalize"

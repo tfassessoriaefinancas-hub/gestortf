@@ -325,26 +325,26 @@
   .tf-app.theme-classic.has-workspace-scenery.glass-workspace.tf-ui-refined .tf-content .tf-module-experience.has-scene-motion.cinematic-scene .tf-experience-stats { grid-template-columns:1fr!important; }
 }
 
-/* Always-visible attendance actions, including on touch screens. */
+/* Compact tools sit alongside the card's existing action icons. */
 @media screen {
-  .tf-app.tf-ui-refined #tf-module-workspace .tf-kanban .tf-deal-card>.tf-deal-options {
-    position:relative!important; inset:auto!important; display:flex!important; align-items:center; justify-content:center;
-    width:100%!important; height:auto!important; min-height:40px!important; margin:0 0 14px!important; padding:8px 12px!important;
-    border:1px solid #c7e4f26b!important; border-radius:12px!important; background:#365265e6!important; color:#fff!important;
-    font-size:14px!important; font-weight:750!important; letter-spacing:0!important; opacity:1!important; visibility:visible!important; cursor:pointer;
+  .tf-app.tf-ui-refined #tf-module-workspace .tf-kanban .tf-card-actions { flex-wrap:wrap!important; gap:6px!important; }
+  .tf-app.tf-ui-refined #tf-module-workspace .tf-kanban .tf-card-actions>.tf-card-tool {
+    position:static!important; display:inline-flex!important; align-items:center; justify-content:center;
+    flex:0 0 32px!important; width:32px!important; min-width:32px!important; height:32px!important;
+    padding:6px!important; margin:0!important; border:1px solid #d0e3f035!important; border-radius:9px!important;
+    background:#d2e5f011!important; color:#dbeaf4!important; box-shadow:none!important; cursor:pointer;
   }
+  .tf-app.tf-ui-refined #tf-module-workspace .tf-kanban .tf-card-actions>.tf-card-tool svg { width:16px!important; height:16px!important; margin:0!important; stroke-width:1.8; }
+  .tf-app.tf-ui-refined #tf-module-workspace .tf-kanban .tf-card-actions>.tf-card-close-tool { color:#dfb6a6!important; }
+  .tf-app.tf-ui-refined #tf-module-workspace .tf-kanban .tf-card-actions>.tf-card-tool:is(:hover,[aria-expanded="true"]) { background:#d2e5f024!important; border-color:#d0e3f070!important; }
+  .tf-app.tf-ui-refined #tf-module-workspace .tf-kanban .tf-card-actions>.tf-card-tool:focus-visible { outline:2px solid #d5ebff!important; outline-offset:2px; }
   .tf-app.tf-ui-refined #tf-module-workspace .tf-kanban .tf-deal-card>.tf-deal-menu {
-    position:relative!important; inset:auto!important; width:100%!important; margin:0 0 14px!important; box-sizing:border-box;
-    background:#172b3b!important; border:1px solid #c7e4f24d!important; border-radius:14px!important;
+    position:relative!important; inset:auto!important; width:100%!important; margin:8px 0 0!important; box-sizing:border-box;
+    background:#172b3b!important; border:1px solid #c7e4f24d!important; border-radius:12px!important;
   }
-  .tf-app.tf-ui-refined #tf-module-workspace .tf-kanban .tf-deal-menu>button {
-    min-height:42px!important; font-size:14px!important; color:#f2f8fc!important;
-  }
+  .tf-app.tf-ui-refined #tf-module-workspace .tf-kanban .tf-deal-menu>button { min-height:40px!important; font-size:13px!important; color:#f2f8fc!important; }
   .tf-app.tf-ui-refined #tf-module-workspace .tf-kanban .tf-deal-menu>button.danger { color:#ffb7b7!important; }
-  .tf-app.tf-ui-refined #tf-module-workspace .tf-kanban .tf-deal-card>.tf-card-close-attendance {
-    display:flex!important; align-items:center; justify-content:center; width:100%!important; min-height:44px!important;
-    margin:12px 0 0!important; padding:10px 12px!important; border:1px solid #f0bd8d88!important; border-radius:12px!important;
-    background:#73482de6!important; color:#fff2e6!important; font-size:14px!important; font-weight:750!important; cursor:pointer;
-  }
-  .tf-app.tf-ui-refined #tf-module-workspace .tf-kanban .tf-deal-card>:is(.tf-deal-options,.tf-card-close-attendance):focus-visible { outline:2px solid #fff!important; outline-offset:3px; }
+}
+@media screen and (pointer:coarse) {
+  .tf-app.tf-ui-refined #tf-module-workspace .tf-kanban .tf-card-actions>.tf-card-tool { flex-basis:40px!important; width:40px!important; height:40px!important; }
 }
