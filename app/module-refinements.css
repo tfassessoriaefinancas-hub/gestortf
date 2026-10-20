@@ -246,7 +246,8 @@
     .tf-final-sections { gap:12px; margin:16px 0; }
     .tf-final-section { padding:16px!important; }
     .tf-form-grid { grid-template-columns:repeat(3,minmax(0,1fr))!important; gap:8px 20px!important; }
-    .tf-form-grid>label { min-width:0; margin:0!important; }
+    .tf-form-grid label { min-width:0; margin:0!important; font-size:15px!important; font-weight:700!important; line-height:1.45!important; }
+    .tf-form-grid :is(.tf-field-note,output) { font-size:13px!important; line-height:1.45!important; }
     .tf-form-grid :is(input,select,textarea) { width:100%; min-width:0; box-sizing:border-box; }
     .tf-finalize-title { font-size:clamp(20px,2.2vw,28px)!important; padding-right:28px; overflow-wrap:anywhere; }
     .tf-modal-close { background:#fbe7e7!important; color:#a93030!important; border-color:#e7bcbc!important; }
@@ -259,6 +260,10 @@
       .tf-final-actions>button { height:auto; white-space:normal; padding:12px!important; }
     }
     .tf-final-actions { background:transparent!important; }
+    .tf-final-actions .tf-primary { background:#19834c!important; color:#fff!important; border:1px solid #146c3e!important; font-size:15px!important; font-weight:750!important; text-shadow:none!important; box-shadow:0 4px 12px #19834c24!important; }
+    .tf-final-actions .tf-primary:hover:not(:disabled) { background:#146c3e!important; }
+    .tf-final-actions .tf-primary:focus-visible { outline:3px solid #86cba7; outline-offset:3px; }
+    .tf-final-actions .tf-primary:disabled { opacity:.65; cursor:wait; }
     .tf-final-actions .tf-secondary { background:#e0edf5!important; color:#29465e!important; border-color:#b5c9d8!important; }
   }
 }
