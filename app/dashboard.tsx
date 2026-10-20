@@ -2121,7 +2121,6 @@ function Kanban({
                       <button type="button" title="Agendar retorno" onClick={()=>openReturn(d)}><CalendarDays/></button>
                       <button type="button" title="Histórico" onClick={()=>setHistoryDeal(d)}><History/></button>
                       <button type="button" title="Documentos" onClick={()=>setDocumentsDeal(d)}><Paperclip/></button>
-                      <button type="button" className="tf-card-tool" title="Opções do atendimento" aria-label={`Opções do atendimento de ${d.name}`} aria-expanded={menuId===d.id} aria-controls={`tf-deal-menu-${d.id}`} onClick={()=>setMenuId(menuId===d.id?null:d.id)}><SettingsIcon aria-hidden="true"/></button>
 
                     </div>
                     {menuId === d.id && (
