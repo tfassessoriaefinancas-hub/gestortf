@@ -1905,13 +1905,18 @@ function Kanban({
     }
     if(movingRef.current.has(d.id))return;
     movingRef.current.add(d.id);setMovingIds(new Set(movingRef.current));setKanbanError("");
+    // Move immediately; persistence runs in the background with rollback on failure.
+    setDeals(rows=>rows.map(row=>row.id===d.id?{...row,stage}:row));
     try {
       const r=await fetch("/api/deals",{method:"PATCH",headers:{"content-type":"application/json"},body:JSON.stringify({id:d.id,stage})});
       const result=await r.json();
       if(!r.ok)throw new Error(result.error||"Não foi possível mudar a etapa.");
       setDeals(rows=>result.status==='concluido'?rows.filter(row=>row.id!==d.id):rows.map(row=>row.id===d.id?{...row,stage:result.stage,status:result.status,needsCompletion:result.needsCompletion,updatedAt:result.updatedAt}:row));
       onDataChanged();
-    }catch(error){setKanbanError(error instanceof Error?error.message:"Não foi possível salvar a etapa. Tente novamente.");}
+    }catch(error){
+      setDeals(rows=>rows.map(row=>row.id===d.id?{...row,stage:d.stage}:row));
+      setKanbanError(error instanceof Error?error.message:"Não foi possível salvar a etapa. Tente novamente.");
+    }
     finally{movingRef.current.delete(d.id);setMovingIds(new Set(movingRef.current));}
   };
   const remove = async (d: Deal, permanent = false) => {
@@ -2094,20 +2099,7 @@ function Kanban({
                       <button type="button" title="Histórico" onClick={()=>setHistoryDeal(d)}><History/></button>
                       <button type="button" title="Documentos" onClick={()=>setDocumentsDeal(d)}><Paperclip/></button>
                       <button type="button" className="tf-card-tool" title="Opções do atendimento" aria-label={`Opções do atendimento de ${d.name}`} aria-expanded={menuId===d.id} aria-controls={`tf-deal-menu-${d.id}`} onClick={()=>setMenuId(menuId===d.id?null:d.id)}><SettingsIcon aria-hidden="true"/></button>
-                      {stage !== "finalizado" && (
-                        <button
-                          type="button"
-                          className="tf-card-next"
-                          disabled={movingIds.has(d.id)}
-                          title="Avançar para a próxima etapa"
-                          aria-label={`Avançar atendimento de ${d.name}`}
-                          onClick={() =>
-                            move(d, columns[Math.min(i + 1, columns.length - 1)][0])
-                          }
-                        >
-                          <span>Avançar</span><ChevronRight />
-                        </button>
-                      )}
+
                     </div>
                     {menuId === d.id && (
                       <div className="tf-deal-menu" id={`tf-deal-menu-${d.id}`}>
