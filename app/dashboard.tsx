@@ -1936,6 +1936,19 @@ function Kanban({
     if (!active || finalizing) return;
     setFinalizing(true);
     try {
+      if (details.negotiationWithdrawn === "Sim") {
+        const editResponse = await fetch("/api/deals", {method:"PATCH",headers:{"content-type":"application/json"},body:JSON.stringify({id:active.id,action:"edit",details:{name:details.name||active.name,cpf:cpfKey(details.cpf||""),birthDate:dateToIso(details.birthDate||""),phone:details.phone||active.phone||""}})});
+        const edited = await readApiPayload(editResponse);
+        if (!editResponse.ok) { alert(edited.error || "Confira os dados do cliente."); return; }
+        const response = await fetch("/api/deals", {method:"PATCH",headers:{"content-type":"application/json"},body:JSON.stringify({id:active.id,action:"close",reason:"Cliente desistiu",observations:"Cliente desistiu da negociação."})});
+        const result = await readApiPayload(response);
+        if (!response.ok) { alert(result.error || "Não foi possível registrar a desistência."); return; }
+        setDeals(rows=>rows.filter(row=>row.id!==active.id));
+        setActive(null);
+        setAdditionalOperations([]);
+        onDataChanged();
+        return;
+      }
       const normalizeOperation=(source:Record<string,string>)=>({
         ...source,
         name:(source.name||details.name||'').toLocaleUpperCase('pt-BR'),
@@ -2081,7 +2094,6 @@ function Kanban({
                       <button type="button" title="Histórico" onClick={()=>setHistoryDeal(d)}><History/></button>
                       <button type="button" title="Documentos" onClick={()=>setDocumentsDeal(d)}><Paperclip/></button>
                       <button type="button" className="tf-card-tool" title="Opções do atendimento" aria-label={`Opções do atendimento de ${d.name}`} aria-expanded={menuId===d.id} aria-controls={`tf-deal-menu-${d.id}`} onClick={()=>setMenuId(menuId===d.id?null:d.id)}><SettingsIcon aria-hidden="true"/></button>
-                      <button type="button" className="tf-card-tool tf-card-close-tool" title="Encerrar atendimento" aria-label={`Encerrar atendimento de ${d.name}`} disabled={movingIds.has(d.id)} onClick={()=>{setMenuId(null);setClosingDeal(d);setClosureReason("Operação reprovada");setClosureNotes("");setClosureError("");}}><X aria-hidden="true"/></button>
                       {stage !== "finalizado" && (
                         <button
                           type="button"
@@ -2335,7 +2347,11 @@ function Kanban({
               </section>
             </div>
             {additionalOperations.length>0&&<section className="tf-additional-operations"><header><span><small>OPERAÇÕES DO MESMO CLIENTE</small><b>{additionalOperations.length} operação(ões) pronta(s) para salvar</b></span><small>Elas serão vinculadas ao cadastro principal.</small></header>{additionalOperations.map((operation,index)=><article key={`${resolvedProduct(operation)}-${index}`}><span><b>{resolvedProduct(operation)||'Operação'}</b><small>{[operation.bank,operation.operationType].filter(Boolean).join(' · ')||'Dados complementares em branco'}</small></span><strong>{brl(operationValueForDetails(operation))}</strong><button type="button" onClick={()=>setAdditionalOperations(current=>current.filter((_,itemIndex)=>itemIndex!==index))}>Remover</button></article>)}</section>}
-            <div className="tf-final-actions"><button type="button" className="tf-secondary" onClick={queueAdditionalOperation} disabled={finalizing}><Plus/> Salvar esta e adicionar outra operação</button><button className="tf-primary" disabled={finalizing}>{finalizing ? "Salvando cadastro…" : additionalOperations.length?"Finalizar todas as operações":"Concluir cadastro e finalizar"}</button></div>
+            <div className="tf-withdrawal-choice">
+              <label><input type="checkbox" checked={details.negotiationWithdrawn === "Sim"} onChange={event=>setDetails(current=>({...current,negotiationWithdrawn:event.target.checked?"Sim":"Não"}))}/><span>Cliente desistiu da negociação</span></label>
+              {details.negotiationWithdrawn === "Sim" && <p>Ao confirmar, o atendimento sai do Kanban e o cliente permanece cadastrado com seu histórico. Esta negociação não será contabilizada como venda concluída.</p>}
+            </div>
+            <div className="tf-final-actions"><button type="button" className="tf-secondary" onClick={queueAdditionalOperation} disabled={finalizing || details.negotiationWithdrawn === "Sim"}><Plus/> Salvar esta e adicionar outra operação</button><button className="tf-primary" formNoValidate={details.negotiationWithdrawn === "Sim"} disabled={finalizing}>{finalizing ? "Salvando cadastro…" : details.negotiationWithdrawn === "Sim" ? "Salvar cliente e registrar desistência" : additionalOperations.length?"Finalizar todas as operações":"Concluir cadastro e finalizar"}</button></div>
           </form>
         </div>
       )}

@@ -375,17 +375,8 @@
   .tf-app.tf-ui-refined #tf-module-workspace .tf-kanban .tf-card-actions>.tf-card-tool { flex-basis:40px!important; width:40px!important; height:40px!important; }
 }
 
-/* Quiet close control anchored inside each attendance card. */
-@media screen {
-  .tf-app.tf-ui-refined #tf-module-workspace .tf-kanban .tf-deal-card { position:relative!important; }
-  .tf-app.tf-ui-refined #tf-module-workspace .tf-kanban .tf-deal-card .tf-card-heading { padding-right:22px!important; }
-  .tf-app.tf-ui-refined #tf-module-workspace .tf-kanban .tf-deal-card .tf-card-actions { position:static!important; }
-  .tf-app.tf-ui-refined #tf-module-workspace .tf-kanban .tf-deal-card .tf-card-actions>.tf-card-close-tool {
-    position:absolute!important; top:5px!important; right:5px!important; bottom:auto!important; left:auto!important;
-    width:26px!important; min-width:26px!important; height:26px!important; min-height:26px!important;
-    padding:6px!important; margin:0!important; border:0!important; background:transparent!important;
-    color:#b9c9d4!important; box-shadow:none!important; border-radius:6px!important; z-index:2;
-  }
-  .tf-app.tf-ui-refined #tf-module-workspace .tf-kanban .tf-deal-card .tf-card-actions>.tf-card-close-tool svg { width:12px!important; height:12px!important; stroke-width:1.7!important; }
-  .tf-app.tf-ui-refined #tf-module-workspace .tf-kanban .tf-deal-card .tf-card-actions>.tf-card-close-tool:hover { color:#ffd0c8!important; background:#dca49b18!important; }
-}
+/* Desistência registrada na conclusão, preservando cliente e histórico. */
+.tf-app.tf-ui-refined #tf-module-workspace .tf-modal .tf-withdrawal-choice { margin-top:16px; padding:16px; border:1px solid #c3dce552; border-radius:12px; background:#d5e8f012; }
+.tf-app.tf-ui-refined #tf-module-workspace .tf-modal .tf-withdrawal-choice label { display:flex!important; flex-direction:row!important; align-items:center; gap:12px; margin:0!important; font-size:15px!important; font-weight:700!important; cursor:pointer; }
+.tf-app.tf-ui-refined #tf-module-workspace .tf-modal .tf-withdrawal-choice input { appearance:auto!important; width:18px!important; height:18px!important; min-height:18px!important; flex:0 0 18px; margin:0!important; accent-color:#19834c; }
+.tf-app.tf-ui-refined #tf-module-workspace .tf-modal .tf-withdrawal-choice p { margin:10px 0 0; font-size:13px!important; line-height:1.5; }
