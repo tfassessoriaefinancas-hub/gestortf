@@ -1571,10 +1571,33 @@ function Production({ rows, clientsData, initialPeriod="2026-09", openClient }: 
   const periodClients=Array.from(new Set(filtered.map(operation=>operation.clientId))).map(id=>clientsData.find(client=>client.id===id)).filter(Boolean) as Client[];
   const rawPeriodLabel=periodMode==="month"&&periodValue?new Intl.DateTimeFormat("pt-BR",{month:"long",year:"numeric",timeZone:"UTC"}).format(new Date(`${periodValue}-01T00:00:00Z`)):periodMode==="product"&&search?`produto ${search}`:"período selecionado";
   const selectedPeriodLabel=rawPeriodLabel.charAt(0).toUpperCase()+rawPeriodLabel.slice(1);
-  const modalityOrder=["Financiamento","Consignado","Proteção Auto","Consórcio","INSS","CLT","Crédito com garantia","FGTS","Seguros","Assessoria Financeira"];
-  const productionGroups=productionProducts.map(product=>({name:product.name,tone:product.tone,rows:filtered.filter(operation=>product.match(operation.product))})).filter(group=>group.rows.length).sort((a,b)=>modalityOrder.indexOf(a.name)-modalityOrder.indexOf(b.name));
-  const unmatchedRows=filtered.filter(operation=>!productionProducts.some(product=>product.match(operation.product)));
-  if(unmatchedRows.length)productionGroups.push({name:"Outros",tone:"blue",rows:unmatchedRows});
+  const modalityOrder=["Financiamento","Consignado INSS","Consignado Federal (SIAPE)","Consignado Estadual","Consignado Municipal","Consignado","Proteção Auto","Consórcio","CLT","Crédito com garantia","FGTS","Seguros","Assessoria Financeira"];
+  const productionGroupFor=(operation:Operation)=>{
+    const contract=operation.contractType||operation.product||"";
+    const label=[operation.product,contract,operation.agreement].filter(Boolean).join(" ").toLocaleLowerCase("pt-BR");
+    if(/consign|inss|rmc|rcc|cartão benefício/.test(label)){
+      if(/estadual|estado/.test(label))return {name:"Consignado Estadual",tone:"rose"};
+      if(/federal|siape/.test(label))return {name:"Consignado Federal (SIAPE)",tone:"rose"};
+      if(/municipal|município|prefeitura/.test(label))return {name:"Consignado Municipal",tone:"rose"};
+      if(/clt|trabalhador|privado/.test(label))return {name:"CLT",tone:"violet"};
+      if(/inss/.test(label))return {name:"Consignado INSS",tone:"rose"};
+      return {name:"Consignado",tone:"rose"};
+    }
+    const product=productionProducts.find(product=>product.match(operation.product));
+    return product?{name:product.name,tone:product.tone}:{name:"Outros",tone:"blue"};
+  };
+  // Assign each operation to exactly one group, preserving the registered agreement.
+  const groupedOperations=new Map<string,{name:string;tone:string;rows:Operation[]}>();
+  for(const operation of filtered){
+    const category=productionGroupFor(operation);
+    const group=groupedOperations.get(category.name);
+    if(group)group.rows.push(operation);
+    else groupedOperations.set(category.name,{...category,rows:[operation]});
+  }
+  const productionGroups=Array.from(groupedOperations.values()).sort((a,b)=>{
+    const rank=(name:string)=>{const index=modalityOrder.indexOf(name);return index<0?modalityOrder.length:index;};
+    return rank(a.name)-rank(b.name);
+  });
   return (
     <>
       <Title
