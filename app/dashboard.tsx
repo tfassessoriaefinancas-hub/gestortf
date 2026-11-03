@@ -1780,7 +1780,7 @@ function Kanban({
     [resumeStages,setResumeStages]=useState<Record<number,string>>({}),
     [clock,setClock]=useState(()=>Date.now()),
     [finalizing,setFinalizing]=useState(false),
-    [kanbanOwner,setKanbanOwner]=useState<string>(user.role==="employee"?String(user.memberId):"owner"),
+    [kanbanOwner,setKanbanOwner]=useState<string>(user.role==="employee"?String(user.memberId):"all"),
     [dealOrder,setDealOrder]=useState<number[]>([]),
     [confirmAction, setConfirmAction] = useState<{
       deal: Deal;
@@ -1788,13 +1788,14 @@ function Kanban({
     } | null>(null);
   const emptyCreateForm={name:"",cpf:"",birthDate:"",phone:"",operationType:"",guaranteeType:"Veículo",vehicleValue:"",downPayment:"",financedValue:"",desiredCredit:""};
   const [createForm,setCreateForm]=useState(emptyCreateForm);
+  const [createAssignee,setCreateAssignee]=useState(user.role==="employee"?String(user.memberId):"owner");
   const [closingDeal,setClosingDeal]=useState<Deal|null>(null),[closureReason,setClosureReason]=useState("Operação reprovada"),[closureNotes,setClosureNotes]=useState(""),[closing,setClosing]=useState(false),[closureError,setClosureError]=useState("");
   const closeAttendance=async(e:React.FormEvent)=>{e.preventDefault();if(!closingDeal||closing)return;setClosing(true);setClosureError("");try{const response=await fetch("/api/deals",{method:"PATCH",headers:{"content-type":"application/json"},body:JSON.stringify({id:closingDeal.id,action:"close",reason:closureReason,observations:closureNotes})});const result=await readApiPayload(response);if(!response.ok)throw new Error(result.error||"Não foi possível encerrar.");setDeals(rows=>rows.filter(row=>row.id!==closingDeal.id));setClosingDeal(null);onDataChanged();}catch(error){setClosureError(error instanceof Error?error.message:"Não foi possível encerrar.");}finally{setClosing(false);}};
   const [creating,setCreating]=useState(false),[editing,setEditing]=useState(false);
   const creatingRef=useRef(false),editingRef=useRef(false),movingRef=useRef(new Set<number>());
   const [movingIds,setMovingIds]=useState(new Set<number>());
   const [kanbanError,setKanbanError]=useState(""),[createError,setCreateError]=useState(""),[editError,setEditError]=useState("");
-  const openCreate=()=>{setCreateForm({...emptyCreateForm});setCreateError("");setFormStep(1);setSelectedProduct("Financiamento");setForm(true)};
+  const openCreate=()=>{setCreateAssignee(kanbanOwner==="all"?"owner":kanbanOwner);setCreateForm({...emptyCreateForm});setCreateError("");setFormStep(1);setSelectedProduct("Financiamento");setForm(true)};
   useEffect(()=>{if(newDealRequest>0)openCreate()},[newDealRequest]);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -1828,11 +1829,12 @@ function Kanban({
         operationType:secured?(createForm.guaranteeType==="Imobiliário"?"Garantia de imóvel":"Garantia de veículo"):createForm.operationType||operationOptionsFor(selectedProduct)[0],
         ...(secured?{guaranteeType:createForm.guaranteeType}:{}),
         ...(isLegalDemand(selectedProduct)?{}:financing?{vehicleValue:moneyToStorage(createForm.vehicleValue),downPayment:moneyToStorage(createForm.downPayment),financedValue:moneyToStorage(createForm.financedValue)}:{desiredCredit:moneyToStorage(createForm.desiredCredit)}),
-        assignedUserId:kanbanOwner==="owner"?null:Number(kanbanOwner)};
+        assignedUserId:createAssignee==="owner"?null:Number(createAssignee)};
       const r=await fetch("/api/deals",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(body)});
       const x=await readApiPayload<{deal?:Deal}>(r);
       if(!r.ok||!x.deal)throw new Error(x.error||"Não foi possível iniciar o atendimento.");
-      const savedDeal=x.deal;
+      const savedDeal={...x.deal,assignedName:members.find(member=>member.id===x.deal?.assignedUserId)?.name||x.deal.assignedName};
+      if(user.role==="admin"&&kanbanOwner!=="all"&&kanbanOwner!==createAssignee)setKanbanOwner("all");
       setDeals(rows=>[savedDeal,...rows.filter(row=>row.id!==savedDeal.id)]);
       setForm(false);setFormStep(1);setCreateForm({...emptyCreateForm});setSelectedProduct("Financiamento");onDataChanged();
     }catch(error){setCreateError(error instanceof Error?error.message:"Não foi possível salvar. Tente novamente.");}
@@ -1840,7 +1842,7 @@ function Kanban({
   };
   const nowDate=new Date(clock);
   const nowIso = new Date(clock-nowDate.getTimezoneOffset()*60000).toISOString().slice(0,16);
-  const visibleDeals=deals.filter(d=>kanbanOwner==="owner"?!d.assignedUserId:d.assignedUserId===Number(kanbanOwner));
+  const visibleDeals=deals.filter(d=>user.role==="employee"?d.assignedUserId===user.memberId:kanbanOwner==="all"|| (kanbanOwner==="owner"?!d.assignedUserId:d.assignedUserId===Number(kanbanOwner)));
   const cardPhotos = kanbanPhotoAssignments(visibleDeals);
   useEffect(()=>{const ids=visibleDeals.map(deal=>deal.id);let stored:number[]=[];try{stored=JSON.parse(localStorage.getItem(`tf_kanban_order_${kanbanOwner}`)||"[]")}catch{}setDealOrder([...stored.filter(id=>ids.includes(id)),...ids.filter(id=>!stored.includes(id))])},[kanbanOwner,deals]);
   const reorderDeals=(sourceId:number,targetId:number)=>{setDealOrder(current=>{const next=current.filter(id=>id!==sourceId),targetIndex=next.indexOf(targetId);next.splice(targetIndex<0?next.length:targetIndex,0,sourceId);localStorage.setItem(`tf_kanban_order_${kanbanOwner}`,JSON.stringify(next));return next})};
@@ -2070,7 +2072,7 @@ function Kanban({
       <div className="tf-kanban-owner">
         <span><UserRoundCog/><b>Atendimento exibido</b></span>
         <select value={kanbanOwner} onChange={e=>setKanbanOwner(e.target.value)} disabled={user.role==="employee"}>
-          {user.role==="admin"&&<option value="owner">Gestor TF</option>}
+          {user.role==="admin"&&<><option value="all">Todos os atendimentos</option><option value="owner">Meus atendimentos · Gestor TF</option></>}
           {members.filter(m=>m.active&&m.permissions.includes('atendimento')).map(m=><option key={m.id} value={m.id}>{m.name}</option>)}
           {user.role==="employee"&&<option value={String(user.memberId)}>{user.name}</option>}
         </select>
@@ -2132,7 +2134,7 @@ function Kanban({
                     <div className="tf-deal-ribbon"><span>{name}</span></div>
                     <div className="tf-card-heading">
                       <i className="tf-card-avatar" aria-hidden="true">{d.name.trim().split(/\s+/).filter(Boolean).slice(0,2).map(part=>part[0]).join('').toUpperCase()||'TF'}</i>
-                      <div className="tf-card-identity"><strong>{d.name}</strong>{digits(d.cpf) && <small>CPF: {formatCpf(d.cpf)}</small>}</div>
+                      <div className="tf-card-identity"><strong>{d.name}</strong><small>Responsável: {d.assignedUserId?(d.assignedName||members.find(member=>member.id===d.assignedUserId)?.name|| (user.role==="employee"?user.name:"Funcionário")):"Gestor TF"}</small>{digits(d.cpf) && <small>CPF: {formatCpf(d.cpf)}</small>}</div>
                     </div>
                     <span className="tf-card-product"><BriefcaseBusiness aria-hidden="true"/>{productLabel(d.product||"Serviço não informado")}</span>
                     {isLegalDemand(d.product)&&d.operationType&&d.operationType!==d.product&&<small className="tf-card-detail"><b>Processo:</b> {d.operationType}</small>}
@@ -2231,6 +2233,7 @@ function Kanban({
             <small>{formStep===1?"INÍCIO DO ATENDIMENTO":"DADOS DO ATENDIMENTO"}</small>
             <h2>{formStep===1?"Novo atendimento":"Especificações da operação"}</h2>
             <p>{formStep===1?"Escolha o serviço do cliente.":"Todos os campos são opcionais e podem ser preenchidos depois."}</p>
+            {user.role==="admin"?<label>Responsável pelo atendimento<select name="assignedUserId" value={createAssignee} disabled={creating} onChange={event=>setCreateAssignee(event.target.value)}><option value="owner">Eu · Gestor TF</option>{members.filter(member=>member.active&&!member.partnerId&&member.permissions.includes("atendimento")).map(member=><option key={member.id} value={member.id}>{member.name}</option>)}</select><small>O funcionário verá este atendimento. Você acompanha todos os cards e movimentações.</small></label>:<p>Responsável: {user.name}. Este atendimento também será acompanhado pelo gestor.</p>}
             <label>Serviço<select name="product" value={selectedProduct} disabled={creating} onChange={e=>{setSelectedProduct(e.target.value);setCreateForm(current=>({...current,operationType:""}))}}>{productOptions.map(option=><option key={option} value={option}>{productLabel(option)}</option>)}</select></label>
             {formStep===1?<button className="tf-primary">Continuar</button>:<>
               <label>Nome completo<input name="name" autoFocus placeholder="Opcional" value={createForm.name} onChange={e=>setCreateForm(current=>({...current,name:e.target.value.toLocaleUpperCase("pt-BR")}))}/></label>
