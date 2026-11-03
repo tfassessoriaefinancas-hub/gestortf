@@ -2069,15 +2069,6 @@ function Kanban({
         onAction={openCreate}
       />
       {todayReturns.length>0&&<button className="tf-return-alert" onClick={()=>setShowReturns(true)}><Clock3/><span><b>{todayReturns.length===1?'Há 1 cliente para atender hoje':`Há ${todayReturns.length} clientes para atender hoje`}</b><small>Abra a lista e escolha em qual etapa cada atendimento deve recomeçar.</small></span></button>}
-      <div className="tf-kanban-owner">
-        <span><UserRoundCog/><b>Atendimento exibido</b></span>
-        <select value={kanbanOwner} onChange={e=>setKanbanOwner(e.target.value)} disabled={user.role==="employee"}>
-          {user.role==="admin"&&<><option value="all">Todos os atendimentos</option><option value="owner">Meus atendimentos · Gestor TF</option></>}
-          {members.filter(m=>m.active&&m.permissions.includes('atendimento')).map(m=><option key={m.id} value={m.id}>{m.name}</option>)}
-          {user.role==="employee"&&<option value={String(user.memberId)}>{user.name}</option>}
-        </select>
-        <small>{user.role==="admin"?"Você pode acompanhar a agenda e o funil de cada responsável.":"Este espaço contém somente seus atendimentos."}</small>
-      </div>
       {kanbanError&&<p className="tf-kanban-error" role="alert">{kanbanError}</p>}
       <section className="tf-kanban">
         {columns.map(([stage, name, sub], i) => {
@@ -2233,8 +2224,8 @@ function Kanban({
             <small>{formStep===1?"INÍCIO DO ATENDIMENTO":"DADOS DO ATENDIMENTO"}</small>
             <h2>{formStep===1?"Novo atendimento":"Especificações da operação"}</h2>
             <p>{formStep===1?"Escolha o serviço do cliente.":"Todos os campos são opcionais e podem ser preenchidos depois."}</p>
-            {user.role==="admin"?<label>Responsável pelo atendimento<select name="assignedUserId" value={createAssignee} disabled={creating} onChange={event=>setCreateAssignee(event.target.value)}><option value="owner">Eu · Gestor TF</option>{members.filter(member=>member.active&&!member.partnerId&&member.permissions.includes("atendimento")).map(member=><option key={member.id} value={member.id}>{member.name}</option>)}</select><small>O funcionário verá este atendimento. Você acompanha todos os cards e movimentações.</small></label>:<p>Responsável: {user.name}. Este atendimento também será acompanhado pelo gestor.</p>}
             <label>Serviço<select name="product" value={selectedProduct} disabled={creating} onChange={e=>{setSelectedProduct(e.target.value);setCreateForm(current=>({...current,operationType:""}))}}>{productOptions.map(option=><option key={option} value={option}>{productLabel(option)}</option>)}</select></label>
+            {formStep===2&&(user.role==="admin"?<label>Responsável pelo atendimento<select name="assignedUserId" value={createAssignee} disabled={creating} onChange={event=>setCreateAssignee(event.target.value)}><option value="owner">Eu · Gestor TF</option>{members.filter(member=>member.active&&(member.partnerId||member.permissions.includes("atendimento"))).map(member=><option key={member.id} value={member.id}>{member.partnerName?`${member.name} · ${member.partnerName}`:member.name}</option>)}</select><small>O responsável verá este atendimento. Você acompanha todos os cards e movimentações.</small></label>:<p>Responsável: {user.name}. Este atendimento também será acompanhado pelo gestor.</p>)}
             {formStep===1?<button className="tf-primary">Continuar</button>:<>
               <label>Nome completo<input name="name" autoFocus placeholder="Opcional" value={createForm.name} onChange={e=>setCreateForm(current=>({...current,name:e.target.value.toLocaleUpperCase("pt-BR")}))}/></label>
               {isLegalDemand(selectedProduct)?<label>Tipo de processo<input name="operationType" value={createForm.operationType} onChange={e=>setCreateForm(current=>({...current,operationType:e.target.value}))} placeholder="Ex.: Execução extrajudicial"/></label>:selectedProduct==="Crédito com garantia"?<label>Tipo de garantia<select name="guaranteeType" value={createForm.guaranteeType} onChange={e=>setCreateForm(current=>({...current,guaranteeType:e.target.value}))}><option>Veículo</option><option>Imobiliário</option></select></label>:<label>Tipo de operação<select name="operationType" value={createForm.operationType||operationOptionsFor(selectedProduct)[0]} onChange={e=>setCreateForm(current=>({...current,operationType:e.target.value}))}>{operationOptionsFor(selectedProduct).map(option=><option key={option}>{option}</option>)}</select></label>}
