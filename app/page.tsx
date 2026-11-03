@@ -4,7 +4,8 @@ import { redirect } from 'next/navigation';
 
 export const dynamic = 'force-dynamic';
 
-export default async function Home() {
+export default async function Home({searchParams}:{searchParams:Promise<{atendimento?:string}>}) {
+  const query=await searchParams;
   const user = await requireChatGPTUser('/');
   const access = await getTfAccess(user);
   if (!access)
@@ -19,6 +20,6 @@ export default async function Home() {
         </section>
       </main>
     );
-  if (access.partnerId) redirect(`/germano?partner=${access.partnerId}`);
+  if (access.partnerId && query.atendimento!=="1") redirect(`/germano?partner=${access.partnerId}`);
   return <Dashboard user={{ name: access.displayName, email: access.email, role: access.role, memberId: access.memberId, partnerId:access.partnerId, permissions: access.permissions, serverAuthenticated: access.serverAuthenticated }} />;
 }
