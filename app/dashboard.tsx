@@ -487,7 +487,7 @@ export default function Dashboard({
     [receivables,setReceivables]=useState<Receivable[]>([]),
     [invoices,setInvoices]=useState<InvoiceRecord[]>([]),
     [partners,setPartners]=useState<PartnerRecord[]>([{id:0,name:"GG Veículos"}]),
-    [productionPeriod,setProductionPeriod]=useState("2026-09"),
+    [productionPeriod,setProductionPeriod]=useState<string | undefined>(undefined),
     [showReceivables,setShowReceivables]=useState(false),
     [showActivityReminder,setShowActivityReminder]=useState(false),
     [dueReminderRequired,setDueReminderRequired]=useState(false),
@@ -609,6 +609,7 @@ export default function Dashboard({
     };
   }, [user.role,user.permissions,user.serverAuthenticated]);
   useEffect(()=>{void resourceSync.current?.setResources(resourcesForView(view==="numeros"?"inicio":view,user.role,user.permissions));},[view,user.role,user.permissions,user.serverAuthenticated]);
+  useEffect(()=>{if(view!=="producao")setProductionPeriod(undefined);},[view]);
   const allClients = liveClients;
   const allOps = useMemo(() => liveOps.map(operation => /proteção auto/i.test(operation.product) && operation.installment > 0 ? {...operation, value:operation.installment} : operation), [liveOps]);
   const currentPeriod=(()=>{const date=new Date();return new Date(date.getTime()-date.getTimezoneOffset()*60000).toISOString().slice(0,7)})();
@@ -1569,10 +1570,21 @@ function OpTable({ rows, clientsData, openClient }: { rows: Operation[]; clients
     </div>
   );
 }
-function Production({ rows, clientsData, initialPeriod="2026-09", openClient }: { rows: Operation[]; clientsData: Client[]; initialPeriod?:string; openClient:(client:Client)=>void }) {
+function currentCrmDate() {
+  const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date());
+  const part = (type: string) => parts.find(item => item.type === type)!.value;
+  return `${part("year")}-${part("month")}-${part("day")}`;
+}
+function currentCrmMonth() { return currentCrmDate().slice(0, 7); }
+
+function Production({ rows, clientsData, initialPeriod=currentCrmMonth(), openClient }: { rows: Operation[]; clientsData: Client[]; initialPeriod?:string; openClient:(client:Client)=>void }) {
   const [statusFilter,setStatusFilter]=useState("all"),[search,setSearch]=useState(""),[periodMode,setPeriodMode]=useState("month"),[periodValue,setPeriodValue]=useState(initialPeriod);
-  const currentRows=rows.filter(o=>o.date.startsWith("2026-09"));
-  const augustRows=rows.filter(o=>o.date.startsWith("2026-08"));
+  const comparisonMonth = periodMode==="month" && periodValue ? periodValue : currentCrmMonth();
+  const [comparisonYear, comparisonNumber] = comparisonMonth.split("-").map(Number);
+  const previousComparisonMonth = new Date(Date.UTC(comparisonYear, comparisonNumber - 2, 1)).toISOString().slice(0,7);
+  const comparisonLabel = (period: string) => new Intl.DateTimeFormat("pt-BR", {month:"long", year:"numeric", timeZone:"UTC"}).format(new Date(`${period}-01T00:00:00Z`));
+  const currentRows=rows.filter(o=>o.date.startsWith(comparisonMonth));
+  const previousRows=rows.filter(o=>o.date.startsWith(previousComparisonMonth));
   const registeredProducts=Array.from(new Set(rows.map(operation=>operation.product).filter(Boolean))).sort((a,b)=>a.localeCompare(b,"pt-BR",{sensitivity:"base"}));
   const filtered=rows.filter(o=>{
     const customer=clientsData.find(c=>c.id===o.clientId)?.name||"";
@@ -1653,10 +1665,10 @@ function Production({ rows, clientsData, initialPeriod="2026-09", openClient }: 
           )}
         />
       </section>
-      <section className="tf-production-compare tf-panel"><PanelTitle over="COMPARATIVO MENSAL" title="Agosto x Setembro"/><div>{[{label:"Agosto",rows:augustRows},{label:"Setembro",rows:currentRows}].map(period=><article key={period.label}><span><b>{period.label}</b><small>{period.rows.length} operações</small></span><strong>{brl(period.rows.reduce((s,o)=>s+o.value,0))}</strong><em><small>COMISSÕES</small><b>{brl(period.rows.reduce((s,o)=>s+o.commission,0))}</b></em></article>)}</div></section>
+      <section className="tf-production-compare tf-panel"><PanelTitle over="COMPARATIVO MENSAL" title={`${comparisonLabel(previousComparisonMonth)} x ${comparisonLabel(comparisonMonth)}`}/><div>{[{label:comparisonLabel(previousComparisonMonth),rows:previousRows},{label:comparisonLabel(comparisonMonth),rows:currentRows}].map(period=><article key={period.label}><span><b>{period.label}</b><small>{period.rows.length} operações</small></span><strong>{brl(period.rows.reduce((s,o)=>s+o.value,0))}</strong><em><small>COMISSÕES</small><b>{brl(period.rows.reduce((s,o)=>s+o.commission,0))}</b></em></article>)}</div></section>
       <section className="tf-panel">
         <div className="tf-production-controls">
-          <label>Consultar por<select value={periodMode} onChange={e=>{const mode=e.target.value;setPeriodMode(mode);setSearch("");setPeriodValue(mode==="year"?"2026":mode==="day"?"2026-09-14":mode==="month"?"2026-09":"")}}><option value="month">Mês</option><option value="day">Dia</option><option value="year">Ano</option><option value="proposal">Proposta</option><option value="client">Cliente</option><option value="product">Produto</option></select></label>
+          <label>Consultar por<select value={periodMode} onChange={e=>{const mode=e.target.value;setPeriodMode(mode);setSearch("");setPeriodValue(mode==="year"?currentCrmDate().slice(0,4):mode==="day"?currentCrmDate():mode==="month"?currentCrmMonth():"")}}><option value="month">Mês</option><option value="day">Dia</option><option value="year">Ano</option><option value="proposal">Proposta</option><option value="client">Cliente</option><option value="product">Produto</option></select></label>
           {["month","day","year"].includes(periodMode)&&<label>Período<input type={periodMode==="month"?"month":periodMode==="day"?"date":"number"} value={periodValue} onChange={e=>setPeriodValue(e.target.value)} /></label>}
           {periodMode==="product"?<label>Produto / serviço<select value={search} onChange={e=>setSearch(e.target.value)}><option value="">Todos os produtos</option>{registeredProducts.map(product=><option key={product} value={product}>{product}</option>)}</select></label>:<label>{periodMode==="proposal"?"Número da proposta":periodMode==="client"?"Nome do cliente":"Pesquisar"}<input value={search} onChange={e=>setSearch(e.target.value)} placeholder={periodMode==="client"?"Digite o nome":"Cliente, produto, banco ou proposta"}/></label>}
         </div>
@@ -2546,11 +2558,11 @@ function PartnerSettlement({partner,gross,period,rows,previousRows,clientsData,o
 }
 
 function Partners({rows,clientsData,partners,onPartnerCreated,onPartnerUpdated}:{rows:Operation[];clientsData:Client[];partners:PartnerRecord[];onPartnerCreated:(partner:PartnerRecord)=>void;onPartnerUpdated:(partner:PartnerRecord)=>void}) {
-  const [adding,setAdding]=useState(false),[partnerName,setPartnerName]=useState(""),[expandedPartner,setExpandedPartner]=useState<number|null>(null),[selectedMonth,setSelectedMonth]=useState("2026-09");
+  const [adding,setAdding]=useState(false),[partnerName,setPartnerName]=useState(""),[expandedPartner,setExpandedPartner]=useState<number|null>(null),[selectedMonth,setSelectedMonth]=useState(currentCrmMonth);
   const partnerAccessLink=(id:number)=>typeof window==='undefined'?`/germano?partner=${id}`:`${window.location.origin}/germano?partner=${id}`;
   const copyPartnerLink=async(id:number)=>{const link=partnerAccessLink(id);try{await navigator.clipboard.writeText(link);alert('Link do parceiro copiado.')}catch{alert(link)}};
   const savePartner=async(event:React.FormEvent)=>{event.preventDefault();const response=await fetch('/api/partners',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({name:partnerName})}),data=await response.json();if(response.ok){onPartnerCreated(data.partner);notifyCrmChanged();setPartnerName("");setAdding(false)}else alert(data.error||'Não foi possível cadastrar o parceiro.');};
-  const storedPeriods=partners.flatMap(partner=>[...(partner.settlements||[]).map(item=>item.period),...(partner.bonuses||[]).map(item=>item.period)]),monthOptions=Array.from(new Set([...rows.map(row=>row.date.slice(0,7)).filter(value=>/^\d{4}-\d{2}$/.test(value)),...storedPeriods,"2026-09"])).sort((a,b)=>b.localeCompare(a)),monthLabel=(period:string)=>{const label=new Intl.DateTimeFormat("pt-BR",{month:"long",year:"numeric",timeZone:"UTC"}).format(new Date(`${period}-01T00:00:00Z`));return label.charAt(0).toUpperCase()+label.slice(1)},previousMonth=(()=>{const [year,month]=selectedMonth.split('-').map(Number),date=new Date(Date.UTC(year,month-2,1));return `${date.getUTCFullYear()}-${String(date.getUTCMonth()+1).padStart(2,'0')}`})();
+  const storedPeriods=partners.flatMap(partner=>[...(partner.settlements||[]).map(item=>item.period),...(partner.bonuses||[]).map(item=>item.period)]),monthOptions=Array.from(new Set([...rows.map(row=>row.date.slice(0,7)).filter(value=>/^\d{4}-\d{2}$/.test(value)),...storedPeriods,currentCrmMonth(),selectedMonth])).sort((a,b)=>b.localeCompare(a)),monthLabel=(period:string)=>{const label=new Intl.DateTimeFormat("pt-BR",{month:"long",year:"numeric",timeZone:"UTC"}).format(new Date(`${period}-01T00:00:00Z`));return label.charAt(0).toUpperCase()+label.slice(1)},previousMonth=(()=>{const [year,month]=selectedMonth.split('-').map(Number),date=new Date(Date.UTC(year,month-2,1));return `${date.getUTCFullYear()}-${String(date.getUTCMonth()+1).padStart(2,'0')}`})();
   return <>
     <Title over="REDE COMERCIAL" title="Parceiros" text="Produção, clientes e comissões de cada parceiro." action="Novo parceiro" onAction={()=>setAdding(true)}/>
     <section className="tf-partner-month"><label>MÊS DO RELATÓRIO<select value={selectedMonth} onChange={event=>setSelectedMonth(event.target.value)}>{monthOptions.map(period=><option key={period} value={period}>{monthLabel(period)}</option>)}</select></label></section>
