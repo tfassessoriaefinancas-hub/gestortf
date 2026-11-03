@@ -50,6 +50,8 @@ export async function getTfAccess(existingUser?: ChatGPTUser | null): Promise<Tf
     if (Array.isArray(parsed)) permissions = TF_PERMISSIONS.filter((p) => parsed.includes(p));
   } catch {}
   if (!permissions.includes('inicio')) permissions.unshift('inicio');
+  // Partners can work only on cards assigned to their individual access.
+  if (member.partner_id && !permissions.includes('atendimento')) permissions.push('atendimento');
   return { ...user, ownerKey: member.owner_id, ownerKeys: [owner.id, owner.email], role: 'employee', memberId: member.id, partnerId:member.partner_id||null, permissions };
 }
 
