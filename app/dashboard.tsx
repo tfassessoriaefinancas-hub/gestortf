@@ -2123,7 +2123,6 @@ function Kanban({
                     className={`tf-deal-card deal-stage-${i} ${d.returnAt&&d.returnStatus!=="concluido"&&d.returnAt<=nowIso?'return-due':''} ${stage === "finalizado" && (d.needsCompletion || d.status !== "concluido") ? "needs-completion" : ""}`}
                   >
                     <div className="tf-deal-ribbon"><span>{name}</span></div>
-                    {stage === "atendimento" && <button type="button" aria-label={`Excluir atendimento de ${d.name}`} title="Excluir atendimento" draggable={false} disabled={movingIds.has(d.id)} onPointerDown={event=>event.stopPropagation()} onClick={event=>{event.stopPropagation();setMenuId(null);setConfirmAction({deal:d,permanent:true});}} style={{position:"absolute",top:10,right:10,zIndex:5,width:28,height:28,minWidth:28,padding:0,display:"grid",placeItems:"center",border:"none",borderRadius:0,background:"transparent",color:"#b91c1c",cursor:"pointer",boxShadow:"none"}}><X size={16} aria-hidden="true"/></button>}
                     <div className="tf-card-heading">
                       <i className="tf-card-avatar" aria-hidden="true">{d.name.trim().split(/\s+/).filter(Boolean).slice(0,2).map(part=>part[0]).join('').toUpperCase()||'TF'}</i>
                       <div className="tf-card-identity"><strong>{d.name}</strong><small>Responsável: {d.assignedUserId?(d.assignedName||members.find(member=>member.id===d.assignedUserId)?.name|| (user.role==="employee"?user.name:"Funcionário")):"Gestor TF"}</small>{digits(d.cpf) && <small>CPF: {formatCpf(d.cpf)}</small>}</div>
@@ -2145,6 +2144,7 @@ function Kanban({
                       <button type="button" title="Agendar retorno" onClick={()=>openReturn(d)}><CalendarDays/></button>
                       <button type="button" title="Histórico" onClick={()=>setHistoryDeal(d)}><History/></button>
                       <button type="button" title="Documentos" onClick={()=>setDocumentsDeal(d)}><Paperclip/></button>
+                      {stage === "atendimento" && <button type="button" className="tf-card-delete" aria-label={`Excluir atendimento de ${d.name}`} title="Excluir atendimento" draggable={false} disabled={movingIds.has(d.id)} onPointerDown={event=>event.stopPropagation()} onClick={event=>{event.stopPropagation();setMenuId(null);setConfirmAction({deal:d,permanent:true});}}><X aria-hidden="true"/></button>}
 
                     </div>
                     {menuId === d.id && (
