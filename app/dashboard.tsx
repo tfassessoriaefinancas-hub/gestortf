@@ -2164,7 +2164,6 @@ function Kanban({
                       <small className="tf-card-detail"><b>Nascimento</b><span>{formatDateBr(d.birthDate)||'Não informado'}</span></small>
                     </div>
                     <DealProgress step={i} total={columns.length} stage={name} createdAt={d.createdAt}/>
-                    {stage === "finalizado" && (d.needsCompletion || d.status !== "concluido")&&<em className="tf-card-pending-label">FINALIZAR CADASTRO</em>}
                     {d.returnAt&&d.returnStatus!=="concluido"&&<span className="tf-card-return"><Clock3/> {new Date(d.returnAt).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})} · {d.returnReason}</span>}
                     </div>
                     <div className="tf-card-footer">
