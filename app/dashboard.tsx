@@ -1753,6 +1753,33 @@ function Kanban({
   onReceivableCreated:(item:Receivable)=>void;
   onDataChanged:()=>void;
 }) {
+  const boardRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const board = boardRef.current;
+    if (!board) return;
+    const cards = Array.from(board.querySelectorAll<HTMLElement>(".tf-deal-card"));
+    let frame = 0;
+    const measure = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const height = Math.ceil(Math.max(0, ...cards.map(card => {
+          const body = card.querySelector<HTMLElement>(".tf-card-body");
+          const footer = card.querySelector<HTMLElement>(".tf-card-footer");
+          const style = getComputedStyle(card);
+          return (body?.getBoundingClientRect().height || 0) + (footer?.getBoundingClientRect().height || 0)
+            + parseFloat(style.paddingTop) + parseFloat(style.paddingBottom)
+            + parseFloat(style.borderTopWidth) + parseFloat(style.borderBottomWidth);
+        })));
+        if (height) board.style.setProperty("--tf-card-height", height + "px");
+      });
+    };
+    const observer = new ResizeObserver(measure);
+    cards.forEach(card => {
+      card.querySelectorAll(".tf-card-body,.tf-card-footer").forEach(element => observer.observe(element));
+    });
+    measure();
+    return () => { observer.disconnect(); cancelAnimationFrame(frame); };
+  });
   const baseColumns = [
     ["atendimento", "Atendimento", "Entrada"],
     ["analise", "Em análise", "Proposta"],
@@ -2070,7 +2097,7 @@ function Kanban({
       />
       {todayReturns.length>0&&<button className="tf-return-alert" onClick={()=>setShowReturns(true)}><Clock3/><span><b>{todayReturns.length===1?'Há 1 cliente para atender hoje':`Há ${todayReturns.length} clientes para atender hoje`}</b><small>Abra a lista e escolha em qual etapa cada atendimento deve recomeçar.</small></span></button>}
       {kanbanError&&<p className="tf-kanban-error" role="alert">{kanbanError}</p>}
-      <section className="tf-kanban">
+      <section className="tf-kanban" ref={boardRef}>
         {columns.map(([stage, name, sub], i) => {
           const rows = pipelineDeals.filter((d) => d.stage === stage);
           return (
