@@ -513,3 +513,17 @@
 @media screen and (pointer:coarse) {
 .tf-app.theme-classic.has-workspace-scenery.glass-workspace.tf-ui-refined #tf-module-workspace .tf-kanban .tf-deal-stack .tf-deal-card > .tf-card-footer { flex-basis:80px!important; }
 }
+
+/* Consistent, legible progress from 0% through 100% in every stage. */
+@media screen {
+.tf-app.theme-classic.has-workspace-scenery.glass-workspace.tf-ui-refined #tf-module-workspace .tf-kanban .tf-deal-stack .tf-deal-card .tf-deal-progress { min-height:52px!important; padding:4px 8px!important; gap:10px!important; }
+.tf-app.theme-classic.has-workspace-scenery.glass-workspace.tf-ui-refined #tf-module-workspace .tf-kanban .tf-deal-stack .tf-deal-card .tf-deal-progress-ring { position:relative!important; flex:0 0 44px!important; width:44px!important; height:44px!important; min-width:44px!important; }
+.tf-app.theme-classic.has-workspace-scenery.glass-workspace.tf-ui-refined #tf-module-workspace .tf-kanban .tf-deal-stack .tf-deal-card .tf-deal-progress-ring svg { position:absolute!important; inset:0!important; width:44px!important; height:44px!important; stroke-width:4!important; }
+.tf-app.theme-classic.has-workspace-scenery.glass-workspace.tf-ui-refined #tf-module-workspace .tf-kanban .tf-deal-stack .tf-deal-card .tf-progress-center { position:absolute!important; inset:0!important; width:44px!important; height:44px!important; display:flex!important; align-items:center!important; justify-content:center!important; padding:0!important; margin:0!important; transform:none!important; }
+.tf-app.theme-classic.has-workspace-scenery.glass-workspace.tf-ui-refined #tf-module-workspace .tf-kanban .tf-deal-stack .tf-deal-card .tf-progress-center strong { display:inline-flex!important; align-items:baseline!important; justify-content:center!important; gap:0!important; font-size:11px!important; line-height:1!important; letter-spacing:-.3px!important; color:#193449!important; font-weight:800!important; font-variant-numeric:tabular-nums; white-space:nowrap!important; }
+.tf-app.theme-classic.has-workspace-scenery.glass-workspace.tf-ui-refined #tf-module-workspace .tf-kanban .tf-deal-stack .tf-deal-card .tf-progress-center strong small { display:inline!important; font-size:8px!important; line-height:1!important; color:#193449!important; margin:0!important; }
+.tf-app.theme-classic.has-workspace-scenery.glass-workspace.tf-ui-refined #tf-module-workspace .tf-kanban .tf-deal-stack .tf-deal-card .tf-progress-track { stroke:#b9cbd6!important; }
+.tf-app.theme-classic.has-workspace-scenery.glass-workspace.tf-ui-refined #tf-module-workspace .tf-kanban .tf-deal-stack .tf-deal-card .tf-progress-value { stroke:var(--deal-accent,#286a91)!important; }
+.tf-app.theme-classic.has-workspace-scenery.glass-workspace.tf-ui-refined #tf-module-workspace .tf-kanban .tf-deal-stack .tf-deal-card :is(.tf-deal-stage-label,.tf-deal-included time,.tf-card-facts .tf-card-detail span) { color:#193449!important; opacity:1!important; text-shadow:none!important; }
+.tf-app.theme-classic.has-workspace-scenery.glass-workspace.tf-ui-refined #tf-module-workspace .tf-kanban .tf-deal-stack .tf-deal-card :is(.tf-deal-included,.tf-deal-included>span,.tf-card-identity small,.tf-card-facts .tf-card-detail b) { color:#456074!important; opacity:1!important; text-shadow:none!important; }
+}
