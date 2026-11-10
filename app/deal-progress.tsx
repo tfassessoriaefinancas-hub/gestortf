@@ -9,8 +9,8 @@ export default function DealProgress({ step, total, stage, createdAt }: Props) {
       <svg viewBox="0 0 64 64" aria-hidden="true">
         <circle className="tf-progress-track" cx="32" cy="32" r="27"/>
         <circle className="tf-progress-value" cx="32" cy="32" r="27" pathLength="100" strokeDasharray={`${percent} 100`} transform="rotate(-90 32 32)"/>
+        <text x="32" y="33" textAnchor="middle" dominantBaseline="middle" className="tf-progress-number">{percent}%</text>
       </svg>
-      <div className="tf-progress-center"><strong>{percent}<small>%</small></strong></div>
     </div>
     <div className="tf-deal-progress-copy">
       <span className="tf-deal-stage-label">Etapa {step + 1} de {total}</span>

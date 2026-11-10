@@ -527,3 +527,8 @@
 .tf-app.theme-classic.has-workspace-scenery.glass-workspace.tf-ui-refined #tf-module-workspace .tf-kanban .tf-deal-stack .tf-deal-card :is(.tf-deal-stage-label,.tf-deal-included time,.tf-card-facts .tf-card-detail span) { color:#193449!important; opacity:1!important; text-shadow:none!important; }
 .tf-app.theme-classic.has-workspace-scenery.glass-workspace.tf-ui-refined #tf-module-workspace .tf-kanban .tf-deal-stack .tf-deal-card :is(.tf-deal-included,.tf-deal-included>span,.tf-card-identity small,.tf-card-facts .tf-card-detail b) { color:#456074!important; opacity:1!important; text-shadow:none!important; }
 }
+
+/* Percentage and ring share the same SVG coordinates. */
+.tf-deal-progress-ring .tf-progress-number { fill:#193449!important; stroke:none!important; font-family:Arial,sans-serif!important; font-size:15px!important; font-weight:700!important; letter-spacing:0!important; text-anchor:middle!important; dominant-baseline:middle!important; }
+.tf-app.theme-classic.has-workspace-scenery.glass-workspace.tf-ui-refined #tf-module-workspace .tf-kanban .tf-deal-stack .tf-deal-card .tf-card-body > .tf-card-detail,
+.tf-app.theme-classic.has-workspace-scenery.glass-workspace.tf-ui-refined #tf-module-workspace .tf-kanban .tf-deal-stack .tf-deal-card .tf-card-body > .tf-card-detail :is(b,span) { color:#365166!important; opacity:1!important; text-shadow:none!important; font-size:11px!important; line-height:1.4!important; }
