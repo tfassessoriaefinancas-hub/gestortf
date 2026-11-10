@@ -498,3 +498,18 @@
 @media screen and (pointer:coarse) {
 .tf-app.theme-classic.has-workspace-scenery.glass-workspace.tf-ui-refined #tf-module-workspace .tf-kanban .tf-deal-stack .tf-deal-card .tf-card-actions button { min-height:40px!important; }
 }
+
+/* Every stage uses the same shell; additional details scroll above a stable footer. */
+@media screen {
+.tf-app.theme-classic.has-workspace-scenery.glass-workspace.tf-ui-refined #tf-module-workspace .tf-kanban .tf-deal-stack .tf-deal-card { height:300px!important; min-height:300px!important; max-height:300px!important; box-sizing:border-box!important; }
+.tf-app.theme-classic.has-workspace-scenery.glass-workspace.tf-ui-refined #tf-module-workspace .tf-kanban .tf-deal-stack .tf-deal-card > .tf-card-body { flex:1 1 0!important; min-height:0!important; overflow-y:auto; overflow-x:hidden; scrollbar-width:thin; padding-right:2px; }
+.tf-app.theme-classic.has-workspace-scenery.glass-workspace.tf-ui-refined #tf-module-workspace .tf-kanban .tf-deal-stack .tf-deal-card > .tf-card-footer { flex:0 0 70px!important; position:relative; display:flex; flex-direction:column; gap:6px; min-width:0; }
+.tf-app.theme-classic.has-workspace-scenery.glass-workspace.tf-ui-refined #tf-module-workspace .tf-kanban .tf-deal-stack .tf-deal-card .tf-card-footer .tf-card-actions { margin:6px 0 0!important; }
+.tf-app.theme-classic.has-workspace-scenery.glass-workspace.tf-ui-refined #tf-module-workspace .tf-kanban .tf-deal-stack .tf-deal-card .tf-card-footer .tf-card-finalize { margin:0!important; min-height:28px!important; height:28px!important; padding:3px 6px!important; }
+.tf-app.theme-classic.has-workspace-scenery.glass-workspace.tf-ui-refined #tf-module-workspace .tf-kanban .tf-deal-stack .tf-deal-card .tf-card-footer .tf-deal-menu { position:absolute!important; inset:auto 0 0!important; width:100%!important; z-index:20; }
+.tf-app.theme-classic.has-workspace-scenery.glass-workspace.tf-ui-refined #tf-module-workspace .tf-kanban .tf-deal-stack .tf-deal-card .tf-card-body > .tf-card-product { margin:0 0 6px!important; color:#7b1838!important; font-size:13px!important; line-height:1.3!important; text-transform:uppercase!important; background:transparent!important; border:0!important; display:flex!important; gap:8px; align-items:center; font-weight:800; white-space:normal!important; }
+.tf-app.theme-classic.has-workspace-scenery.glass-workspace.tf-ui-refined #tf-module-workspace .tf-kanban .tf-deal-stack .tf-deal-card .tf-card-body > .tf-card-detail { display:flex; justify-content:space-between; gap:6px; margin:0 0 5px!important; }
+}
+@media screen and (pointer:coarse) {
+.tf-app.theme-classic.has-workspace-scenery.glass-workspace.tf-ui-refined #tf-module-workspace .tf-kanban .tf-deal-stack .tf-deal-card > .tf-card-footer { flex-basis:80px!important; }
+}

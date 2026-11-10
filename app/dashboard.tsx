@@ -2122,6 +2122,7 @@ function Kanban({
                     }}
                     className={`tf-deal-card deal-stage-${i} ${d.returnAt&&d.returnStatus!=="concluido"&&d.returnAt<=nowIso?'return-due':''} ${stage === "finalizado" && (d.needsCompletion || d.status !== "concluido") ? "needs-completion" : ""}`}
                   >
+                    <div className="tf-card-body">
                     <div className="tf-deal-ribbon"><span>{name}</span></div>
                     <div className="tf-card-heading">
                       <i className="tf-card-avatar" aria-hidden="true">{d.name.trim().split(/\s+/).filter(Boolean).slice(0,2).map(part=>part[0]).join('').toUpperCase()||'TF'}</i>
@@ -2138,6 +2139,8 @@ function Kanban({
                     <DealProgress step={i} total={columns.length} stage={name} createdAt={d.createdAt}/>
                     {stage === "finalizado" && (d.needsCompletion || d.status !== "concluido")&&<em className="tf-card-pending-label">FINALIZAR CADASTRO</em>}
                     {d.returnAt&&d.returnStatus!=="concluido"&&<span className="tf-card-return"><Clock3/> {new Date(d.returnAt).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})} · {d.returnReason}</span>}
+                    </div>
+                    <div className="tf-card-footer">
                     <div className="tf-card-actions">
                       <button type="button" className="tf-card-whatsapp" title="WhatsApp" disabled={!digits(d.phone)} onClick={()=>window.open(`https://wa.me/55${digits(d.phone)}`,'_blank')}><MessageCircle/><span>WhatsApp</span></button>
                       <button type="button" title="Ligar" disabled={!digits(d.phone)} onClick={()=>{window.location.href=`tel:${digits(d.phone)}`}}><Phone/></button>
@@ -2186,6 +2189,7 @@ function Kanban({
                           : "Ver cadastro completo"}
                       </button>
                     )}
+                    </div>
                   </div>
                 ))}
                 {!rows.length && (
