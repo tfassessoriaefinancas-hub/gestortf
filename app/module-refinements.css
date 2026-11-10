@@ -532,3 +532,9 @@
 .tf-deal-progress-ring .tf-progress-number { fill:#193449!important; stroke:none!important; font-family:Arial,sans-serif!important; font-size:15px!important; font-weight:700!important; letter-spacing:0!important; text-anchor:middle!important; dominant-baseline:middle!important; }
 .tf-app.theme-classic.has-workspace-scenery.glass-workspace.tf-ui-refined #tf-module-workspace .tf-kanban .tf-deal-stack .tf-deal-card .tf-card-body > .tf-card-detail,
 .tf-app.theme-classic.has-workspace-scenery.glass-workspace.tf-ui-refined #tf-module-workspace .tf-kanban .tf-deal-stack .tf-deal-card .tf-card-body > .tf-card-detail :is(b,span) { color:#365166!important; opacity:1!important; text-shadow:none!important; font-size:11px!important; line-height:1.4!important; }
+
+/* Four actions, plus deletion in Atendimento. */
+@media screen {
+.tf-app.theme-classic.has-workspace-scenery.glass-workspace.tf-ui-refined #tf-module-workspace .tf-kanban .tf-deal-stack .tf-deal-card .tf-card-actions { grid-template-columns:repeat(4,minmax(0,1fr))!important; }
+.tf-app.theme-classic.has-workspace-scenery.glass-workspace.tf-ui-refined #tf-module-workspace .tf-kanban .tf-deal-stack .tf-deal-card .tf-card-actions:has(.tf-card-delete) { grid-template-columns:repeat(5,minmax(0,1fr))!important; }
+}

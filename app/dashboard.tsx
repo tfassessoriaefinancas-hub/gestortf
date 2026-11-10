@@ -2169,7 +2169,6 @@ function Kanban({
                     <div className="tf-card-footer">
                     <div className="tf-card-actions">
                       <button type="button" className="tf-card-whatsapp" title="WhatsApp" disabled={!digits(d.phone)} onClick={()=>window.open(`https://wa.me/55${digits(d.phone)}`,'_blank')}><MessageCircle/><span>WhatsApp</span></button>
-                      <button type="button" title="Ligar" disabled={!digits(d.phone)} onClick={()=>{window.location.href=`tel:${digits(d.phone)}`}}><Phone/></button>
                       <button type="button" title="Agendar retorno" onClick={()=>openReturn(d)}><CalendarDays/></button>
                       <button type="button" title="Histórico" onClick={()=>setHistoryDeal(d)}><History/></button>
                       <button type="button" title="Documentos" onClick={()=>setDocumentsDeal(d)}><Paperclip/></button>
