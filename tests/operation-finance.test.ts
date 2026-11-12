@@ -51,17 +51,17 @@ test('partner campaign additions use the existing share rule', () => {
   assert.deepEqual(partnerAdditionalFinance(1583.7, 0), { net: 1583.7, tfShare: 0, thiagoShare: 0, partnerShare: 1583.7 });
 });
 
-test('monthly additions go to the partner and deductions come from Thiago', () => {
+test('monthly additions are split equally and deductions come from Thiago', () => {
   const september = partnerSettlementFinance(11708.41, 5854.21, 5854.21, 0, 1000);
   assert.equal(september.creditNet, 10708.41);
   assert.equal(september.partnerShare, 5854.21);
   assert.equal(september.thiagoShare, 4854.21);
   assert.deepEqual(partnerSettlementFinance(2000, 1000, 1000, 500, 300), {
-    baseNet: 2000, baseThiagoShare: 1000, basePartnerShare: 1000, additional: 500, deduction: 300,
-    appliedDeduction: 300, creditNet: 2200, thiagoShare: 700, partnerShare: 1500,
+    baseNet: 2000, baseThiagoShare: 1000, basePartnerShare: 1000, additional: 500, additionalThiagoShare: 250, additionalPartnerShare: 250, deduction: 300,
+    appliedDeduction: 300, creditNet: 2200, thiagoShare: 950, partnerShare: 1250,
   });
   assert.deepEqual(partnerSettlementFinance(2000, 1000, 1000, 0, 1400), {
-    baseNet: 2000, baseThiagoShare: 1000, basePartnerShare: 1000, additional: 0, deduction: 1400,
+    baseNet: 2000, baseThiagoShare: 1000, basePartnerShare: 1000, additional: 0, additionalThiagoShare: 0, additionalPartnerShare: 0, deduction: 1400,
     appliedDeduction: 1000, creditNet: 1000, thiagoShare: 0, partnerShare: 1000,
   });
 });
@@ -99,4 +99,21 @@ test('fixed commission retains partial payment history and cent totals', () => {
   assert.equal(result.receivedCents,23469);
   assert.equal(result.pendingCents,23469);
   assert.deepEqual([...revenueAmounts(result,rows)],[[1,23469],[2,23469]]);
+});
+
+test('monthly additional 340 adds 170 to each share and removal restores base amounts', () => {
+  const result = partnerSettlementFinance(2000, 800, 1200, 340);
+  assert.equal(result.creditNet, 2340);
+  assert.equal(result.thiagoShare, 970);
+  assert.equal(result.partnerShare, 1370);
+  assert.equal(result.additionalThiagoShare, 170);
+  assert.equal(result.additionalPartnerShare, 170);
+  const removed = partnerSettlementFinance(2000, 800, 1200, 0);
+  assert.equal(removed.creditNet, 2000);
+  assert.equal(removed.thiagoShare, 800);
+  assert.equal(removed.partnerShare, 1200);
+  const cents = partnerSettlementFinance(0, 0, 0, 340.01);
+  assert.equal(cents.thiagoShare, 170.01);
+  assert.equal(cents.partnerShare, 170);
+  assert.equal(Math.round((cents.thiagoShare + cents.partnerShare) * 100), 34001);
 });
