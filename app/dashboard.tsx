@@ -1822,7 +1822,8 @@ function Kanban({
   const creatingRef=useRef(false),editingRef=useRef(false),movingRef=useRef(new Set<number>());
   const [movingIds,setMovingIds]=useState(new Set<number>());
   const [kanbanError,setKanbanError]=useState(""),[createError,setCreateError]=useState(""),[editError,setEditError]=useState("");
-  const openCreate=()=>{setCreateAssignee(kanbanOwner==="all"?"owner":kanbanOwner);setCreateForm({...emptyCreateForm});setCreateError("");setFormStep(1);setSelectedProduct("Financiamento");setForm(true)};
+  const [createStage,setCreateStage]=useState("atendimento");
+  const openCreate=(stage="atendimento")=>{setCreateStage(stage);setCreateAssignee(kanbanOwner==="all"?"owner":kanbanOwner);setCreateForm({...emptyCreateForm});setCreateError("");setFormStep(1);setSelectedProduct("Financiamento");setForm(true)};
   useEffect(()=>{if(newDealRequest>0)openCreate()},[newDealRequest]);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -1852,7 +1853,7 @@ function Kanban({
     creatingRef.current=true;setCreating(true);setCreateError("");
     try {
       const financing=selectedProduct==="Financiamento",secured=selectedProduct==="Crédito com garantia";
-      const body={name:createForm.name.trim().toLocaleUpperCase("pt-BR"),cpf:cpfKey(createForm.cpf),birthDate:dateToIso(createForm.birthDate),phone:maskPhone(createForm.phone),product:selectedProduct,
+      const body={stage:createStage,name:createForm.name.trim().toLocaleUpperCase("pt-BR"),cpf:cpfKey(createForm.cpf),birthDate:dateToIso(createForm.birthDate),phone:maskPhone(createForm.phone),product:selectedProduct,
         operationType:secured?(createForm.guaranteeType==="Imobiliário"?"Garantia de imóvel":"Garantia de veículo"):createForm.operationType||operationOptionsFor(selectedProduct)[0],
         ...(secured?{guaranteeType:createForm.guaranteeType}:{}),
         ...(isLegalDemand(selectedProduct)?{}:financing?{vehicleValue:moneyToStorage(createForm.vehicleValue),downPayment:moneyToStorage(createForm.downPayment),financedValue:moneyToStorage(createForm.financedValue)}:{desiredCredit:moneyToStorage(createForm.desiredCredit)}),
@@ -2222,7 +2223,7 @@ function Kanban({
                     <button
                       type="button"
                       aria-label="Adicionar negócio"
-                      onClick={openCreate}
+                      onClick={()=>openCreate(stage)}
                     >
                       <Plus />
                     </button>
@@ -2231,7 +2232,7 @@ function Kanban({
                 )}
               </div>
               <footer>
-                <button onClick={openCreate}>
+                <button onClick={()=>openCreate(stage)}>
                   <Plus />{" "}
                   {stage === "atendimento"
                     ? "Novo atendimento"
@@ -2557,10 +2558,44 @@ function downloadPartnerReportPdf({partnerName,monthLabel,status,production,calc
   const blob=new Blob([pdf],{type:'application/pdf'}),url=URL.createObjectURL(blob),link=document.createElement('a'),safeName=partnerName.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9]+/g,'-').replace(/^-|-$/g,'').toLowerCase();link.href=url;link.download=`relatorio-${safeName||'parceiro'}-${monthLabel.replace(/\s+/g,'-').toLowerCase()}.pdf`;document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1500);
 }
 function PartnerOperationRow({row,client,partner,onUpdated}:{row:Operation;client?:Client;partner:PartnerRecord;onUpdated:(partner:PartnerRecord)=>void}){
-  const initial=partnerOperationCalculation(row,partner),[ilaRate,setIlaRate]=useState(String(initial.ilaRate).replace('.',',')),[invoiceRate,setInvoiceRate]=useState(String(initial.invoiceRate).replace('.',',')),[saving,setSaving]=useState(false),[saved,setSaved]=useState(false),parseRate=(value:string)=>Math.max(0,Math.min(100,Number(value.replace(',','.'))||0));
+  const initial=partnerOperationCalculation(row,partner);
+  const [ilaRate,setIlaRate]=useState(String(initial.ilaRate).replace('.',',')),[invoiceRate,setInvoiceRate]=useState(String(initial.invoiceRate).replace('.',','));
+  const [observation,setObservation]=useState(row.observations||''),[saving,setSaving]=useState(false),[saved,setSaved]=useState(false),[error,setError]=useState('');
+  const queue=useRef(Promise.resolve()), latest=useRef(partner), savedValues=useRef({ila:initial.ilaRate,invoice:initial.invoiceRate,observation:row.observations||''});
+  latest.current=partner;
+  const parseRate=(value:string)=>Math.max(0,Math.min(100,Number(value.replace(',','.'))||0));
   const ila=parseRate(ilaRate),invoice=parseRate(invoiceRate),calculation={ila,invoice,...partnerFinance(row.grossCommission,ila,invoice,initial.tfShare)};
-  const save=async()=>{if(!initial.operationId)return alert('Este registro histórico precisa ser vinculado a uma operação para salvar as taxas.');setSaving(true);setSaved(false);let id=partner.id;if(!id){const created=await fetch('/api/partners',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({name:partner.name})}),createdData=await created.json();if(!created.ok){setSaving(false);return alert(createdData.error||'Não foi possível preparar o parceiro.')}id=createdData.partner.id;}const response=await fetch('/api/partners',{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({id,operationId:initial.operationId,ilaRate:calculation.ila,invoiceRate:calculation.invoice,tfShare:initial.tfShare})}),data=await response.json();setSaving(false);if(!response.ok)return alert(data.error||'Não foi possível salvar as taxas.');onUpdated({...partner,id,adjustments:[data.adjustment,...(partner.adjustments||[]).filter(item=>item.operationId!==initial.operationId)]});setSaved(true);};
-  return <div className="tf-partner-operation-row"><span>{client?.name||'Cliente'}</span><span>{formatCpf(client?.cpf||'')}</span><span>{row.bank}</span><span>{row.product}</span><span>{row.paidDate?fmt(row.paidDate):'—'}</span><b>{brl(row.value)}</b><b>{brl(calculation.gross)}</b><label><input aria-label={`ILA de ${client?.name||'cliente'}`} inputMode="decimal" value={ilaRate} onChange={event=>{setIlaRate(event.target.value.replace(/[^\d,.]/g,''));setSaved(false)}}/><small>{brl(calculation.ilaValue)}</small></label><b>{brl(calculation.afterIla)}</b><label><input aria-label={`Taxa da nota de ${client?.name||'cliente'}`} inputMode="decimal" value={invoiceRate} onChange={event=>{setInvoiceRate(event.target.value.replace(/[^\d,.]/g,''));setSaved(false)}}/><small>{brl(calculation.invoiceFee)}</small></label><b>{brl(calculation.net)}</b><strong>{brl(calculation.thiagoShare)}</strong><button type="button" onClick={save} disabled={saving||!initial.operationId}>{saving?'Salvando':saved?'Salvo ✓':'Salvar taxas'}</button></div>;
+  const save=()=>{
+    const values={ila,invoice,observation};
+    queue.current=queue.current.then(async()=>{
+      if(JSON.stringify(values)===JSON.stringify(savedValues.current))return;
+      if(!initial.operationId){setError('Registro histórico sem operação vinculada.');return;}
+      setSaving(true);setSaved(false);setError('');
+      try{
+        let current=latest.current,id=current.id;
+        if(!id){
+          const response=await fetch('/api/partners',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({name:current.name})}),data=await response.json();
+          if(!response.ok)throw new Error(data.error||'Não foi possível preparar o parceiro.');
+          id=data.partner.id;
+        }
+        if(values.ila!==savedValues.current.ila||values.invoice!==savedValues.current.invoice){
+          const response=await fetch('/api/partners',{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({id,operationId:initial.operationId,ilaRate:values.ila,invoiceRate:values.invoice,tfShare:initial.tfShare})}),data=await response.json();
+          if(!response.ok)throw new Error(data.error||'Não foi possível salvar as taxas.');
+          current={...latest.current,id,adjustments:[data.adjustment,...(latest.current.adjustments||[]).filter(item=>item.operationId!==initial.operationId)]};
+          latest.current=current;
+          savedValues.current={...savedValues.current,ila:values.ila,invoice:values.invoice};
+        }
+        if(values.observation!==savedValues.current.observation){
+          const response=await fetch('/api/records',{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({entity:'operation',id:initial.operationId,details:{observations:values.observation}})}),data=await response.json();
+          if(!response.ok)throw new Error(data.error||'Não foi possível salvar a observação.');
+          savedValues.current={...savedValues.current,observation:values.observation};
+        }
+        onUpdated(current);setSaved(true);
+      }catch(cause){setError(cause instanceof Error?cause.message:'Falha ao salvar. Saia do campo para tentar novamente.');}
+      finally{setSaving(false);}
+    });
+  };
+  return <div className="tf-partner-operation-row"><span data-label="Cliente">{client?.name||'Cliente'}</span><span data-label="CPF">{formatCpf(client?.cpf||'')}</span><span data-label="Banco">{row.bank}</span><span data-label="Produto">{row.product}</span><span data-label="Pagamento">{row.paidDate?fmt(row.paidDate):'—'}</span><b data-label="Valor financiado">{brl(row.value)}</b><b data-label="Comissão bruta">{brl(calculation.gross)}</b><label data-label="ILA % / desconto"><input aria-label={`ILA de ${client?.name||'cliente'}`} inputMode="decimal" value={ilaRate} onBlur={save} onChange={event=>{setIlaRate(event.target.value.replace(/[^\d,.]/g,''));setSaved(false)}}/><small>{brl(calculation.ilaValue)}</small></label><b data-label="Após ILA">{brl(calculation.afterIla)}</b><label data-label="Nota % / desconto"><input aria-label={`Taxa da nota de ${client?.name||'cliente'}`} inputMode="decimal" value={invoiceRate} onBlur={save} onChange={event=>{setInvoiceRate(event.target.value.replace(/[^\d,.]/g,''));setSaved(false)}}/><small>{brl(calculation.invoiceFee)}</small></label><b data-label="Crédito líquido">{brl(calculation.net)}</b><strong data-label="Repasse Thiago">{brl(calculation.thiagoShare)}</strong><label data-label="Observação" className="tf-partner-observation"><textarea aria-label={`Observação de ${client?.name||'cliente'}`} placeholder="Veículo / financiamento" value={observation} onChange={event=>{setObservation(event.target.value);setSaved(false)}} onBlur={save}/><small role="status">{error|| (saving?'Salvando…':saved?'Salvo ✓':'Salva ao sair do campo')}</small></label></div>;
 }
 function PartnerSettlement({partner,gross,period,rows,previousRows,clientsData,onUpdated}:{partner:PartnerRecord;gross:number;period:string;rows:Operation[];previousRows:Operation[];clientsData:Client[];onUpdated:(partner:PartnerRecord)=>void}){
   const saved=partner.settlements?.find(item=>item.period===period),status=saved?.status||'em_aberto';
@@ -2595,7 +2630,7 @@ function Partners({rows,clientsData,partners,onPartnerCreated,onPartnerUpdated}:
       const clientIds=Array.from(new Set(currentRows.map(row=>row.clientId))),partnerClients=clientIds.map(id=>clientsData.find(client=>client.id===id)).filter(Boolean) as Client[],currentValue=currentRows.reduce((sum,row)=>sum+row.value,0),currentCommission=currentRows.reduce((sum,row)=>sum+row.grossCommission,0),initials=name.split(/\s+/).slice(0,2).map(word=>word[0]).join("").toUpperCase(),expanded=expandedPartner===partner.id;
       return <article className={`tf-partner-executive${expanded?' expanded':''}`} key={name}>
         <header><span><i className={/GG Veículos/i.test(name)?"tf-partner-logo":""}>{/GG Veículos/i.test(name)?<img src="/gg-veiculos-logo.png" alt="GG Veículos"/>:initials}</i><span><h2>{name}</h2><small>Parceiro comercial · {monthLabel(selectedMonth)}</small></span></span><button type="button" className="tf-partner-expand" aria-expanded={expanded} onClick={()=>setExpandedPartner(expanded?null:partner.id)}><span>{partnerClients.length} clientes · {brl(currentValue)}</span><ChevronRight/></button><div className="tf-partner-access-actions">{partner.id>0?<><button type="button" onClick={()=>copyPartnerLink(partner.id)}><Copy/> Copiar link do parceiro</button><a href={partnerAccessLink(partner.id)} target="_blank" rel="noreferrer"><ExternalLink/> Abrir portal</a></>:<small>Link disponível após o cadastro</small>}</div></header>
-        {expanded&&<><div className="tf-partner-body"><section className="tf-partner-metrics"><div><small>CLIENTES NO MÊS</small><strong>{partnerClients.length}</strong></div><div><small>VALOR FINANCIADO</small><strong>{brl(currentValue)}</strong></div><div><small>COMISSÃO BRUTA</small><strong>{brl(currentCommission)}</strong></div><div className="tf-partner-detail-table"><header><span>Cliente</span><span>CPF</span><span>Banco</span><span>Produto</span><span>Pagamento</span><span>Valor financiado</span><span>Comissão bruta</span><span>ILA % / desconto</span><span>Após ILA</span><span>Nota % / desconto</span><span>Crédito líquido</span><span>Repasse Thiago</span><span>Ação</span></header>{groups.map(group=><Fragment key={group.key}><div className={`tf-partner-source-group ${group.key}`}><b>{group.label}</b><small>{group.rows.length} {group.rows.length===1?'cliente':'clientes'}</small></div>{group.rows.map(row=><PartnerOperationRow key={`${row.id}:${partner.adjustments?.find(item=>item.operationId===row.dbId)?.ilaRate}:${partner.adjustments?.find(item=>item.operationId===row.dbId)?.invoiceRate}`} row={row} client={clientsData.find(item=>item.id===row.clientId)} partner={partner} onUpdated={onPartnerUpdated}/>) }{!group.rows.length&&<p className="tf-partner-source-empty">Nenhum cliente neste bloco.</p>}</Fragment>)}</div></section></div><PartnerSettlement partner={partner} gross={currentCommission} period={selectedMonth} rows={currentRows} previousRows={previousRows} clientsData={clientsData} onUpdated={onPartnerUpdated}/></>}
+        {expanded&&<><div className="tf-partner-body"><section className="tf-partner-metrics"><div><small>CLIENTES NO MÊS</small><strong>{partnerClients.length}</strong></div><div><small>VALOR FINANCIADO</small><strong>{brl(currentValue)}</strong></div><div><small>COMISSÃO BRUTA</small><strong>{brl(currentCommission)}</strong></div><div className="tf-partner-detail-table"><header><span>Cliente</span><span>CPF</span><span>Banco</span><span>Produto</span><span>Pagamento</span><span>Valor financiado</span><span>Comissão bruta</span><span>ILA % / desconto</span><span>Após ILA</span><span>Nota % / desconto</span><span>Crédito líquido</span><span>Repasse Thiago</span><span>Observação</span></header>{groups.map(group=><Fragment key={group.key}><div className={`tf-partner-source-group ${group.key}`}><b>{group.label}</b><small>{group.rows.length} {group.rows.length===1?'cliente':'clientes'}</small></div>{group.rows.map(row=><PartnerOperationRow key={row.id} row={row} client={clientsData.find(item=>item.id===row.clientId)} partner={partner} onUpdated={onPartnerUpdated}/>) }{!group.rows.length&&<p className="tf-partner-source-empty">Nenhum cliente neste bloco.</p>}</Fragment>)}</div></section></div><PartnerSettlement partner={partner} gross={currentCommission} period={selectedMonth} rows={currentRows} previousRows={previousRows} clientsData={clientsData} onUpdated={onPartnerUpdated}/></>}
       </article>;
     })}</div>
     {adding&&<div className="tf-modal-back"><form className="tf-modal tf-partner-modal" onSubmit={savePartner}><button type="button" className="tf-modal-close" onClick={()=>setAdding(false)}>×</button><small>NOVO PARCEIRO</small><h2>Cadastrar parceiro</h2><p>Informe o nome que deverá aparecer nos relatórios e nas operações.</p><label>Nome do parceiro<input autoFocus required value={partnerName} onChange={event=>setPartnerName(event.target.value)} placeholder="Ex.: Nome da empresa"/></label><div className="tf-modal-actions"><button type="button" className="tf-secondary" onClick={()=>setAdding(false)}>Cancelar</button><button className="tf-primary">Cadastrar parceiro</button></div></form></div>}
