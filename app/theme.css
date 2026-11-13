@@ -1733,36 +1733,45 @@ body,button,input,select{font-family:var(--font-ui),sans-serif}
   .tf-germano-report>footer{display:none!important}
 }
 
-/* Partner table: consistent columns, single-line names and amounts. */
+/* Partner table: grouped identity and payment, shared financial baseline. */
 .tf-partner-detail-table{overflow:visible;min-width:0}
 .tf-partner-detail-table>header,.tf-partner-operation-row{
  min-width:0!important;width:100%;box-sizing:border-box;
- grid-template-columns:minmax(0,2.9fr) minmax(0,1.25fr) minmax(0,1.05fr) minmax(0,1.1fr) minmax(0,1fr) minmax(0,1.15fr) minmax(0,1fr) minmax(0,.85fr) minmax(0,1fr) minmax(0,.85fr) minmax(0,1fr) minmax(0,1fr) minmax(0,1.7fr)!important;
- gap:8px;padding:12px 8px;align-items:center;
+ grid-template-columns:minmax(0,2.5fr) minmax(0,1.15fr) 100px 90px 62px 90px 62px 95px 95px minmax(140px,1.5fr)!important;
+ gap:10px;padding:10px 12px;align-items:start;
 }
-.tf-partner-detail-table>header{font-size:8px;letter-spacing:0;line-height:1.35;min-height:44px}
-.tf-partner-detail-table>header>*,.tf-partner-operation-row>*{min-width:0;overflow-wrap:normal}
-.tf-partner-operation-row{min-height:65px;font-size:10px;line-height:1.35}
-.tf-partner-operation-row>span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.tf-partner-operation-row>span:first-child{font-weight:650}
-.tf-partner-operation-row>b,.tf-partner-operation-row>strong{white-space:nowrap;text-align:right;font-size:10px;font-variant-numeric:tabular-nums;letter-spacing:-.2px}
-.tf-partner-detail-table>header>span:is(:nth-child(6),:nth-child(7),:nth-child(9),:nth-child(11),:nth-child(12)){text-align:right}
-.tf-partner-operation-row>label{align-self:center;gap:4px}
-.tf-partner-operation-row label input{width:100%;box-sizing:border-box;max-width:none;height:30px;padding:0 5px;font-size:10px}
+.tf-partner-detail-table>header{min-height:42px;align-items:center;font-size:9px;letter-spacing:0;line-height:1.3}
+.tf-partner-detail-table>header>span{min-width:0}
+.tf-partner-detail-table>header>span:nth-child(n+3):nth-child(-n+9){text-align:right}
+.tf-partner-detail-table>header small{display:block;font-size:8px;font-weight:400;margin-top:3px}
+.tf-partner-operation-row{min-height:68px;font-size:10px;line-height:1.3}
+.tf-partner-operation-row>*{min-width:0;box-sizing:border-box;overflow-wrap:normal}
+.tf-partner-cell{display:grid;grid-template-rows:30px 12px;gap:4px}
+.tf-partner-cell>span,.tf-partner-cell>b{align-self:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tf-partner-cell:first-child>span{font-weight:650}
+.tf-partner-cell>small{font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:.7}
+.tf-partner-financed{text-align:right;font-variant-numeric:tabular-nums}
+.tf-partner-operation-row>b,.tf-partner-operation-row>strong{display:flex;align-items:center;justify-content:flex-end;height:30px;white-space:nowrap;font-size:10px;font-variant-numeric:tabular-nums;letter-spacing:0}
+.tf-partner-operation-row>label{display:grid;grid-template-rows:30px minmax(12px,auto);gap:4px;margin:0}
+.tf-partner-operation-row label input{width:100%;box-sizing:border-box;max-width:none;min-width:0;height:30px;padding:0 6px;font-size:10px}
 .tf-partner-operation-row>label:not(.tf-partner-observation) input{text-align:right;font-variant-numeric:tabular-nums}
-.tf-partner-operation-row label small{min-height:11px;font-size:8px;line-height:11px;white-space:nowrap;text-align:right}
+.tf-partner-operation-row label small{min-height:12px;font-size:9px;line-height:12px;white-space:nowrap;text-align:right}
+.tf-partner-operation-row>.tf-partner-observation,.tf-partner-detail-table>header>span:last-child{padding-left:16px;border-left:1px solid rgba(140,150,160,.25)}
 .tf-partner-operation-row .tf-partner-observation input{font-weight:400;color:inherit}
-.tf-partner-operation-row .tf-partner-observation small{text-align:left;white-space:normal}
+.tf-partner-operation-row .tf-partner-observation small{text-align:left;white-space:normal;font-size:8px}
 .tf-partner-source-empty{min-width:0!important}
-.tf-partner-source-group{min-height:40px;padding:9px 12px}
-.tf-partner-source-group b{font-size:13px}
-@container(max-width:1050px){
+.tf-partner-source-group{min-height:36px;padding:8px 12px}
+.tf-partner-source-group b{font-size:12px}
+@container(max-width:1150px){
  .tf-partner-detail-table>header{display:none}
- .tf-partner-operation-row{grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:12px}
- .tf-partner-operation-row>span:first-child{grid-column:1/-1;font-size:12px}
- .tf-partner-operation-row>*::before{content:attr(data-label);display:block;font-size:9px;font-weight:400;color:var(--muted);margin-bottom:4px}
- .tf-partner-operation-row>.tf-partner-observation{grid-column:1/-1}
+ .tf-partner-operation-row{grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:10px 16px}
+ .tf-partner-operation-row>.tf-partner-cell:first-child{grid-column:span 2}
+ .tf-partner-operation-row>*::before{content:attr(data-label);display:block;font-size:9px;font-weight:400;color:var(--muted);margin-bottom:5px;white-space:nowrap}
+ .tf-partner-operation-row>.tf-partner-cell,.tf-partner-operation-row>label{display:block}
+ .tf-partner-cell>span,.tf-partner-cell>b,.tf-partner-cell>small{display:block}
+ .tf-partner-cell>small{margin-top:4px}
+ .tf-partner-operation-row>b,.tf-partner-operation-row>strong{display:block;height:auto;text-align:right}
+ .tf-partner-operation-row>.tf-partner-observation{grid-column:span 2;padding-left:0;border:0}
+ .tf-partner-operation-row label small{display:block;margin-top:4px}
 }
-@container(max-width:500px){
- .tf-partner-operation-row{grid-template-columns:repeat(2,minmax(0,1fr))!important}
-}
+@container(max-width:500px){.tf-partner-operation-row{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
