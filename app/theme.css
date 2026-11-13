@@ -1777,3 +1777,16 @@ body,button,input,select{font-family:var(--font-ui),sans-serif}
 @container(max-width:500px){.tf-partner-operation-row{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
 
 .tf-partner-operation-row>b[data-label="Crédito líquido"]{color:#16a34a!important}
+
+/* Split the existing notes area without moving the financial columns. */
+.tf-partner-operation-row>.tf-partner-notes,.tf-partner-detail-table>header>.tf-partner-notes-heading{
+ display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 12px;padding-left:16px;border-left:1px solid rgba(140,150,160,.25);
+}
+.tf-partner-notes>label{display:block;min-width:0;margin:0}
+.tf-partner-operation-row .tf-partner-notes input{font-weight:400;color:inherit;text-align:left}
+.tf-partner-notes>small{grid-column:1/-1;min-height:14px;font-size:8px;line-height:14px}
+@container(max-width:1250px){
+ .tf-partner-operation-row>.tf-partner-notes{grid-column:span 2;padding-left:0;border:0}
+ .tf-partner-operation-row>.tf-partner-notes::before{display:none}
+ .tf-partner-notes>label::before{content:attr(data-label);display:block;font-size:10px;color:var(--muted);margin-bottom:5px}
+}
