@@ -93,3 +93,8 @@
  .tf-app.theme-classic.has-workspace-scenery.glass-workspace .tf-module-experience.cinematic-scene .tf-experience-float { background:#182530d9!important; color:#e5edf2!important; border-color:#c9dce72b!important; box-shadow:0 5px 18px #0003!important; }
  .tf-app.theme-classic.has-workspace-scenery.glass-workspace :is(.tf-modal,.tf-client-sheet) :is(.tf-sheet,.tf-sheet-block,.tf-invoice-file,.tf-additional-operations) { background:#15232eeb!important; color:#edf3f7!important; border-color:#c9dce72b!important; }
 }
+
+/* Net credit keeps its semantic green instead of the workspace's white text. */
+.tf-app.theme-classic.has-workspace-scenery.glass-workspace #tf-module-workspace .tf-partner-detail-table .tf-partner-operation-row>b[data-label="Crédito líquido"] {
+ color:#4ade80!important;
+}
